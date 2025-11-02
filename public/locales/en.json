@@ -1,0 +1,7 @@
+{
+  "ship_ctrl_acc": "Accelerometer",
+  "ship_ctrl_alt_acc": "Alternative Accelerometer",
+  "ship_ctrl_control_pad": "Control Pad",
+  "ship_ctrl_cursor_block": "Cursor Block",
+  "ship_ctrl_cursor_split_block": "Cursor Split Block"
+}
