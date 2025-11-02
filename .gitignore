@@ -1,12 +1,2 @@
-tags
-*~
-bin/
-gen/
-main.*.de.phbouillon.android.games.alite.obb
-/local.properties
-gradlew*
-settings.gradle
-.gradle/
-gradle/
-.idea/
-build/
+node_modules
+vite_output.log

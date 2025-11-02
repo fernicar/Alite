@@ -1,4 +1,6 @@
 import Alite from './Alite';
 
-const game = new Alite();
-game.start();
+window.addEventListener('DOMContentLoaded', (event) => {
+    const game = new Alite();
+    game.start();
+});

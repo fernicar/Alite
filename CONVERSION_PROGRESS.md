@@ -2,9 +2,9 @@
 
 This file tracks the conversion of `.java` files to `.tsx`.
 
-- [ ] `src/de/phbouillon/android/games/alite/Button.java`
+- [x] `src/de/phbouillon/android/games/alite/Button.tsx` - Represents a clickable button in the UI.
 - [x] `src/de/phbouillon/android/games/alite/Alite.java`
-- [ ] `src/de/phbouillon/android/games/alite/ShipControl.java`
+- [x] `src/de/phbouillon/android/games/alite/ShipControl.tsx` -  Handles ship control options.
 - [ ] `src/de/phbouillon/android/games/alite/colors/PlayerLaser.java`
 - [ ] `src/de/phbouillon/android/games/alite/colors/Viper.java`
 - [ ] `src/de/phbouillon/android/games/alite/colors/Thargoid.java`
