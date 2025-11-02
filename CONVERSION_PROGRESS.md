@@ -118,43 +118,43 @@ This file tracks the conversion of `.java` files to `.tsx`.
 - [ ] `src/de/phbouillon/android/games/alite/ButtonRegistry.java`
 - [x] `src/de/phbouillon/android/games/alite/L.java`
 - [ ] `src/de/phbouillon/android/games/alite/Component.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Unit.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/CommanderData.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/LegalStatus.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Repository.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/InventoryItem.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Equipment.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/generator/InhabitantComputation.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/generator/SeedType.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/generator/SystemData.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/generator/enums/Economy.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/generator/enums/Government.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/generator/GalaxyGenerator.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/generator/StringUtil.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Rating.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Player.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Weight.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/MissionManager.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/EndMission.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/ThargoidStationMission.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/Mission.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/ThargoidDocumentsMission.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/ConstrictorMission.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/SupernovaMission.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/missions/CougarMission.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/PlayerCobra.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Condition.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/EquipmentStore.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/Medal.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/library/ItemDescriptor.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/library/LibraryPage.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/library/Toc.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/library/TocEntry.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/trading/AliteTradeGoodStore.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/trading/TradeGood.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/trading/TradeGoodStore.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/trading/Market.java`
-- [ ] `src/de/phbouillon/android/games/alite/model/trading/AliteMarket.java`
+- [x] `src/de/phbouillon/android/games/alite/model/Unit.ts` - An enum for representing units of measurement.
+- [x] `src/de/phbouillon/android/games/alite/model/CommanderData.ts` - A simple data class for representing a commander's save data.
+- [x] `src/de/phbouillon/android/games/alite/model/LegalStatus.ts` - An enum for representing a player's legal status.
+- [x] `src/de/phbouillon/android/games/alite/model/Repository.ts` - A generic class for storing and managing properties.
+- [x] `src/de/phbouillon/android/games/alite/model/InventoryItem.ts` - A data class for representing an item in the player's inventory.
+- [x] `src/de/phbouillon/android/games/alite/model/Equipment.ts` - Defines the properties of a piece of equipment.
+- [x] `src/de/phbouillon/android/games/alite/model/generator/InhabitantComputation.ts` - A utility class for generating inhabitant descriptions.
+- [x] `src/de/phbouillon/android/games/alite/model/generator/SeedType.ts` - A class for handling seed data with bitwise operations.
+- [x] `src/de/phbouillon/android/games/alite/model/generator/SystemData.ts` - Defines the properties of a solar system.
+- [x] `src/de/phbouillon/android/games/alite/model/generator/enums/Economy.ts` - An enum that maps economy types to color schemes and descriptions.
+- [x] `src/de/phbouillon/android/games/alite/model/generator/enums/Government.ts` - An enum that maps government types to descriptions.
+- [x] `src/de/phbouillon/android/games/alite/model/generator/GalaxyGenerator.ts` - Responsible for procedurally generating the game's galaxies.
+- [x] `src/de/phbouillon/android/games/alite/model/generator/StringUtil.ts` - A utility class for string manipulation.
+- [x] `src/de/phbouillon/android/games/alite/model/Rating.ts` - An enum for representing player ratings.
+- [x] `src/de/phbouillon/android/games/alite/model/Player.ts` - Represents the player's state.
+- [x] `src/de/phbouillon/android/games/alite/model/Weight.ts` - A class for representing weight.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/MissionManager.ts` - A singleton class for managing all in-game missions.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/EndMission.ts` - Defines the final mission of the game.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/ThargoidStationMission.ts` - Defines a mission to destroy a Thargoid space station.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/Mission.ts` - An abstract class that defines the core structure and behavior of in-game missions.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/ThargoidDocumentsMission.ts` - Defines a mission to deliver Thargoid documents.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/ConstrictorMission.ts` - Defines a mission to destroy a Constrictor ship.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/SupernovaMission.ts` - Defines a mission to escape a supernova.
+- [x] `src/de/phbouillon/android/games/alite/model/missions/CougarMission.ts` - Defines a mission to acquire a cloaking device.
+- [x] `src/de/phbouillon/android/games/alite/model/PlayerCobra.ts` - Represents the player's ship.
+- [x] `src/de/phbouillon/android/games/alite/model/Condition.ts` - An enum for representing the player's current condition.
+- [x] `src/de/phbouillon/android/games/alite/model/EquipmentStore.ts` - A singleton class for managing all available equipment.
+- [x] `src/de/phbouillon/android/games/alite/model/Medal.ts` - Defines the achievement system.
+- [x] `src/de/phbouillon/android/games/alite/model/library/ItemDescriptor.ts` - A simple data class for library items.
+- [x] `src/de/phbouillon/android/games/alite/model/library/LibraryPage.ts` - Responsible for parsing and managing the content of a library page.
+- [x] `src/de/phbouillon/android/games/alite/model/library/Toc.ts` - Responsible for parsing and managing the table of contents for the in-game library.
+- [x] `src/de/phbouillon/android/games/alite/model/library/TocEntry.ts` - A simple data class for table of contents entries.
+- [x] `src/de/phbouillon/android/games/alite/model/trading/AliteTradeGoodStore.ts` - Initializes the list of tradable goods.
+- [x] `src/de/phbouillon/android/games/alite/model/trading/TradeGood.ts` - Defines the properties of a tradable good.
+- [x] `src/de/phbouillon/android/games/alite/model/trading/TradeGoodStore.ts` - An abstract class for managing tradable goods.
+- [x] `src/de/phbouillon/android/games/alite/model/trading/Market.ts` - An abstract class for managing a market's inventory and prices.
+- [x] `src/de/phbouillon/android/games/alite/model/trading/AliteMarket.ts` - Implements the market generation logic.
 - [ ] `src/de/phbouillon/android/games/alite/Settings.java`
 - [ ] `src/de/phbouillon/android/games/alite/AliteIntro.java`
 - [ ] `src/de/phbouillon/android/games/alite/AliteLog.java`
