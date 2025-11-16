@@ -1,8 +1,6 @@
-package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License, or
@@ -18,37 +16,33 @@ package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import { ButtonData } from "./ButtonData";
 
-class ButtonGroup implements Serializable {
-	private static final long serialVersionUID = -8262120391661117837L;
+export class ButtonGroup {
+    public index: number;
+    public left: boolean;
+    public active: boolean;
+    public buttons: ButtonData[];
 
-	int index;
-	boolean left;
-	boolean active;
-	List<ButtonData> buttons;
-	
-	ButtonGroup(int index, boolean left, boolean active) {
-		this.index = index;
-		this.left = left;
-		this.active = active;
-		buttons = new ArrayList<ButtonData>();
-	}
+    public constructor(index: number, left: boolean, active: boolean) {
+        this.index = index;
+        this.left = left;
+        this.active = active;
+        this.buttons = [];
+    }
 
-	void addButton(ButtonData b) {
-		buttons.add(b);
-		b.parent = this;		
-	}
-	
-	boolean hasActiveButtons() {
-		for (ButtonData bd: buttons) {
-			if (bd != null && bd.active) {
-				return true;
-			}
-			index++;
-		}
-		return false;
-	}
+    public addButton(b: ButtonData) {
+        this.buttons.push(b);
+        b.parent = this;
+    }
+
+    public hasActiveButtons(): boolean {
+        for (const bd of this.buttons) {
+            if (bd !== null && bd.active) {
+                return true;
+            }
+            this.index++;
+        }
+        return false;
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,9 +16,6 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-
-@FunctionalInterface
-public interface IntFunction<R> extends Serializable {
-	R apply(int value);
+export interface IntFunction<R> {
+	apply(value: number): R;
 }

@@ -1,6 +1,3 @@
-package de.phbouillon.android.framework;
-
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -19,9 +16,12 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public interface Audio {
-	Music newMusic(String fileName);
-	Sound newSound(String fileName);
-	Sound newCombatSound(String fileName);
-	Sound newSoundAsset(String fileName);
+import { Music } from './Music';
+import { Sound } from './Sound';
+
+export interface Audio {
+	newMusic(fileName: string): Music;
+	newSound(fileName: string): Sound;
+	newCombatSound(fileName: string): Sound;
+	newSoundAsset(fileName: string): Sound;
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,21 +16,22 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.impl.gl.font.GLText;
+import { GLText } from '../../../framework/impl/gl/font/GLText';
 
-public class TextData {
-	public int x;
-	public int y;
-	public String text;
-	public transient GLText font;
-	public int color;
-	public float scale;
+export class TextData {
+	public x: number;
+	public y: number;
+	public text: string;
+	public font: GLText;
+	public color: number;
+	public scale: number;
 
-	public TextData(String text, int x, int y, int color, GLText font) {
+	constructor(text: string, x: number, y: number, color: number, font: GLText) {
 		this.text = text;
 		this.x = x;
 		this.y = y;
 		this.color = color;
 		this.font = font;
+		this.scale = 1.0;
 	}
 }

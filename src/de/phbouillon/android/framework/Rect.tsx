@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,66 +16,32 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+export class Rect {
+    public left: number;
+    public top: number;
+    public right: number;
+    public bottom: number;
 
-import android.graphics.RectF;
+    constructor(left?: number | Rect, top?: number, right?: number, bottom?: number) {
+        if (typeof left === 'number') {
+            this.left = left;
+            this.top = top || 0;
+            this.right = right || 0;
+            this.bottom = bottom || 0;
+        } else if (left instanceof Rect) {
+            this.left = left.left;
+            this.top = left.top;
+            this.right = left.right;
+            this.bottom = left.bottom;
+        } else {
+            this.left = 0;
+            this.top = 0;
+            this.right = 0;
+            this.bottom = 0;
+        }
+    }
 
-// Serializable version of Rect... Using Serialization
-// to save the game state was a bad idea!
-public class Rect implements Serializable {
-	private static final long serialVersionUID = -1844899453180875199L;
-
-	public float left;
-	public float top;
-	public float right;
-	public float bottom;
-
-	private transient RectF rect;
-
-	public Rect() {
-	}
-
-	public Rect(float left, float top, float right, float bottom) {
-		this.left = left;
-		this.top = top;
-		this.right = right;
-		this.bottom = bottom;
-	}
-
-	public Rect(Rect r) {
-		if (r == null) {
-			left = top = right = bottom = 0.0f;
-		} else {
-			left = r.left;
-			top = r.top;
-			right = r.right;
-			bottom = r.bottom;
-		}
-	}
-
-	public Rect(RectF r) {
-		if (r == null) {
-			left = top = right = bottom = 0.0f;
-		} else {
-			left = r.left;
-			top = r.top;
-			right = r.right;
-			bottom = r.bottom;
-		}
-	}
-
-	public RectF r() {
-		if (rect == null) {
-			rect = new RectF();
-		}
-		rect.left = left;
-		rect.top = top;
-		rect.right = right;
-		rect.bottom = bottom;
-		return rect;
-	}
-
-	public static boolean inside(int x, float y, float left, float top, float right, float bottom) {
-		return left < right && top < bottom && x >= left && y >= top && x <= right && y <= bottom;
-	}
+    public static inside(x: number, y: number, left: number, top: number, right: number, bottom: number): boolean {
+        return left < right && top < bottom && x >= left && y >= top && x <= right && y <= bottom;
+    }
 }
