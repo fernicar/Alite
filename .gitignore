@@ -10,3 +10,4 @@ settings.gradle
 gradle/
 .idea/
 build/
+node_modules/

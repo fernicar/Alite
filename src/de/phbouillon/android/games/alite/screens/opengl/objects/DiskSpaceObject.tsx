@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,26 +16,23 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Disk } from "../../../framework/impl/gl/Disk";
+import { AliteObject } from "./AliteObject";
 
-import android.graphics.Color;
-import de.phbouillon.android.framework.impl.gl.Disk;
 
-public class DiskSpaceObject extends AliteObject implements Serializable {
-	private static final long serialVersionUID = 5388571762772747540L;
+export class DiskSpaceObject extends AliteObject {
 
-	private final Disk disk;
+    private readonly disk: Disk;
 
-	public DiskSpaceObject(String name, float innerRadius, float outerRadius, float beginAngle, float endAngle, int sections, String texture) {
-		super(name);
-		disk = new Disk(innerRadius, outerRadius, beginAngle, endAngle, beginAngle, endAngle, sections, texture);
-		boundingSphereRadius = outerRadius;
-		hudColor = Color.WHITE;
-	}
+    public constructor(name: string, innerRadius: number, outerRadius: number, beginAngle: number, endAngle: number, sections: number, texture: string) {
+        super(name);
+        this.disk = new Disk(innerRadius, outerRadius, beginAngle, endAngle, beginAngle, endAngle, sections, texture);
+        this.boundingSphereRadius = outerRadius;
+        this.hudColor = 0xFFFFFF; // Color.WHITE
+    }
 
-	@Override
-	public void render() {
-		disk.render();
-	}
+    public render() {
+        this.disk.render();
+    }
 
 }

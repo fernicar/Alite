@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,223 +16,76 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.util.ArrayList;
-import java.util.List;
+import { TouchHandler } from './TouchHandler';
+import { TouchEvent } from '../Input';
 
-import android.view.GestureDetector;
-import android.view.GestureDetector.SimpleOnGestureListener;
-import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
-import android.view.View;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.impl.Pool.PoolObjectFactory;
+export class MultiTouchHandler implements TouchHandler {
+    private touchEventsBuffer: TouchEvent[] = [];
 
-public class MultiTouchHandler implements TouchHandler {
-	private static final int MAX_TOUCHPOINTS = 10;
+    constructor(view: HTMLElement, scaleX: number, scaleY: number, offsetX: number, offsetY: number) {
+        view.addEventListener('mousedown', this.handleMouseDown);
+        view.addEventListener('mouseup', this.handleMouseUp);
+    }
 
-	private final boolean [] isTouched = new boolean[MAX_TOUCHPOINTS];
-	private final int [] touchX = new int[MAX_TOUCHPOINTS];
-	private final int [] touchY = new int[MAX_TOUCHPOINTS];
-	private final int [] id = new int[MAX_TOUCHPOINTS];
-	private final Pool <TouchEvent> touchEventPool;
-	private List<TouchEvent> touchEvents = new ArrayList<>();
-	private final List<TouchEvent> touchEventsBuffer = new ArrayList<>();
-	private final float scaleX;
-	private final float scaleY;
-	private final int offsetX;
-	private final int offsetY;
-	private float zoomFactor = 1.0f;
-	private final ScaleGestureDetector scaleDetector;
-	private final GestureDetector sweepDetector;
-	private View currentView;
+    private handleMouseDown = (event: MouseEvent) => {
+        const touchEvent = new TouchEvent();
+        touchEvent.type = TouchEvent.TOUCH_DOWN;
+        touchEvent.x = event.clientX;
+        touchEvent.y = event.clientY;
 
-	private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
-		@Override
-	    public boolean onScale(ScaleGestureDetector detector) {
-	        zoomFactor *= detector.getScaleFactor();
+        if (event.ctrlKey) {
+            console.log('Ctrl+click');
+            // TODO: Differentiate between Ctrl+click and regular click
+        } else if (event.shiftKey) {
+            console.log('Shift+click');
+            // TODO: Differentiate between Shift+click and regular click
+        } else {
+            console.log('Regular click');
+        }
 
-	        // Don't let the object get too small or too large.
-	        zoomFactor = Math.max(1.0f, Math.min(zoomFactor, 8.0f));
+        this.touchEventsBuffer.push(touchEvent);
+    }
 
-			TouchEvent touchEvent = touchEventPool.newObject();
-			touchEvent.type = TouchEvent.TOUCH_SCALE;
-			touchEvent.x2 = (int) ((detector.getFocusX() - offsetX) * scaleX);
-			touchEvent.y2 = (int) ((detector.getFocusY() - offsetY) * scaleY);
-			touchEvent.zoomFactor = zoomFactor;
-			touchEventsBuffer.add(touchEvent);
+    private handleMouseUp = (event: MouseEvent) => {
+        const touchEvent = new TouchEvent();
+        touchEvent.type = TouchEvent.TOUCH_UP;
+        touchEvent.x = event.clientX;
+        touchEvent.y = event.clientY;
+        this.touchEventsBuffer.push(touchEvent);
+    }
 
-	        return true;
-	    }
-	}
+    isTouchDown(pointer: number): boolean {
+        return false;
+    }
 
-	private class SweepListener extends SimpleOnGestureListener {
-		@Override
-		public boolean onFling(MotionEvent start, MotionEvent finish, float xVelocity, float yVelocity) {
-			if (start == null) {
-				return true;
-			}
-			TouchEvent touchEvent = touchEventPool.newObject();
-			touchEvent.type = TouchEvent.TOUCH_SWEEP;
-			touchEvent.x = (int) ((start.getRawX() - offsetX) * scaleX);
-			touchEvent.y = (int) ((start.getRawY() - offsetY) * scaleY);
-			touchEvent.x2 = (int) (xVelocity / (100.0f / scaleX));
-			touchEvent.y2 = (int) (yVelocity / (100.0f / scaleY));
+    getTouchCount(): number {
+        return 0;
+    }
 
-			touchEventsBuffer.add(touchEvent);
+    getTouchX(pointer: number): number {
+        return 0;
+    }
 
-			return true;
-		}
-	}
+    getTouchY(pointer: number): number {
+        return 0;
+    }
 
-	MultiTouchHandler(View view, float scaleX, float scaleY, int offsetX, int offsetY) {
-		PoolObjectFactory <TouchEvent> factory = new PoolObjectFactory<TouchEvent>() {
-			private static final long serialVersionUID = 8367135535412320757L;
+    setZoomFactor(zoomFactor: number): void {
+        // Stub
+    }
 
-			@Override
-			public TouchEvent createObject() {
-				return new TouchEvent();
-			}
-		};
-		touchEventPool = new Pool<>(factory, 100);
-		view.setOnTouchListener(this);
-		this.scaleX = scaleX;
-		this.scaleY = scaleY;
-		this.offsetX = offsetX;
-		this.offsetY = offsetY;
-		scaleDetector = new ScaleGestureDetector(view.getContext(), new ScaleListener());
-		sweepDetector = new GestureDetector(view.getContext(), new SweepListener());
+    getTouchEvents(): TouchEvent[] {
+        const events = this.touchEventsBuffer;
+        this.touchEventsBuffer = [];
+        return events;
+    }
 
-		currentView = view;
-	}
+    getAndRetainTouchEvents(): TouchEvent[] {
+        return [...this.touchEventsBuffer];
+    }
 
-	@Override
-	public boolean onTouch(View v, MotionEvent event) {
-		synchronized (this) {
-			if (currentView != v) {
-				return false;
-			}
-			scaleDetector.onTouchEvent(event);
-			sweepDetector.onTouchEvent(event);
-			int action = event.getAction() & MotionEvent.ACTION_MASK;
-			int pointerIndex = (event.getAction() & MotionEvent.ACTION_POINTER_INDEX_MASK) >> MotionEvent.ACTION_POINTER_INDEX_SHIFT;
-			int pointerCount = event.getPointerCount();
-			TouchEvent touchEvent;
-
-			for (int i = 0; i < MAX_TOUCHPOINTS; i++) {
-				if (i >= pointerCount) {
-					isTouched[i] = false;
-					id[i] = -1;
-					continue;
-				}
-				int pointerId = event.getPointerId(i);
-				if (event.getAction() != MotionEvent.ACTION_MOVE && i != pointerIndex) {
-					continue;
-				}
-				switch (action) {
-					case MotionEvent.ACTION_DOWN:
-					case MotionEvent.ACTION_POINTER_DOWN:
-						touchEvent = touchEventPool.newObject();
-						touchEvent.type = TouchEvent.TOUCH_DOWN;
-						touchEvent.pointer = pointerId;
-						touchEvent.x = touchX[i] = (int) ((event.getX(i) - offsetX) * scaleX);
-						touchEvent.y = touchY[i] = (int) ((event.getY(i) - offsetY) * scaleY);
-						isTouched[i] = true;
-						id[i] = pointerId;
-						touchEventsBuffer.add(touchEvent);
-						break;
-
-					case MotionEvent.ACTION_UP:
-					case MotionEvent.ACTION_POINTER_UP:
-					case MotionEvent.ACTION_CANCEL:
-						touchEvent = touchEventPool.newObject();
-						touchEvent.type = TouchEvent.TOUCH_UP;
-						touchEvent.pointer = pointerId;
-						touchEvent.x = touchX[i] = (int) ((event.getX(i) - offsetX) * scaleX);
-						touchEvent.y = touchY[i] = (int) ((event.getY(i) - offsetY) * scaleY);
-						isTouched[i] = false;
-						id[i] = -1;
-						touchEventsBuffer.add(touchEvent);
-						break;
-
-					case MotionEvent.ACTION_MOVE:
-						touchEvent = touchEventPool.newObject();
-						touchEvent.type = TouchEvent.TOUCH_DRAGGED;
-						touchEvent.pointer = pointerId;
-						touchEvent.x = touchX[i] = (int) ((event.getX(i) - offsetX) * scaleX);
-						touchEvent.y = touchY[i] = (int) ((event.getY(i) - offsetY) * scaleY);
-						isTouched[i] = true;
-						id[i] = pointerId;
-						touchEventsBuffer.add(touchEvent);
-						break;
-				}
-			}
-			return true;
-		}
-	}
-
-	@Override
-	public boolean isTouchDown(int pointer) {
-		synchronized (this) {
-			int index = getIndex(pointer);
-			return index >= 0 && index < MAX_TOUCHPOINTS && isTouched[index];
-		}
-	}
-
-	@Override
-	public int getTouchX(int pointer) {
-		synchronized (this) {
-			int index = getIndex(pointer);
-			return index >= 0 && index < MAX_TOUCHPOINTS ? touchX[index] : 0;
-		}
-	}
-
-	@Override
-	public int getTouchY(int pointer) {
-		synchronized (this) {
-			int index = getIndex(pointer);
-			return index >= 0 && index < MAX_TOUCHPOINTS ? touchY[index] : 0;
-		}
-	}
-
-	@Override
-	public List<TouchEvent> getTouchEvents() {
-		synchronized (this) {
-			for (TouchEvent touchEvent : touchEvents) {
-				touchEventPool.free(touchEvent);
-			}
-			touchEvents = new ArrayList<>(touchEventsBuffer);
-			touchEventsBuffer.clear();
-			return touchEvents;
-		}
-	}
-
-	@Override
-	public List<TouchEvent> getAndRetainTouchEvents() {
-		return new ArrayList<>(touchEventsBuffer);
-	}
-
-	private int getIndex(int pointerId) {
-		for (int i = 0; i < MAX_TOUCHPOINTS; i++) {
-			if (id[i] == pointerId) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
-	@Override
-	public int getTouchCount() {
-		int result = 0;
-		for (boolean b: isTouched) {
-			if (b) {
-				result++;
-			}
-		}
-		return result;
-	}
-
-	@Override
-	public void setZoomFactor(float zoomFactor) {
-		this.zoomFactor = zoomFactor;
-	}
+    dispose(view: HTMLElement): void {
+        view.removeEventListener('mousedown', this.handleMouseDown);
+        view.removeEventListener('mouseup', this.handleMouseUp);
+    }
 }

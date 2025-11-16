@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  * 
@@ -18,14 +16,14 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public interface Music {
-	public void play();
-	public void stop();
-	public void pause();
-	public void setLooping(boolean looping);
-	public void setVolume(float volume);
-	public boolean isPlaying();
-	public boolean isStopped();
-	public boolean isLooping();
-	public void dispose();
+export interface Music {
+	play(): void;
+	stop(): void;
+	pause(): void;
+	setLooping(looping: boolean): void;
+	setVolume(volume: number): void;
+	isPlaying(): boolean;
+	isStopped(): boolean;
+	isLooping(): boolean;
+	dispose(): void;
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.library;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,32 +16,34 @@ package de.phbouillon.android.games.alite.model.library;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public class TocEntry {
-	private final int level;
-	private final String fileName;
-	private final String name;
-	private final LibraryPage linkedPage;
+import { LibraryPage } from './LibraryPage';
 
-	public TocEntry(String fileName, String name, LibraryPage linkedPage, int level) {
-		this.fileName = fileName;
-		this.name = name;
-		this.linkedPage = linkedPage;
-		this.level = level;
-	}
+export class TocEntry {
+    private readonly level: number;
+    private readonly fileName: string;
+    private readonly name: string;
+    private readonly linkedPage: LibraryPage;
 
-	public String getName() {
-		return name;
-	}
+    constructor(fileName: string, name: string, linkedPage: LibraryPage, level: number) {
+        this.fileName = fileName;
+        this.name = name;
+        this.linkedPage = linkedPage;
+        this.level = level;
+    }
 
-	public LibraryPage getLinkedPage() {
-		return linkedPage;
-	}
+    public getName(): string {
+        return this.name;
+    }
 
-	public int getLevel() {
-		return level;
-	}
+    public getLinkedPage(): LibraryPage {
+        return this.linkedPage;
+    }
 
-	public String getFileName() {
-		return fileName;
-	}
+    public getLevel(): number {
+        return this.level;
+    }
+
+    public getFileName(): string {
+        return this.fileName;
+    }
 }

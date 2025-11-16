@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,18 +16,19 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.graphics.Bitmap;
+import { ResourceStream } from "./ResourceStream";
+import { SpriteData } from "./SpriteData";
 
-public interface Texture {
-	int addTexture(String fileName);
-	int addTextureFromStream(String fileName, ResourceStream textureInputStream);
-	boolean checkTexture(String fileName);
-	int addTexture(String name, Bitmap bitmap);
-	void freeTexture(String fileName);
-	void setTexture(String fileName);
-	void setTexture(String fileName, ResourceStream textureInputStream);
-	SpriteData getSprite(String fileName, String spriteName);
-	void freeAllTextures();
-	void reloadAllTextures();
-	void clear();
+export interface Texture {
+    addTexture(fileName: string): number;
+    addTextureFromStream(fileName: string, textureInputStream: ResourceStream): number;
+    checkTexture(fileName: string): boolean;
+    addTexture(name: string, bitmap: ImageBitmap): number;
+    freeTexture(fileName: string): void;
+    setTexture(fileName: string): void;
+    setTexture(fileName: string, textureInputStream: ResourceStream): void;
+    getSprite(fileName: string, spriteName: string): SpriteData;
+    freeAllTextures(): void;
+    reloadAllTextures(): void;
+    clear(): void;
 }
