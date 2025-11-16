@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  * 
@@ -18,8 +16,8 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { SpaceObject } from './SpaceObject';
 
-public interface AiStateCallbackHandler extends Serializable {
-	public void execute(SpaceObject so);
+export interface AiStateCallbackHandler {
+	execute(so: SpaceObject): void;
 }

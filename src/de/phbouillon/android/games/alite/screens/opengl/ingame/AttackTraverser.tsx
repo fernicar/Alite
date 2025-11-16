@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,21 +16,19 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.model.Condition;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
+import { Alite } from '../../../Alite';
+import { Condition } from '../../../model/Condition';
+import { SpaceObject } from '../objects/space/SpaceObject';
+import { SpaceObjectTraverser } from './SpaceObjectTraverser';
+import { ObjectType } from './ObjectType';
 
-public class AttackTraverser implements SpaceObjectTraverser {
-	private static final long serialVersionUID = 1824100796383524100L;
-
-	@Override
-	public boolean handle(SpaceObject so) {
-		if (ObjectType.isEnemyShip(so.getType()) || so.getType() == ObjectType.Thargoid ||
-				so.isDrone() && so.hasLivingMother()) {
-			Alite.get().getPlayer().setCondition(Condition.RED);
-			return true;
-		}
-		return false;
-	}
-
+export class AttackTraverser implements SpaceObjectTraverser {
+    public handle(so: SpaceObject): boolean {
+        if (ObjectType.isEnemyShip(so.getType()) || so.getType() === ObjectType.Thargoid ||
+            (so.isDrone() && so.hasLivingMother())) {
+            Alite.get().getPlayer().setCondition(Condition.RED);
+            return true;
+        }
+        return false;
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,6 +16,6 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public interface TimeFactorChangeListener {
-	void timeFactorChanged(int oldTimeFactor, int newTimeFactor);
+export interface TimeFactorChangeListener {
+	timeFactorChanged(oldTimeFactor: number, newTimeFactor: number): void;
 }

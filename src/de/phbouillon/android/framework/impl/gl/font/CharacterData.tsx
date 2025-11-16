@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl.gl.font;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,25 +16,21 @@ package de.phbouillon.android.framework.impl.gl.font;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+export class CharacterData {
+    public readonly width: number;
+    public readonly height: number;
+    public readonly uStart: number;
+    public readonly uEnd: number;
+    public readonly vStart: number;
+    public readonly vEnd: number;
 
-public class CharacterData implements Serializable {
-	private static final long serialVersionUID = 3097765273945320958L;
-
-	public final int width;
-	public final int height;
-	public final float uStart;
-	public final float uEnd;
-	public final float vStart;
-	public final float vEnd;
-
-	public CharacterData(int charWidth, int charHeight, float texWidth, float texHeight,
-			float x, float y, float cellWidth, float cellHeight) {
-		width = charWidth;
-		height = charHeight;
-		uStart = x / texWidth;
-		vStart = y / texHeight;
-		uEnd = uStart + cellWidth / texWidth;
-		vEnd = vStart + cellHeight / texHeight;
-	}
+    public constructor(charWidth: number, charHeight: number, texWidth: number, texHeight: number,
+        x: number, y: number, cellWidth: number, cellHeight: number) {
+        this.width = charWidth;
+        this.height = charHeight;
+        this.uStart = x / texWidth;
+        this.vStart = y / texHeight;
+        this.uEnd = this.uStart + cellWidth / texWidth;
+        this.vEnd = this.vStart + cellHeight / texHeight;
+    }
 }

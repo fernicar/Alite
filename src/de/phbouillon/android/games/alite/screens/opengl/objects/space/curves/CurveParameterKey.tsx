@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space.curves;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  * 
@@ -18,22 +16,16 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space.curves;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-
-class CurveParameterKey implements Serializable {
-	private static final long serialVersionUID = 8858019754544505750L;
-
-	int index;
-	float time;
-	float value;
-	CurveParameterKey next;
-	CurveParameterKey prev;
+export class CurveParameterKey {
+	index: number;
+	time: number;
+	value: number;
+	next: CurveParameterKey | null = null;
+	prev: CurveParameterKey | null = null;
 	
-	CurveParameterKey() {			
-	}
-	
-	CurveParameterKey(float t, float v) {
-		time = t;
-		value = v;
+	constructor(t: number = 0, v: number = 0) {
+		this.index = 0;
+		this.time = t;
+		this.value = v;
 	}	
 }

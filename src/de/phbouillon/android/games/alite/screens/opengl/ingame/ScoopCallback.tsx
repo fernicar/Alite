@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,9 +16,9 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
+import { SpaceObject } from '../objects/space/SpaceObject';
 
-public interface ScoopCallback {
-	void scooped(SpaceObject scoopedObject);
-	void rammed(SpaceObject rammedObject);
+export interface ScoopCallback {
+	scooped(scoopedObject: SpaceObject): void;
+	rammed(rammedObject: SpaceObject): void;
 }
