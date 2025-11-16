@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,20 +16,19 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.graphics.Bitmap;
-import de.phbouillon.android.framework.Graphics.PixmapFormat;
+import { PixmapFormat } from './Graphics';
 
-public interface Pixmap {
-	int getWidth();
-	int getHeight();
-	PixmapFormat getFormat();
-	void dispose();
-	Bitmap getBitmap();
-	void setBitmap(Bitmap bitmap);
-	void setTextureCoordinates(int left, int top, int right, int bottom);
-	void setCoordinates(int left, int top, int right, int bottom);
-	void resetTextureCoordinates();
-	void render(float alpha);
-	void render(int x, int y);
-	void render(int x, int y, float pixmapAlpha);
+export interface Pixmap {
+    getWidth(): number;
+    getHeight(): number;
+    getFormat(): PixmapFormat;
+    dispose(): void;
+    getBitmap(): ImageBitmap;
+    setBitmap(bitmap: ImageBitmap): void;
+    setTextureCoordinates(left: number, top: number, right: number, bottom: number): void;
+    setCoordinates(left: number, top: number, right: number, bottom: number): void;
+    resetTextureCoordinates(): void;
+    render(alpha: number): void;
+    render(x: number, y: number): void;
+    render(x: number, y: number, pixmapAlpha: number): void;
 }

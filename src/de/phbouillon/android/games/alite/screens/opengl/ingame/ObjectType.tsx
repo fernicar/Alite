@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,32 +16,34 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public enum ObjectType {
-	Trader,
-	Pirate,
-	Thargoid,
-	Thargon,
-	Police,
-	Shuttle,
-	Asteroid,
-	Coriolis, // station
-	Dodecahedron, // station
-	Icosahedron, // station
-	Missile,
-	EscapeCapsule,
-	CargoPod,
-	Buoy,
-	Alloy,
-	Constrictor,
-	Cougar,
-	TieFighter,
-	Defender;
+export enum ObjectType {
+    Trader,
+    Pirate,
+    Thargoid,
+    Thargon,
+    Police,
+    Shuttle,
+    Asteroid,
+    Coriolis, // station
+    Dodecahedron, // station
+    Icosahedron, // station
+    Missile,
+    EscapeCapsule,
+    CargoPod,
+    Buoy,
+    Alloy,
+    Constrictor,
+    Cougar,
+    TieFighter,
+    Defender
+}
 
-	public static boolean isSpaceStation(ObjectType type) {
-		return type == Coriolis || type == Dodecahedron || type == Icosahedron;
-	}
+export namespace ObjectType {
+    export function isSpaceStation(type: ObjectType): boolean {
+        return type === ObjectType.Coriolis || type === ObjectType.Dodecahedron || type === ObjectType.Icosahedron;
+    }
 
-	public static boolean isEnemyShip(ObjectType type) {
-		return type == Pirate || type == Constrictor || type == Cougar || type == TieFighter;
-	}
+    export function isEnemyShip(type: ObjectType): boolean {
+        return type === ObjectType.Pirate || type === ObjectType.Constrictor || type === ObjectType.Cougar || type === ObjectType.TieFighter;
+    }
 }

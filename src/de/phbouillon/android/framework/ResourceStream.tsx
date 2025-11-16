@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,9 +16,6 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.InputStream;
-
-public interface ResourceStream {
-	InputStream getStream(String fileName) throws IOException;
+export interface ResourceStream {
+	getStream(fileName: string): Promise<Response>;
 }
