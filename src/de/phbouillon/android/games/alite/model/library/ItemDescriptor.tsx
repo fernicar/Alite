@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.library;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,35 +16,35 @@ package de.phbouillon.android.games.alite.model.library;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public class ItemDescriptor {
-	private final String fileName;
-	private final String text;
-	private final boolean localized;
-	private boolean watched;
+export class ItemDescriptor {
+    private readonly fileName: string;
+    private readonly text: string;
+    private readonly localized: boolean;
+    private watched: boolean = false;
 
-	ItemDescriptor(String fileName, String text, boolean localized) {
-		this.fileName = fileName;
-		this.text = text;
-		this.localized = localized;
-	}
+    constructor(fileName: string, text: string, localized: boolean) {
+        this.fileName = fileName;
+        this.text = text;
+        this.localized = localized;
+    }
 
-	public String getFileName() {
-		return fileName;
-	}
+    public getFileName(): string {
+        return this.fileName;
+    }
 
-	public String getText() {
-		return text;
-	}
+    public getText(): string {
+        return this.text;
+    }
 
-	public boolean isLocalized() {
-		return localized;
-	}
+    public isLocalized(): boolean {
+        return this.localized;
+    }
 
-	public boolean isWatched() {
-		return watched;
-	}
+    public isWatched(): boolean {
+        return this.watched;
+    }
 
-	public void watched() {
-		watched = true;
-	}
+    public watched(): void {
+        this.watched = true;
+    }
 }

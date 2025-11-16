@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,17 +16,14 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.util.List;
+import { TouchEvent } from '../Input';
 
-import android.view.View.OnTouchListener;
-import de.phbouillon.android.framework.Input.TouchEvent;
-
-public interface TouchHandler extends OnTouchListener {
-	boolean isTouchDown(int pointer);
-	int getTouchCount();
-	int getTouchX(int pointer);
-	int getTouchY(int pointer);
-	void setZoomFactor(float zoomFactor);
-	List<TouchEvent> getTouchEvents();
-	List<TouchEvent> getAndRetainTouchEvents();
+export interface TouchHandler {
+	isTouchDown(pointer: number): boolean;
+	getTouchCount(): number;
+	getTouchX(pointer: number): number;
+	getTouchY(pointer: number): number;
+	setZoomFactor(zoomFactor: number): void;
+	getTouchEvents(): TouchEvent[];
+	getAndRetainTouchEvents(): TouchEvent[];
 }
