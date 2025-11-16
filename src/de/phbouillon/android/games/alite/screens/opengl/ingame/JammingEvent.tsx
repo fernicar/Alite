@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,23 +16,20 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
+import { IMethodHook } from '../../../../framework/IMethodHook';
+import { L } from '../../../L';
+import { R } from '../../../../../gen/de/phbouillon/android/games/alite/R';
+import { InGameManager } from './InGameManager';
+import { TimedEvent } from './TimedEvent';
 
 class JammingEvent extends TimedEvent {
-	private static final long serialVersionUID = 6781370287851521876L;
-
-	JammingEvent(InGameManager inGame) {
-		super(359281437L);
-		inGame.getMessage().repeatText(L.string(R.string.msg_ecm_jammer_active), 3);
-		addAlarmEvent(new IMethodHook() {
-			private static final long serialVersionUID = -3735014336593672064L;
-			@Override
-			public void execute(float deltaTime) {
-				inGame.reduceShipEnergy(1);
-			}
-		});
-	}
-
+    constructor(inGame: InGameManager) {
+        super(359281437);
+        inGame.getMessage().repeatText(L.string(R.string.msg_ecm_jammer_active), 3);
+        this.addAlarmEvent(new (class implements IMethodHook {
+            public execute(deltaTime: number): void {
+                inGame.reduceShipEnergy(1);
+            }
+        }));
+    }
 }

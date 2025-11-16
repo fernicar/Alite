@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,56 +16,61 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-import java.util.List;
+export class TouchEvent {
+    public static readonly TOUCH_DOWN = 0;
+    public static readonly TOUCH_UP = 1;
+    public static readonly TOUCH_DRAGGED = 2;
+    public static readonly TOUCH_SCALE = 3;
+    public static readonly TOUCH_SWEEP = 4;
 
-public interface Input {
-	class TouchEvent implements Serializable {
-		private static final long serialVersionUID = 547212806154304758L;
+    public type: number;
+    public x: number;
+    public y: number;
+    public x2: number;
+    public y2: number;
+    public pointer: number;
+    public zoomFactor: number;
 
-		public static final int TOUCH_DOWN    = 0;
-		public static final int TOUCH_UP      = 1;
-		public static final int TOUCH_DRAGGED = 2;
-		public static final int TOUCH_SCALE   = 3;
-		public static final int TOUCH_SWEEP   = 4;
+    constructor() {
+        this.type = 0;
+        this.x = 0;
+        this.y = 0;
+        this.x2 = 0;
+        this.y2 = 0;
+        this.pointer = 0;
+        this.zoomFactor = 0;
+    }
 
-		public int type;
-		public int x;
-		public int y;
-		public int x2;
-		public int y2;
-		public int pointer;
-		public float zoomFactor;
+    public static fingerDown(fingerDown: number, pointer: number): number {
+        return fingerDown | (1 << pointer);
+    }
 
-		public static int fingerDown(int fingerDown, int pointer) {
-			return fingerDown | (1 << pointer);
-		}
+    public static fingerUp(fingerDown: number, pointer: number): number {
+        return fingerDown & (~(1 << pointer));
+    }
 
-		public static int fingerUp(int fingerDown, int pointer) {
-			return fingerDown & (~(1 << pointer));
-		}
+    public static isDown(fingerDown: number, pointer?: number): boolean {
+        if (pointer !== undefined) {
+            return (fingerDown & (1 << pointer)) !== 0;
+        } else {
+            return fingerDown > 0;
+        }
+    }
+}
 
-		public static boolean isDown(int fingerDown, int pointer) {
-			return (fingerDown & (1 << pointer)) != 0;
-		}
-
-		public static boolean isDown(int fingerDown) {
-			return fingerDown > 0;
-		}
-	}
-
-	boolean isTouchDown(int pointer);
-	int getTouchCount();
-	int getTouchX(int pointer);
-	int getTouchY(int pointer);
-	void setZoomFactor(float zoom);
-	float getAccelX();
-	float getAccelY();
-	float getAccelZ();
-	List<TouchEvent> getTouchEvents();
-	List<TouchEvent> getAndRetainTouchEvents();
-	void dispose();
-	boolean isDisposed();
-	void switchAccelerometerHandler();
-	boolean isAlternativeAccelerometer();
+export interface Input {
+    isTouchDown(pointer: number): boolean;
+    getTouchCount(): number;
+    getTouchX(pointer: number): number;
+    getTouchY(pointer: number): number;
+    setZoomFactor(zoom: number): void;
+    getAccelX(): number;
+    getAccelY(): number;
+    getAccelZ(): number;
+    getTouchEvents(): TouchEvent[];
+    getAndRetainTouchEvents(): TouchEvent[];
+    dispose(): void;
+    isDisposed(): boolean;
+    switchAccelerometerHandler(): void;
+    isAlternativeAccelerometer(): boolean;
 }

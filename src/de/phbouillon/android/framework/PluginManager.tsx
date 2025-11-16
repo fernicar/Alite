@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -11,21 +9,20 @@ package de.phbouillon.android.framework;
  * This program is distributed in the hope that it will be useful and
  * fun, but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU General Public License for more details Z.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public interface PluginManager {
-
-	int UPDATE_MODE_NO_UPDATE = 0;
-	int UPDATE_MODE_CHECK_FOR_UPDATES_ONLY = 1;
-	int UPDATE_MODE_AUTO_UPDATE_AT_ANY_TIME = 2;
-	int UPDATE_MODE_AUTO_UPDATE_OVER_WIFI_ONLY = 3;
-
-	boolean updateFile(String fileId, long size, String destinationFolder, String destinationFilename);
-	void checkPluginFiles(String pluginDirectory, String localeDirectory, String pluginsMetaFile, int updateMode);
-	void downloadFile(String fileId, long size, String destinationFolder, String destinationFilename);
+export interface PluginManager {
+    updateFile(fileId: string, size: number, destinationFolder: string, destinationFilename: string): boolean;
+    checkPluginFiles(pluginDirectory: string, localeDirectory: string, pluginsMetaFile: string, updateMode: number): void;
+    downloadFile(fileId: string, size: number, destinationFolder: string, destinationFilename: string): void;
 }
+
+export const UPDATE_MODE_NO_UPDATE = 0;
+export const UPDATE_MODE_CHECK_FOR_UPDATES_ONLY = 1;
+export const UPDATE_MODE_AUTO_UPDATE_AT_ANY_TIME = 2;
+export const UPDATE_MODE_AUTO_UPDATE_OVER_WIFI_ONLY = 3;
