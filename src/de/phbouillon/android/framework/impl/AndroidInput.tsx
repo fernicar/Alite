@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,111 +16,104 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.util.List;
+import { Input, TouchEvent } from '../Input';
+import { IAccelerometerHandler } from './IAccelerometerHandler';
+import { TouchHandler } from './TouchHandler';
+import { AndroidGame } from './AndroidGame';
+import { Settings } from '../../games/alite/Settings';
+import { ShipControl } from '../../games/alite/ShipControl';
+import { AlternativeAccelHandler } from './AlternativeAccelHandler';
+import { AccelerometerHandler } from './AccelerometerHandler';
+import { MultiTouchHandler } from './MultiTouchHandler';
 
-import android.view.View;
-import de.phbouillon.android.framework.Input;
-import de.phbouillon.android.games.alite.Settings;
-import de.phbouillon.android.games.alite.ShipControl;
+export class AndroidInput implements Input {
+    private accelHandler: IAccelerometerHandler;
+    private readonly touchHandler: TouchHandler;
+    private readonly game: AndroidGame;
+    private disposed: boolean = false;
 
-public class AndroidInput implements Input {
-	private IAccelerometerHandler accelHandler;
-	private final TouchHandler touchHandler;
-	private final AndroidGame game;
-	private boolean disposed = false;
+    constructor(game: AndroidGame, view: HTMLElement, scaleX: number, scaleY: number, offsetX: number, offsetY: number) {
+        this.game = game;
+        // @ts-ignore
+        AccelerometerHandler.needsCalibration = true;
+        // @ts-ignore
+        this.accelHandler = Settings.controlMode === ShipControl.ALTERNATIVE_ACCELEROMETER ?
+            new AlternativeAccelHandler(game) :
+            new AccelerometerHandler(game);
+        this.touchHandler = new MultiTouchHandler(view, scaleX, scaleY, offsetX, offsetY);
+    }
 
-	AndroidInput(AndroidGame game, View view, float scaleX, float scaleY, int offsetX, int offsetY) {
-		this.game = game;
-		AccelerometerHandler.needsCalibration = true;
-		accelHandler = Settings.controlMode == ShipControl.ALTERNATIVE_ACCELEROMETER ?
-							new AlternativeAccelHandler(game) :
-							new AccelerometerHandler(game);
-		touchHandler = new MultiTouchHandler(view, scaleX, scaleY, offsetX, offsetY);
-	}
+    public switchAccelerometerHandler(): void {
+        if (this.accelHandler) {
+            if (this.accelHandler instanceof AccelerometerHandler) {
+                this.accelHandler.dispose();
+                this.accelHandler = new AlternativeAccelHandler(this.game);
+            } else if (this.accelHandler instanceof AlternativeAccelHandler) {
+                this.accelHandler.dispose();
+                // @ts-ignore
+                AccelerometerHandler.needsCalibration = true;
+                this.accelHandler = new AccelerometerHandler(this.game);
+            }
+        } else {
+            // @ts-ignore
+            AccelerometerHandler.needsCalibration = true;
+            this.accelHandler = new AccelerometerHandler(this.game);
+        }
+    }
 
-	@Override
-	public void switchAccelerometerHandler() {
-		if (accelHandler != null) {
-			if (accelHandler instanceof AccelerometerHandler) {
-				accelHandler.dispose();
-				accelHandler = new AlternativeAccelHandler(game);
-			} else if (accelHandler instanceof AlternativeAccelHandler) {
-				accelHandler.dispose();
-				AccelerometerHandler.needsCalibration = true;
-				accelHandler = new AccelerometerHandler(game);
-			}
-		} else {
-			AccelerometerHandler.needsCalibration = true;
-			accelHandler = new AccelerometerHandler(game);
-		}
-	}
+    public isAlternativeAccelerometer(): boolean {
+        return this.accelHandler instanceof AlternativeAccelHandler;
+    }
 
-	@Override
-	public boolean isAlternativeAccelerometer() {
-		return accelHandler instanceof AlternativeAccelHandler;
-	}
+    public isTouchDown(pointer: number): boolean {
+        return this.touchHandler.isTouchDown(pointer);
+    }
 
-	@Override
-	public boolean isTouchDown(int pointer) {
-		return touchHandler.isTouchDown(pointer);
-	}
+    public getTouchX(pointer: number): number {
+        return this.touchHandler.getTouchX(pointer);
+    }
 
-	@Override
-	public int getTouchX(int pointer) {
-		return touchHandler.getTouchX(pointer);
-	}
+    public getTouchY(pointer: number): number {
+        return this.touchHandler.getTouchY(pointer);
+    }
 
-	@Override
-	public int getTouchY(int pointer) {
-		return touchHandler.getTouchY(pointer);
-	}
+    public getAccelX(): number {
+        return this.accelHandler.getAccelX();
+    }
 
-	@Override
-	public float getAccelX() {
-		return accelHandler.getAccelX();
-	}
+    public getAccelY(): number {
+        return this.accelHandler.getAccelY();
+    }
 
-	@Override
-	public float getAccelY() {
-		return accelHandler.getAccelY();
-	}
+    public getAccelZ(): number {
+        return this.accelHandler.getAccelZ();
+    }
 
-	@Override
-	public float getAccelZ() {
-		return accelHandler.getAccelZ();
-	}
+    public getTouchEvents(): TouchEvent[] {
+        return this.touchHandler.getTouchEvents();
+    }
 
-	@Override
-	public List<TouchEvent> getTouchEvents() {
-		return touchHandler.getTouchEvents();
-	}
+    public getAndRetainTouchEvents(): TouchEvent[] {
+        return this.touchHandler.getAndRetainTouchEvents();
+    }
 
-	@Override
-	public List<TouchEvent> getAndRetainTouchEvents() {
-		return touchHandler.getAndRetainTouchEvents();
-	}
+    public getTouchCount(): number {
+        return this.touchHandler.getTouchCount();
+    }
 
-	@Override
-	public int getTouchCount() {
-		return touchHandler.getTouchCount();
-	}
+    public setZoomFactor(factor: number): void {
+        this.touchHandler.setZoomFactor(factor);
+    }
 
-	@Override
-	public void setZoomFactor(float factor) {
-		touchHandler.setZoomFactor(factor);
-	}
+    public dispose(): void {
+        if (this.accelHandler) {
+            this.accelHandler.dispose();
+            this.accelHandler = null as any;
+        }
+        this.disposed = true;
+    }
 
-	@Override
-	public void dispose() {
-		if (accelHandler != null) {
-			accelHandler.dispose();
-			accelHandler = null;
-		}
-		disposed = true;
-	}
-
-	@Override
-	public boolean isDisposed() {
-		return disposed;
-	}
+    public isDisposed(): boolean {
+        return this.disposed;
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,65 +16,71 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.graphics.Bitmap;
-import android.graphics.ColorFilter;
-import android.graphics.Rect;
-import de.phbouillon.android.framework.impl.gl.font.GLText;
+import { Rect } from './Rect';
+import { Pixmap } from './Pixmap';
 
-import java.io.InputStream;
+// Stub for GLText, to be replaced with the actual class once converted
+export interface GLText {}
 
-public interface Graphics {
-	enum PixmapFormat {
-		ARGB8888, ARGB4444, RGB565
-	}
+// Using 'any' for ColorFilter as it's a complex Android-specific class
+type ColorFilter = any;
 
-	enum ArrowDirection {
-		LEFT, UP, RIGHT, DOWN
-	}
+export enum PixmapFormat {
+    ARGB8888,
+    ARGB4444,
+    RGB565
+}
 
+export enum ArrowDirection {
+    LEFT,
+    UP,
+    RIGHT,
+    DOWN
+}
 
-	Rect getVisibleArea();
-	boolean existsAssetsFile(String fileName);
+export interface Graphics {
+    getVisibleArea(): Rect;
+    existsAssetsFile(fileName: string): boolean;
 
-	void clear(int color);
-	void setClip(int x1, int y1, int x2, int y2);
+    clear(color: number): void;
+    setClip(x1: number, y1: number, x2: number, y2: number): void;
 
-	void setColor(int color, float alpha);
-	void setColor(int color);
+    setColor(color: number, alpha: number): void;
+    setColor(color: number): void;
 
-	int transX(int x);
-	int transY(int y);
+    transX(x: number): number;
+    transY(y: number): number;
 
-	void drawLine(int x, int y, int x2, int y2, int color);
-	void drawRect(int x, int y, int width, int height, int color);
-	void fillRect(int x, int y, int width, int height, int color);
-	void rec3d(int x, int y, int width, int height, int borderSize, int lightColor, int darkColor);
-	void verticalGradientRect(int x, int y, int width, int height, int color1, int color2);
-	void diagonalGradientRect(int x, int y, int width, int height, int color1, int color2);
-	void drawArc(int cx, int cy, int r, int color, int degree);
-	void drawCircle(int cx, int cy, int r, int color);
-	void fillCircle(int cx, int cy, int r, int color);
-	void drawDashedCircle(int cx, int cy, int r, int color);
-	void drawArrow(int x1, int y1, int x2, int y2, int color, ArrowDirection arrowHead);
+    drawLine(x: number, y: number, x2: number, y2: number, color: number): void;
+    drawRect(x: number, y: number, width: number, height: number, color: number): void;
+    fillRect(x: number, y: number, width: number, height: number, color: number): void;
+    rec3d(x: number, y: number, width: number, height: number, borderSize: number, lightColor: number, darkColor: number): void;
+    verticalGradientRect(x: number, y: number, width: number, height: number, color1: number, color2: number): void;
+    diagonalGradientRect(x: number, y: number, width: number, height: number, color1: number, color2: number): void;
+    drawArc(cx: number, cy: number, r: number, color: number, degree: number): void;
+    drawCircle(cx: number, cy: number, r: number, color: number): void;
+    fillCircle(cx: number, cy: number, r: number, color: number): void;
+    drawDashedCircle(cx: number, cy: number, r: number, color: number): void;
+    drawArrow(x1: number, y1: number, x2: number, y2: number, color: number, arrowHead: ArrowDirection): void;
 
-	void drawText(String text, int x, int y, int color, GLText font);
-	void drawUnderlinedText(String text, int x, int y, int color, GLText font);
-	void drawText(String text, int x, int y, int color, GLText font, float scale);
-	void drawCenteredText(String text, int x, int y, int color, GLText font, float scale);
+    drawText(text: string, x: number, y: number, color: number, font: GLText): void;
+    drawUnderlinedText(text: string, x: number, y: number, color: number, font: GLText): void;
+    drawText(text: string, x: number, y: number, color: number, font: GLText, scale: number): void;
+    drawCenteredText(text: string, x: number, y: number, color: number, font: GLText, scale: number): void;
 
-	int getTextWidth(String text, GLText font);
-	int getTextHeight(String text, GLText font);
+    getTextWidth(text: string, font: GLText): number;
+    getTextHeight(text: string, font: GLText): number;
 
-	Pixmap newPixmap(String fileName);
-	Pixmap newPixmap(String fileName, int width, int height);
-	Pixmap newPixmap(String fileName, InputStream is, int width, int height);
-	Pixmap newPixmap(Bitmap bitmap, String fileName);
-	Pixmap newPixmap(Bitmap bitmap, String fileName, int width, int height);
+    newPixmap(fileName: string): Pixmap;
+    newPixmap(fileName: string, width: number, height: number): Pixmap;
+    newPixmap(fileName: string, is: Blob, width: number, height: number): Pixmap; // Replaced InputStream with Blob
+    newPixmap(bitmap: ImageBitmap, fileName: string): Pixmap;
+    newPixmap(bitmap: ImageBitmap, fileName: string, width: number, height: number): Pixmap;
 
-	void drawPixmap(Pixmap pixmap, int x, int y);
-	void drawPixmap(Pixmap pixmap, int x, int y, float pixmapAlpha);
-	void applyFilterToPixmap(Pixmap pixmap, ColorFilter filter);
-	void drawPixmapUnscaled(Pixmap pixmap, int x, int y, int srcX, int srcY, int srcWidth, int srcHeight);
+    drawPixmap(pixmap: Pixmap, x: number, y: number): void;
+    drawPixmap(pixmap: Pixmap, x: number, y: number, pixmapAlpha: number): void;
+    applyFilterToPixmap(pixmap: Pixmap, filter: ColorFilter): void;
+    drawPixmapUnscaled(pixmap: Pixmap, x: number, y: number, srcX: number, srcY: number, srcWidth: number, srcHeight: number): void;
 
-	Pixmap getNotificationNumber(GLText font, int number);
+    getNotificationNumber(font: GLText, number: number): Pixmap;
 }

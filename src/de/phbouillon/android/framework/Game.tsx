@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,13 +16,19 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public interface Game {
-	Input getInput();
-	FileIO getFileIO();
-	Graphics getGraphics();
-	Audio getAudio();
-	void setScreen(Screen screen);
-	Screen getCurrentScreen();
-	Screen getStartScreen();
-	float getDeviceRatio();
+import { Input } from './Input';
+import { FileIO } from './FileIO';
+import { Graphics } from './Graphics';
+import { Audio } from './Audio';
+import { Screen } from './Screen';
+
+export interface Game {
+	getInput(): Input;
+	getFileIO(): FileIO;
+	getGraphics(): Graphics;
+	getAudio(): Audio;
+	setScreen(screen: Screen): void;
+	getCurrentScreen(): Screen;
+	getStartScreen(): Screen;
+	getDeviceRatio(): number;
 }
