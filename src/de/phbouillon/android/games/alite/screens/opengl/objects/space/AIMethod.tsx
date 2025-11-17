@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,20 +16,20 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public class AIMethod {
-	private final String name;
-	private final String parameter;
+export class AIMethod {
+	private readonly name: string;
+	private readonly parameter: string;
 
-	public AIMethod(String name, String parameter) {
+	constructor(name: string, parameter: string) {
 		this.name = name;
 		this.parameter = parameter;
 	}
 
-	String getName() {
-		return name;
+	getName(): string {
+		return this.name;
 	}
 
-	String getParameter() {
-		return parameter;
+	getParameter(): string {
+		return this.parameter;
 	}
 }

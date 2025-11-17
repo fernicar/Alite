@@ -1,0 +1,25 @@
+{
+  "name": "alite",
+  "version": "1.0.0",
+  "description": "A browser-based space trading game",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "space",
+    "trading",
+    "game"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vite": "^4.0.0"
+  },
+  "dependencies": {
+    "three": "^0.150.0"
+  }
+}

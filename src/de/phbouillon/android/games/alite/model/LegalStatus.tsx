@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,20 +16,21 @@ package de.phbouillon.android.games.alite.model;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
+import { L } from '../L';
 
-public enum LegalStatus {
+export enum LegalStatus {
 	CLEAN,
 	OFFENDER,
-	FUGITIVE;
+	FUGITIVE
+}
 
-	public String getName() {
-		switch (this) {
-			case CLEAN: return L.string(R.string.legal_status_clean);
-			case OFFENDER: return L.string(R.string.legal_status_offender);
-			case FUGITIVE: return L.string(R.string.legal_status_fugitive);
+export namespace LegalStatus {
+	export function getName(status: LegalStatus): string {
+		switch (status) {
+			case LegalStatus.CLEAN: return L.string('legal_status_clean');
+			case LegalStatus.OFFENDER: return L.string('legal_status_offender');
+			case LegalStatus.FUGITIVE: return L.string('legal_status_fugitive');
+            default: return "";
 		}
-		return "";
 	}
 }

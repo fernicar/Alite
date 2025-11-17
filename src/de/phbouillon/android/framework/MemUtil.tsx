@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  * 
@@ -18,11 +16,9 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.graphics.Bitmap;
-
-public class MemUtil {
-	public static void freeBitmap(Bitmap bitmap) {
-		bitmap.recycle();
-		bitmap = null;
+export class MemUtil {
+	public static freeBitmap(bitmap: any): void {
+		// In a browser environment, garbage collection is automatic.
+		// This function is kept for compatibility with the existing code structure.
 	}
 }

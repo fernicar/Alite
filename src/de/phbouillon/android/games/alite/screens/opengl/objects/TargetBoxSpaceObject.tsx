@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,23 +16,20 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { TargetBox } from '../../../framework/impl/gl/TargetBox';
+import { AliteObject } from './AliteObject';
 
-import de.phbouillon.android.framework.impl.gl.TargetBox;
+export class TargetBoxSpaceObject extends AliteObject {
+    private readonly box: TargetBox;
 
-public class TargetBoxSpaceObject extends AliteObject implements Serializable {
-	private static final long serialVersionUID = -1997397445908867511L;
+    constructor(size: number) {
+        super("targetBox");
+        this.box = new TargetBox(size, size, size);
+        this.boundingSphereRadius = Math.sqrt(size * size + size * size + size * size);
+        this.setDepthTest(false);
+    }
 
-	private final TargetBox box;
-
-	public TargetBoxSpaceObject(float size) {
-		super("targetBox");
-		box = new TargetBox(size, size, size);
-		boundingSphereRadius = (float) Math.sqrt(size * size + size * size + size * size);
-		setDepthTest(false);
-	}
-
-	public void render(int color, float a) {
-		box.render(color, a);
-	}
+    public render(color: number, a: number): void {
+        this.box.render(color, a);
+    }
 }

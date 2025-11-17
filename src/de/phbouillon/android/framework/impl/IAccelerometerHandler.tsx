@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,10 +16,10 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public interface IAccelerometerHandler {
-	float getAccelX();
-	float getAccelY();
-	float getAccelZ();
+export interface IAccelerometerHandler {
+	getAccelX(): number;
+	getAccelY(): number;
+	getAccelZ(): number;
 
-	void dispose();
+	dispose(): void;
 }

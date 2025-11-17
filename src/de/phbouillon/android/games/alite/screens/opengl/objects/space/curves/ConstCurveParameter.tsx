@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space.curves;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  * 
@@ -18,12 +16,13 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space.curves;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public class ConstCurveParameter extends CurveParameter {
-	private static final long serialVersionUID = -1107385993913925436L;
+import { CurveParameter } from './CurveParameter';
+import { CurveParameterKey } from './CurveParameterKey';
 
-	ConstCurveParameter(CurveParameterKey ...keys) { 
-		super(keys);
-		inConst = true;
-		outConst = true;
+export class ConstCurveParameter extends CurveParameter {
+	constructor(...keys: CurveParameterKey[]) {
+		super(...keys);
+		this.inConst = true;
+		this.outConst = true;
 	}
 }

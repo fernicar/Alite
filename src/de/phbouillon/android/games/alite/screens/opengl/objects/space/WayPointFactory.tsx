@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  * 
@@ -18,13 +16,11 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.impl.Pool.PoolObjectFactory;
+import { PoolObjectFactory } from '../../../../../framework/impl/Pool';
+import { WayPoint } from './WayPoint';
 
-class WayPointFactory implements PoolObjectFactory <WayPoint> {
-	private static final long serialVersionUID = 1206682602408116375L;
-
-	@Override
-	public WayPoint createObject() {
+export class WayPointFactory implements PoolObjectFactory<WayPoint> {
+	public createObject(): WayPoint {
 		return new WayPoint();
 	}		
 }
