@@ -1,8 +1,6 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License, or
@@ -18,29 +16,19 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public interface Sound {
-	public static enum SoundType {
-		VOICE(0),
-		SOUND_FX(1),
-		COMBAT_FX(2),
-		MUSIC(3);
+export enum SoundType {
+    VOICE,
+    SOUND_FX,
+    COMBAT_FX,
+    MUSIC
+}
 
-		private final int value;
-
-		SoundType(int value) {
-			this.value = value;
-		}
-
-		public int getValue() {
-			return this.value;
-		}
-	}
-
-	public void play(float volume);
-	public void playOnce(float volume, long delayInMs);
-	public void repeat(float volume);
-	public boolean isPlaying();
-	public void stop();
-	public void dispose();
-	public SoundType getType();
+export interface Sound {
+    play(volume: number): void;
+    playOnce(volume: number, delayInMs: number): void;
+    repeat(volume: number): void;
+    isPlaying(): boolean;
+    stop(): void;
+    dispose(): void;
+    getType(): SoundType;
 }
