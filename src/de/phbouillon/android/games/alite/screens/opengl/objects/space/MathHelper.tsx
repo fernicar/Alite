@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,59 +16,60 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.math.Vector3f;
+import { Vector3f } from "../../../../../framework/math/Vector3f";
 
-public class MathHelper {
-	private static final Vector3f v0 = new Vector3f(0, 0, 0);
-	private static final Vector3f v1 = new Vector3f(0, 0, 0);
-	private static final Vector3f v2 = new Vector3f(0, 0, 0);
+export class MathHelper {
+    private static readonly v0 = new Vector3f(0, 0, 0);
+    private static readonly v1 = new Vector3f(0, 0, 0);
+    private static readonly v2 = new Vector3f(0, 0, 0);
 
-	public static Vector3f getRandomPosition(Vector3f origin, Vector3f direction, float distance, float radius) {
-		setRandomDirection(v1);
-		v1.normalize();
-		v1.scale((float) (Math.random() * radius));
-		direction.scale(distance, v0);
-		v0.add(origin);
-		v0.add(v1, v2);
+    public static getRandomPosition(origin: Vector3f, direction: Vector3f, distance: number, radius: number): Vector3f {
+        this.setRandomDirection(this.v1);
+        this.v1.normalize();
+        this.v1.scale(Math.random() * radius);
+        direction.scale(distance, this.v0);
+        this.v0.add(origin);
+        this.v0.add(this.v1, this.v2);
 
-		v2.sub(origin, v1);
-		v1.normalize();
-		v1.scale(distance);
-		origin.add(v1, v2);
+        this.v2.sub(origin, this.v1);
+        this.v1.normalize();
+        this.v1.scale(distance);
+        origin.add(this.v1, this.v2);
 
-		return v2;
-	}
+        return this.v2;
+    }
 
-	public static void setRandomDirection(Vector3f v) {
-		v.x = (float) (0.7 - Math.random() * 1.4);
-		v.y = (float) (0.7 - Math.random() * 1.4);
-		v.z = (float) (0.7 - Math.random() * 1.4);
-	}
+    public static setRandomDirection(v: Vector3f): void {
+        v.x = 0.7 - Math.random() * 1.4;
+        v.y = 0.7 - Math.random() * 1.4;
+        v.z = 0.7 - Math.random() * 1.4;
+    }
 
-	public static void copyMatrix(float [] src, float [] dest) {
-		System.arraycopy(src, 0, dest, 0, 16);
-	}
+    public static copyMatrix(src: number[], dest: number[]): void {
+        for (let i = 0; i < 16; i++) {
+            dest[i] = src[i];
+        }
+    }
 
-	public static void getRandomRotationAngles(Vector3f targetDelta) {
-		targetDelta.x = getRandomRotationAngle();
-		targetDelta.y = getRandomRotationAngle();
-		targetDelta.z = getRandomRotationAngle();
-	}
+    public static getRandomRotationAngles(targetDelta: Vector3f): void {
+        targetDelta.x = this.getRandomRotationAngle();
+        targetDelta.y = this.getRandomRotationAngle();
+        targetDelta.z = this.getRandomRotationAngle();
+    }
 
-	private static float getRandomRotationAngle() {
-		return Math.random() < 0.5 ? (float) Math.random() * 2.0f + 2.0f : -(float) Math.random() * 2.0f - 2.0f;
-	}
+    private static getRandomRotationAngle(): number {
+        return Math.random() < 0.5 ? Math.random() * 2.0 + 2.0 : -(Math.random() * 2.0) - 2.0;
+    }
 
-	public static void updateAxes(Vector3f currentDelta, Vector3f targetDelta) {
-		if (Math.abs(currentDelta.x - targetDelta.x) > 0.0001) {
-			currentDelta.x += (targetDelta.x - currentDelta.x) / 8.0f;
-		}
-		if (Math.abs(currentDelta.y - targetDelta.y) > 0.0001) {
-			currentDelta.y += (targetDelta.y - currentDelta.y) / 8.0f;
-		}
-		if (Math.abs(currentDelta.z - targetDelta.z) > 0.0001) {
-			currentDelta.z += (targetDelta.z - currentDelta.z) / 8.0f;
-		}
-	}
-
+    public static updateAxes(currentDelta: Vector3f, targetDelta: Vector3f): void {
+        if (Math.abs(currentDelta.x - targetDelta.x) > 0.0001) {
+            currentDelta.x += (targetDelta.x - currentDelta.x) / 8.0;
+        }
+        if (Math.abs(currentDelta.y - targetDelta.y) > 0.0001) {
+            currentDelta.y += (targetDelta.y - currentDelta.y) / 8.0;
+        }
+        if (Math.abs(currentDelta.z - targetDelta.z) > 0.0001) {
+            currentDelta.z += (targetDelta.z - currentDelta.z) / 8.0;
+        }
+    }
 }

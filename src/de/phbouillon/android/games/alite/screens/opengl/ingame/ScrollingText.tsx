@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,47 +16,43 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-import java.util.concurrent.TimeUnit;
+import { Alite } from "../../../Alite";
+import { AliteConfig } from "../../../AliteConfig";
+import { Assets } from "../../../Assets";
+import { L } from "../../../L";
+import { AliteColor } from "../../../colors/AliteColor";
+import { ColorScheme } from "../../../colors/ColorScheme";
 
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.AliteConfig;
-import de.phbouillon.android.games.alite.Assets;
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
-import de.phbouillon.android.games.alite.colors.AliteColor;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
+export class ScrollingText {
+    private static readonly serialVersionUID = -9124382771601908756;
 
-class ScrollingText implements Serializable {
-	private static final long serialVersionUID = -9124382771601908756L;
+    private readonly textToDisplay: string;
+    private x = AliteConfig.SCREEN_WIDTH;
+    private width: number;
 
-	private final String textToDisplay;
-	private float x = AliteConfig.SCREEN_WIDTH;
-	private int width;
+    constructor() {
+        let diffInSeconds = Math.floor(Alite.getInstance().getGameTime() / 1_000_000_000);
+        const diffInDays = Math.floor(diffInSeconds / 86400);
+        diffInSeconds -= diffInDays * 86400;
+        const diffInHours = Math.floor(diffInSeconds / 3600);
+        diffInSeconds -= diffInHours * 3600;
+        const diffInMinutes = Math.floor(diffInSeconds / 60);
 
-	ScrollingText() {
-		long diffInSeconds = TimeUnit.SECONDS.convert(Alite.get().getGameTime(), TimeUnit.NANOSECONDS);
-		int diffInDays = (int) (diffInSeconds / 86400);
-		diffInSeconds -= diffInDays * 86400;
-		int diffInHours = (int) (diffInSeconds / 3600);
-		diffInSeconds -= diffInHours * 3600;
-		int diffInMinutes = (int) (diffInSeconds / 60);
+        this.textToDisplay = L.string("msg_pause_game_scrolling_info", AliteConfig.GAME_NAME,
+            AliteConfig.VERSION_STRING, L.plurals("game_time_days", diffInDays, diffInDays),
+            L.plurals("game_time_hours", diffInHours, diffInHours),
+            L.plurals("game_time_minutes", diffInMinutes, diffInMinutes),
+            Alite.getInstance().getPlayer().getScore());
+        this.width = Assets.regularFont.getWidth(this.textToDisplay, 1.5);
+    }
 
-		textToDisplay = L.string(R.string.msg_pause_game_scrolling_info, AliteConfig.GAME_NAME,
-			AliteConfig.VERSION_STRING, L.plurals(R.plurals.game_time_days, diffInDays, diffInDays),
-			L.plurals(R.plurals.game_time_hours, diffInHours, diffInHours),
-			L.plurals(R.plurals.game_time_minutes, diffInMinutes, diffInMinutes),
-			Alite.get().getPlayer().getScore());
-		width = (int) Assets.regularFont.getWidth(textToDisplay,1.5f);
-	}
-
-	void render(float deltaTime) {
-		x -= deltaTime * 128.0f;
-		Alite.get().getGraphics().drawText(textToDisplay, (int) x, 400,
-			AliteColor.colorAlpha(ColorScheme.get(ColorScheme.COLOR_SCROLLING_TEXT), 1.0f),
-			Assets.regularFont, 1.5f);
-		if (x + width < -20) {
-			x = AliteConfig.SCREEN_WIDTH;
-		}
-	}
+    render(deltaTime: number): void {
+        this.x -= deltaTime * 128.0;
+        Alite.getInstance().getGraphics().drawText(this.textToDisplay, Math.floor(this.x), 400,
+            AliteColor.colorAlpha(ColorScheme.get(ColorScheme.COLOR_SCROLLING_TEXT), 1.0),
+            Assets.regularFont, 1.5);
+        if (this.x + this.width < -20) {
+            this.x = AliteConfig.SCREEN_WIDTH;
+        }
+    }
 }

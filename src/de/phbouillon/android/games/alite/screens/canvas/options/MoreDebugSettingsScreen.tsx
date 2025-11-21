@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas.options;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,95 +16,92 @@ package de.phbouillon.android.games.alite.screens.canvas.options;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.model.missions.ConstrictorMission;
-import de.phbouillon.android.games.alite.model.missions.CougarMission;
-import de.phbouillon.android.games.alite.model.missions.Mission;
-import de.phbouillon.android.games.alite.model.missions.MissionManager;
-import de.phbouillon.android.games.alite.model.missions.SupernovaMission;
-import de.phbouillon.android.games.alite.model.missions.ThargoidDocumentsMission;
-import de.phbouillon.android.games.alite.model.missions.ThargoidStationMission;
-import de.phbouillon.android.games.alite.screens.canvas.AliteScreen;
+import { Graphics } from "../../../framework/Graphics";
+import { TouchEvent } from "../../../framework/Input";
+import { Button } from "../../Button";
+import { L } from "../../L";
+import { ScreenCodes } from "../../ScreenCodes";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { ConstrictorMission } from "../../model/missions/ConstrictorMission";
+import { CougarMission } from "../../model/missions/CougarMission";
+import { Mission } from "../../model/missions/Mission";
+import { MissionManager } from "../../model/missions/MissionManager";
+import { SupernovaMission } from "../../model/missions/SupernovaMission";
+import { ThargoidDocumentsMission } from "../../model/missions/ThargoidDocumentsMission";
+import { ThargoidStationMission } from "../../model/missions/ThargoidStationMission";
+import { AliteScreen } from "./AliteScreen";
+import { DebugSettingsScreen } from "./DebugSettingsScreen";
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class MoreDebugSettingsScreen extends AliteScreen {
-	private final Button[] buttons = new Button[7];
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class MoreDebugSettingsScreen extends AliteScreen {
+    private readonly buttons: Button[] = new Array(7);
 
-	@Override
-	public void activate() {
-		buttons[0] = Button.createGradientTitleButton(50, 130, 1620, 100,
-				L.string(R.string.options_more_debug_start_constrictor_mission))
-			.setEvent(b -> startMission(ConstrictorMission.ID));
-		buttons[1] = Button.createGradientTitleButton(50, 250, 1620, 100,
-				L.string(R.string.options_more_debug_start_thargoid_documents_mission))
-			.setEvent(b -> startMission(ThargoidDocumentsMission.ID));
-		buttons[2] = Button.createGradientTitleButton(50, 370, 1620, 100,
-				L.string(R.string.options_more_debug_start_supernova_mission))
-			.setEvent(b -> startMission(SupernovaMission.ID));
-		buttons[3] = Button.createGradientTitleButton(50, 490, 1620, 100,
-				L.string(R.string.options_more_debug_start_cougar_mission))
-			.setEvent(b -> startMission(CougarMission.ID));
-		buttons[4] = Button.createGradientTitleButton(50, 610, 1620, 100,
-				L.string(R.string.options_more_debug_start_thargoid_base_mission))
-			.setEvent(b -> startMission(ThargoidStationMission.ID));
-		buttons[5] = Button.createGradientTitleButton(50, 730, 1620, 100,
-				L.string(R.string.options_more_debug_clear_mission))
-			.setEvent(b -> {
-				MissionManager.getInstance().clearActiveMissions();
-				String completedMissions = "";
-				for (Mission m: MissionManager.getInstance().getMissions()) {
-					if (m.isCompleted()) {
-						completedMissions += m.getClass().getSimpleName() + "; ";
-					}
-				}
-				showLargeMessageDialog(L.string(R.string.options_more_debug_completed_missions, completedMissions));
+    public activate(): void {
+        this.buttons[0] = Button.createGradientTitleButton(50, 130, 1620, 100,
+            L.string("options_more_debug_start_constrictor_mission"))
+            .setEvent(b => this.startMission(ConstrictorMission.ID));
+        this.buttons[1] = Button.createGradientTitleButton(50, 250, 1620, 100,
+            L.string("options_more_debug_start_thargoid_documents_mission"))
+            .setEvent(b => this.startMission(ThargoidDocumentsMission.ID));
+        this.buttons[2] = Button.createGradientTitleButton(50, 370, 1620, 100,
+            L.string("options_more_debug_start_supernova_mission"))
+            .setEvent(b => this.startMission(SupernovaMission.ID));
+        this.buttons[3] = Button.createGradientTitleButton(50, 490, 1620, 100,
+            L.string("options_more_debug_start_cougar_mission"))
+            .setEvent(b => this.startMission(CougarMission.ID));
+        this.buttons[4] = Button.createGradientTitleButton(50, 610, 1620, 100,
+            L.string("options_more_debug_start_thargoid_base_mission"))
+            .setEvent(b => this.startMission(ThargoidStationMission.ID));
+        this.buttons[5] = Button.createGradientTitleButton(50, 730, 1620, 100,
+            L.string("options_more_debug_clear_mission"))
+            .setEvent(b => {
+                MissionManager.getInstance().clearActiveMissions();
+                let completedMissions = "";
+                for (const m of MissionManager.getInstance().getMissions()) {
+                    if (m.isCompleted()) {
+                        completedMissions += `${m.constructor.name}; `;
+                    }
+                }
+                this.showLargeMessageDialog(L.string("options_more_debug_completed_missions", completedMissions));
+            });
+        this.buttons[6] = Button.createGradientTitleButton(50, 970, 1620, 100, L.string("options_back"))
+            .setEvent(b => this.newScreen = new DebugSettingsScreen());
+    }
 
-			});
-		buttons[6] = Button.createGradientTitleButton(50, 970, 1620, 100, L.string(R.string.options_back))
-			.setEvent(b -> newScreen = new DebugSettingsScreen());
-	}
+    public present(deltaTime: number): void {
+        const g = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayTitle(L.string("title_more_debug_options"));
+        for (const b of this.buttons) {
+            b.render(g);
+        }
+    }
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayTitle(L.string(R.string.title_more_debug_options));
-		for (Button b : buttons) {
-			b.render(g);
-		}
-	}
+    protected processTouch(touch: TouchEvent): void {
+        for (const b of this.buttons) {
+            if (b.isPressed(touch)) {
+                b.onEvent();
+                return;
+            }
+        }
+    }
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		for (Button b : buttons) {
-			if (b.isPressed(touch)) {
-				b.onEvent();
-				return;
-			}
-		}
-	}
+    private startMission(id: number): void {
+        this.game.getCobra().clearSpecialCargo();
+        for (let i = 1; i < id; i++) {
+            MissionManager.getInstance().get(i).done();
+        }
+        MissionManager.getInstance().get(id).resetStarted();
+        if (id === ConstrictorMission.ID) {
+            this.game.getPlayer().setIntergalacticJumpCounter(1);
+            this.game.getPlayer().setJumpCounter(62);
+        } else {
+            this.game.getPlayer().resetIntergalacticJumpCounter();
+            this.game.getPlayer().setJumpCounter(63);
+        }
+    }
 
-	private void startMission(int id) {
-		game.getCobra().clearSpecialCargo();
-		for (int i = 1; i < id; i++) {
-			MissionManager.getInstance().get(i).done();
-		}
-		MissionManager.getInstance().get(id).resetStarted();
-		if (id == ConstrictorMission.ID) {
-			game.getPlayer().setIntergalacticJumpCounter(1);
-			game.getPlayer().setJumpCounter(62);
-		} else {
-			game.getPlayer().resetIntergalacticJumpCounter();
-			game.getPlayer().setJumpCounter(63);
-		}
-	}
-
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.MORE_DEBUG_OPTIONS_SCREEN;
-	}
-
+    public getScreenCode(): number {
+        return ScreenCodes.MORE_DEBUG_OPTIONS_SCREEN;
+    }
 }

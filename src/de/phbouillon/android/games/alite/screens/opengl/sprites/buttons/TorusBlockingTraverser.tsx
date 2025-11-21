@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,30 +16,27 @@ package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Settings } from "../../../../Settings";
+import { SpaceObjectTraverser } from "../../ingame/SpaceObjectTraverser";
+import { InGameManager } from "../../ingame/InGameManager";
+import { ObjectType } from "../../ingame/ObjectType";
+import { SpaceObject } from "../../objects/space/SpaceObject";
+import { AliteHud } from "../AliteHud";
 
-import de.phbouillon.android.games.alite.Settings;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.SpaceObjectTraverser;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.InGameManager;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectType;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
-import de.phbouillon.android.games.alite.screens.opengl.sprites.AliteHud;
+export class TorusBlockingTraverser implements SpaceObjectTraverser {
+    private static readonly serialVersionUID = -5185606119234486770;
+    private readonly inGame: InGameManager;
 
-public class TorusBlockingTraverser implements SpaceObjectTraverser, Serializable {
-	private static final long serialVersionUID = -5185606119234486770L;
-	private final InGameManager inGame;
+    constructor(inGame: InGameManager) {
+        this.inGame = inGame;
+    }
 
-	TorusBlockingTraverser(final InGameManager inGame) {
-		this.inGame = inGame;
-	}
-
-	@Override
-	public boolean handle(SpaceObject so) {
-		ObjectType type = so.getType();
-		return (ObjectType.isEnemyShip(type) || type == ObjectType.Missile || ObjectType.isSpaceStation(type) ||
-			type == ObjectType.Shuttle && !Settings.freePath ||
-			type == ObjectType.Thargoid || type == ObjectType.Thargon ||
-			type == ObjectType.Trader && !Settings.freePath || type == ObjectType.Police || type == ObjectType.Defender) &&
-			so.getPosition().distanceSq(inGame.getShip().getPosition()) <= AliteHud.MAX_DISTANCE_SQ;
-	}
+    public handle(so: SpaceObject): boolean {
+        const type = so.getType();
+        return (ObjectType.isEnemyShip(type) || type === ObjectType.Missile || ObjectType.isSpaceStation(type) ||
+            type === ObjectType.Shuttle && !Settings.freePath ||
+            type === ObjectType.Thargoid || type === ObjectType.Thargon ||
+            type === ObjectType.Trader && !Settings.freePath || type === ObjectType.Police || type === ObjectType.Defender) &&
+            so.getPosition().distanceSq(this.inGame.getShip().getPosition()) <= AliteHud.MAX_DISTANCE_SQ;
+    }
 }

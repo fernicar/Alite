@@ -1,8 +1,6 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
-0 *
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License, or
@@ -18,132 +16,103 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.FileInputStream;
-import java.io.IOException;
+import { Music } from "../Music";
+import { SoundType } from "../Sound";
+import { AliteLog } from "../../games/alite/AliteLog";
+import { Settings } from "../../games/alite/Settings";
 
-import android.content.res.AssetFileDescriptor;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnPreparedListener;
-import de.phbouillon.android.framework.Music;
-import de.phbouillon.android.framework.Sound;
-import de.phbouillon.android.games.alite.AliteConfig;
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.Settings;
+export class AndroidMusic implements Music {
+    // private readonly mediaPlayer: any; // HTMLAudioElement or Web Audio API equivalent
+    private isPrepared = false;
+    private readonly soundType: SoundType;
+    private readonly musicInfo: string;
+    private playWhenReady = false;
 
-public class AndroidMusic implements Music, OnCompletionListener, OnPreparedListener {
-	private final MediaPlayer mediaPlayer;
-	private boolean isPrepared = false;
-	private final Sound.SoundType soundType;
-	private final String musicInfo;
-	private boolean playWhenReady = false;
+    constructor(fileName: any, soundType: SoundType, musicInfo: string) {
+        // this.mediaPlayer = new Audio();
+        this.musicInfo = musicInfo;
 
-	AndroidMusic(Object fileName, Sound.SoundType soundType, String musicInfo) throws IOException {
-		mediaPlayer = new MediaPlayer();
-		this.musicInfo = musicInfo;
+        AliteLog.d("Loading Music", `Loading Music ${musicInfo}, Type: ${soundType}`);
+        try {
+            // In a web context, you would set the src and handle events.
+            // this.mediaPlayer.src = fileName; // Assuming fileName is a URL
+            // this.mediaPlayer.addEventListener('canplaythrough', () => this.onPrepared(this.mediaPlayer));
+            // this.mediaPlayer.addEventListener('ended', () => this.onCompletion(this.mediaPlayer));
+            this.isPrepared = true; // Simulating preparedness for the stub
+        } catch (e) {
+            if (e instanceof Error) {
+                AliteLog.e(`Loading Music ${musicInfo} caused an Error`, e.message, e);
+                throw new Error(`Couldn't load music ${musicInfo}.`);
+            }
+        }
+        this.soundType = soundType;
+    }
 
-		AliteLog.d("Loading Music", "Loading Music " + musicInfo + ", Type: " + soundType);
-		try (FileInputStream fis = new FileInputStream((String) fileName)) {
-			if (AliteConfig.HAS_EXTENSION_APK) {
-				mediaPlayer.setDataSource(fis.getFD());
-			} else {
-				mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-				AssetFileDescriptor afd = (AssetFileDescriptor) fileName;
-				mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-			}
-			mediaPlayer.prepareAsync();
-			mediaPlayer.setOnPreparedListener(this);
-			mediaPlayer.setOnCompletionListener(this);
-			this.soundType = soundType;
-		} catch (Exception e) {
-			AliteLog.e("Loading Music " + musicInfo + " caused an Error", e.getMessage(), e);
-			throw new RuntimeException("Couldn't load music " + musicInfo + ".", e);
-		}
-	}
+    public onCompletion(mp: any): void {
+        this.isPrepared = false;
+    }
 
-	@Override
-	public void onCompletion(MediaPlayer mp) {
-		synchronized (this) {
-			isPrepared = false;
-		}
-	}
+    public play(): void {
+        // if (this.mediaPlayer.isPlaying()) {
+        //     return;
+        // }
+        this.setVolume(Settings.volumes[this.soundType]);
+        try {
+            if (!this.isPrepared) {
+                this.playWhenReady = true;
+            } else {
+                // this.mediaPlayer.play();
+            }
+        } catch (e) {
+            if (e instanceof Error) {
+                AliteLog.e("Music Playback", `Error occurred when trying to play back music ${this.musicInfo}.`, e);
+            }
+        }
+    }
 
-	@Override
-	public void play() {
-		if (mediaPlayer.isPlaying()) {
-			return;
-		}
-		setVolume(Settings.volumes[soundType.getValue()]);
-		try {
-			synchronized(this) {
-				if (!isPrepared) {
-					playWhenReady = true;
-				}
-				if (isPrepared) {
-					mediaPlayer.start();
-				} else {
-					AliteLog.w("Music Playback", "Could not play back music " + musicInfo + " instantly. Player is not prepared. Will try again later.");
-				}
-			}
-		} catch (IllegalStateException e) {
-			AliteLog.e("Music Playback", "IllegalStateException occurred when trying to play back music " + musicInfo + ".", e);
-		}
-	}
+    public stop(): void {
+        // this.mediaPlayer.pause();
+        // this.mediaPlayer.currentTime = 0;
+        this.isPrepared = false;
+    }
 
-	@Override
-	public void stop() {
-		mediaPlayer.stop();
-		synchronized (this) {
-			isPrepared = false;
-		}
-	}
+    public pause(): void {
+        // if (this.mediaPlayer.isPlaying()) {
+        //     this.mediaPlayer.pause();
+        // }
+    }
 
-	@Override
-	public void pause() {
-		if (mediaPlayer.isPlaying()) {
-			mediaPlayer.pause();
-		}
-	}
+    public setLooping(looping: boolean): void {
+        // this.mediaPlayer.loop = looping;
+    }
 
-	@Override
-	public void setLooping(boolean looping) {
-		mediaPlayer.setLooping(looping);
-	}
+    public setVolume(volume: number): void {
+        // this.mediaPlayer.volume = volume;
+    }
 
-	@Override
-	public void setVolume(float volume) {
-		mediaPlayer.setVolume(volume, volume);
-	}
+    public isPlaying(): boolean {
+        // return !this.mediaPlayer.paused;
+        return false;
+    }
 
-	@Override
-	public boolean isPlaying() {
-		return mediaPlayer.isPlaying();
-	}
+    public isStopped(): boolean {
+        return !this.isPrepared;
+    }
 
-	@Override
-	public boolean isStopped() {
-		return !isPrepared;
-	}
+    public isLooping(): boolean {
+        // return this.mediaPlayer.loop;
+        return false;
+    }
 
-	@Override
-	public boolean isLooping() {
-		return mediaPlayer.isLooping();
-	}
+    public dispose(): void {
+        // No direct equivalent, but you can stop and release the source.
+        this.stop();
+    }
 
-	@Override
-	public void dispose() {
-		if (mediaPlayer.isPlaying()) {
-			mediaPlayer.stop();
-		}
-		mediaPlayer.release();
-	}
-
-	@Override
-	public void onPrepared(MediaPlayer mp) {
-		isPrepared = true;
-		if (playWhenReady) {
-			mediaPlayer.start();
-		}
-	}
+    public onPrepared(mp: any): void {
+        this.isPrepared = true;
+        if (this.playWhenReady) {
+            // this.mediaPlayer.start();
+        }
+    }
 }

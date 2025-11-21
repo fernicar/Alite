@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,69 +16,65 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import { Alite } from "../../../Alite";
+import { Equipment } from "../../../model/Equipment";
+import { SpaceObject } from "./space/SpaceObject";
+import { Billboard } from "./Billboard";
 
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.model.Equipment;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
+export class LaserBillboard extends Billboard {
+    private static readonly serialVersionUID = -6567821362381241916;
+    private laser: Equipment;
+    private readonly twins: LaserBillboard[] = [];
+    private aiming = false;
+    private origin: SpaceObject;
 
-public class LaserBillboard extends Billboard implements Serializable {
-	private static final long serialVersionUID = -6567821362381241916L;
-	private Equipment laser;
-	private final List<LaserBillboard> twins = new ArrayList<>();
-	private boolean aiming = false;
-	private SpaceObject origin;
+    constructor() {
+        super("Laser", 0.0, 0.0, 0.0, 16.0, 16.0, "textures/lasers.png",
+            Alite.getInstance().getTextureManager().getSprite("textures/lasers.png", "photon1"));
+    }
 
-	public LaserBillboard() {
-		super("Laser", 0.0f, 0.0f, 0.0f, 16.0f, 16.0f, "textures/lasers.png",
-			Alite.get().getTextureManager().getSprite("textures/lasers.png", "photon1"));
-	}
+    public setType(type: number): void {
+        this.updateTextureCoordinates(Alite.getInstance().getTextureManager().getSprite("textures/lasers.png", "photon" + type));
+    }
 
-	public void setType(int type) {
-		updateTextureCoordinates(Alite.get().getTextureManager().getSprite("textures/lasers.png", "photon" + type));
-	}
+    public getLaser(): Equipment {
+        return this.laser;
+    }
 
-	public Equipment getLaser() {
-		return laser;
-	}
+    public setLaser(laser: Equipment): void {
+        this.laser = laser;
+    }
 
-	public void setLaser(Equipment laser) {
-		this.laser = laser;
-	}
+    public getTwins(): LaserBillboard[] {
+        return this.twins;
+    }
 
-	public List <LaserBillboard> getTwins() {
-		return twins;
-	}
+    public setTwins(twin1: LaserBillboard, twin2: LaserBillboard): void {
+        this.twins.length = 0;
+        this.twins.push(twin1, twin2);
+    }
 
-	public void setTwins(LaserBillboard twin1, LaserBillboard twin2) {
-		twins.clear();
-		twins.add(twin1);
-		twins.add(twin2);
-	}
+    public addTwin(twin: LaserBillboard): void {
+        this.twins.push(twin);
+    }
 
-	public void addTwin(LaserBillboard twin) {
-		twins.add(twin);
-	}
+    public clearTwins(): void {
+        this.twins.length = 0;
+    }
 
-	public void clearTwins() {
-		twins.clear();
-	}
+    public isAiming(): boolean {
+        return this.aiming;
+    }
 
-	public boolean isAiming() {
-		return aiming;
-	}
+    public setAiming(aiming: boolean): void {
+        this.aiming = aiming;
+    }
 
-	public void setAiming(boolean aiming) {
-		this.aiming = aiming;
-	}
+    public setOrigin(origin: SpaceObject): void {
+        this.origin = origin;
+    }
 
-	public void setOrigin(SpaceObject origin) {
-		this.origin = origin;
-	}
-
-	public SpaceObject getOrigin() {
-		return origin;
-	}
+    public getOrigin(): SpaceObject {
+        return this.origin;
+    }
 }

@@ -20,31 +20,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.dd.plist;
 
-import java.io.IOException;
+import { NSObject } from "./NSObject";
+import { BinaryPropertyListWriter } from "./BinaryPropertyListWriter";
 
 /**
  * A UID. Only found in binary property lists that are keyed archives.
  *
  * @author Daniel Dreibrodt
  */
-public class UID extends NSObject {
+export class UID extends NSObject {
 
-    private byte[] bytes;
-    private String name;
+    private bytes: number[];
+    private name: string;
 
-    public UID(String name, byte[] bytes) {
+    constructor(name: string, bytes: number[]) {
+        super();
         this.name = name;
         this.bytes = bytes;
     }
 
-    public byte[] getBytes() {
-        return bytes;
+    public getBytes(): number[] {
+        return this.bytes;
     }
 
-    public String getName() {
-        return name;
+    public getName(): string {
+        return this.name;
     }
 
     /**
@@ -54,40 +55,36 @@ public class UID extends NSObject {
      * @param xml   The xml StringBuilder
      * @param level The indentation level
      */
-    @Override
-    void toXML(StringBuilder xml, int level) {
-        indent(xml, level);
+    toXML(xml: { append: (arg0: string) => void; }, level: number): void {
+        this.indent(xml, level);
         xml.append("<string>");
-        for (int i = 0; i < bytes.length; i++) {
-            byte b = bytes[i];
+        for (let i = 0; i < this.bytes.length; i++) {
+            const b = this.bytes[i];
             if (b < 16)
                 xml.append("0");
-            xml.append(Integer.toHexString(b));
+            xml.append(b.toString(16));
         }
         xml.append("</string>");
     }
 
-    @Override
-    void toBinary(BinaryPropertyListWriter out) throws IOException {
-        out.write(0x80 + bytes.length - 1);
-        out.write(bytes);
+    toBinary(out: BinaryPropertyListWriter): void {
+        out.write(0x80 + this.bytes.length - 1);
+        out.write(this.bytes);
     }
 
-    @Override
-    protected void toASCII(StringBuilder ascii, int level) {
-        indent(ascii, level);
+    protected toASCII(ascii: { append: (arg0: string) => void; }, level: number): void {
+        this.indent(ascii, level);
         ascii.append("\"");
-        for (int i = 0; i < bytes.length; i++) {
-            byte b = bytes[i];
+        for (let i = 0; i < this.bytes.length; i++) {
+            const b = this.bytes[i];
             if (b < 16)
                 ascii.append("0");
-            ascii.append(Integer.toHexString(b));
+            ascii.append(b.toString(16));
         }
         ascii.append("\"");
     }
 
-    @Override
-    protected void toASCIIGnuStep(StringBuilder ascii, int level) {
-        toASCII(ascii, level);
+    protected toASCIIGnuStep(ascii: { append: (arg0: string) => void; }, level: number): void {
+        this.toASCII(ascii, level);
     }
 }

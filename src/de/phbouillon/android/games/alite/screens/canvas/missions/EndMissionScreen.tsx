@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas.missions;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,101 +16,98 @@ package de.phbouillon.android.games.alite.screens.canvas.missions;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
+import { Graphics } from "../../../../framework/Graphics";
+import { AliteLog } from "../../../AliteLog";
+import { L } from "../../../L";
+import { ScreenCodes } from "../../../ScreenCodes";
+import { ColorScheme } from "../../../colors/ColorScheme";
+import { EndMission } from "../../../model/missions/EndMission";
+import { Mission } from "../../../model/missions/Mission";
+import { MissionManager } from "../../../model/missions/MissionManager";
+import { AliteScreen } from "../AliteScreen";
+import { TextData } from "../TextData";
+import { MissionLine } from "./MissionLine";
 
-import android.media.MediaPlayer;
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.model.missions.EndMission;
-import de.phbouillon.android.games.alite.model.missions.Mission;
-import de.phbouillon.android.games.alite.model.missions.MissionManager;
-import de.phbouillon.android.games.alite.screens.canvas.AliteScreen;
-import de.phbouillon.android.games.alite.screens.canvas.TextData;
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class EndMissionScreen extends AliteScreen {
+    // private readonly mediaPlayer: any; // MediaPlayer equivalent
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class EndMissionScreen extends AliteScreen {
-	private final MediaPlayer mediaPlayer;
+    private welcomeLine: MissionLine;
+    private missionLine: MissionLine;
+    private congratulationsLine: MissionLine;
+    private welcomeText: TextData[];
+    private missionText: TextData[];
+    private congratulationsText: TextData[];
+    private state = 0;
 
-	private MissionLine welcomeLine;
-	private MissionLine missionLine;
-	private MissionLine congratulationsLine;
-	private TextData[] welcomeText;
-	private TextData[] missionText;
-	private TextData[] congratulationsText;
-    private int state = 0;
+    constructor(state: number) {
+        super();
+        const mission = MissionManager.getInstance().get(EndMission.ID);
+        // this.mediaPlayer = new MediaPlayer(); // Web Audio equivalent needed
+        try {
+            if (state === 0) {
+                this.welcomeLine = new MissionLine(MissionManager.DIRECTORY_SOUND_MISSION + "01.mp3", L.string("mission_elite_welcome_commander"));
+                this.missionLine = new MissionLine(null, L.string("mission_elite_mission_description"));
+                this.congratulationsLine = new MissionLine(null, L.string("mission_elite_congratulations"));
+                mission.missionCompleted();
+            } else {
+                AliteLog.e("Unknown State", `Invalid state variable has been passed to EndMissionScreen: ${state}`);
+            }
+        } catch (e) {
+            if (e instanceof Error) {
+                AliteLog.e("Error reading mission", "Could not read mission audio.", e);
+            }
+        }
+        mission.setPlayerAccepts(true);
+    }
 
-	public EndMissionScreen(int state) {
-		Mission mission = MissionManager.getInstance().get(EndMission.ID);
-		mediaPlayer = new MediaPlayer();
-		try {
-			if (state == 0) {
-				welcomeLine = new MissionLine(MissionManager.DIRECTORY_SOUND_MISSION + "01.mp3", L.string(R.string.mission_elite_welcome_commander));
-				missionLine = new MissionLine(null, L.string(R.string.mission_elite_mission_description));
-				congratulationsLine = new MissionLine(null, L.string(R.string.mission_elite_congratulations));
-				mission.missionCompleted();
-			} else {
-				AliteLog.e("Unknown State", "Invalid state variable has been passed to EndMissionScreen: " + state);
-			}
-		} catch (IOException e) {
-			AliteLog.e("Error reading mission", "Could not read mission audio.", e);
-		}
-		mission.setPlayerAccepts(true);
-	}
+    public update(deltaTime: number): void {
+        super.update(deltaTime);
+        if (this.state === 0 && this.welcomeLine != null && !this.welcomeLine.isPlaying()) {
+            // this.welcomeLine.play(this.mediaPlayer);
+            this.state = 1;
+        }
+    }
 
-	@Override
-	public void update(float deltaTime) {
-		super.update(deltaTime);
-		if (state == 0 && welcomeLine != null && !welcomeLine.isPlaying()) {
-			welcomeLine.play(mediaPlayer);
-			state = 1;
-		}
-	}
+    public present(deltaTime: number): void {
+        const g = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayTitle(L.string("title_mission_elite"));
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayTitle(L.string(R.string.title_mission_elite));
+        if (this.welcomeText != null) {
+            this.displayText(g, this.welcomeText);
+        }
+        if (this.missionText != null) {
+            this.displayText(g, this.missionText);
+        }
+        if (this.congratulationsText != null) {
+            this.displayText(g, this.congratulationsText);
+        }
+    }
 
-		if (welcomeText != null) {
-			displayText(g, welcomeText);
-		}
-		if (missionText != null) {
-			displayText(g, missionText);
-		}
-		if (congratulationsText != null) {
-			displayText(g, congratulationsText);
-		}
-	}
+    public activate(): void {
+        if (this.welcomeLine != null) {
+            this.welcomeText = this.computeTextDisplay(this.game.getGraphics(), this.welcomeLine.getText(), 50, 200, 800, ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT));
+            this.missionText = this.computeTextDisplay(this.game.getGraphics(), this.missionLine.getText(), 50, 300, 800, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT));
+            this.congratulationsText = this.computeTextDisplay(this.game.getGraphics(), this.congratulationsLine.getText(), 50, 800, 800, ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT));
+        }
+    }
 
-	@Override
-	public void activate() {
-		if (welcomeLine != null) {
-			welcomeText = computeTextDisplay(game.getGraphics(), welcomeLine.getText(), 50, 200, 800, ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT));
-			missionText = computeTextDisplay(game.getGraphics(), missionLine.getText(), 50, 300, 800, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT));
-			congratulationsText = computeTextDisplay(game.getGraphics(), congratulationsLine.getText(), 50, 800, 800, ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT));
-		}
-	}
+    public dispose(): void {
+        super.dispose();
+        // if (this.mediaPlayer != null) {
+        //     this.mediaPlayer.reset();
+        // }
+    }
 
-	@Override
-	public void dispose() {
-		super.dispose();
-		if (mediaPlayer != null) {
-			mediaPlayer.reset();
-		}
-	}
+    public pause(): void {
+        super.pause();
+        // if (this.mediaPlayer != null) {
+        //     this.mediaPlayer.reset();
+        // }
+    }
 
-	@Override
-	public void pause() {
-		super.pause();
-		if (mediaPlayer != null) {
-			mediaPlayer.reset();
-		}
-	}
-
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.END_MISSION_SCREEN;
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.END_MISSION_SCREEN;
+    }
 }

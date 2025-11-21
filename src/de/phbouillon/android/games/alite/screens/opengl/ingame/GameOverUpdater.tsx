@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,91 +16,89 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Timer;
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.framework.impl.gl.GraphicObject;
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObjectFactory;
+import { Timer } from "../../../../../framework/Timer";
+import { GraphicObject } from "../../../../../framework/impl/gl/GraphicObject";
+import { Vector3f } from "../../../../../framework/math/Vector3f";
+import { L } from "../../../L";
+import { SpaceObject } from "../objects/space/SpaceObject";
+import { SpaceObjectFactory } from "../objects/space/SpaceObjectFactory";
+import { InGameManager } from "./InGameManager";
 
-class GameOverUpdater implements IMethodHook {
-	private static final long serialVersionUID = 5497403578670138689L;
+enum GameOverState {
+    SPAWN,
+    MOVE,
+    EXPLODE,
+    QUIT
+}
 
-	private enum GameOverState {
-		SPAWN,
-		MOVE,
-		EXPLODE,
-		QUIT
-	}
+export class GameOverUpdater {
+    private static readonly serialVersionUID = 5497403578670138689;
 
-	private final InGameManager inGame;
-	private final GraphicObject ship;
-	private final Timer startTime = new Timer();
-	private GameOverState state = GameOverState.SPAWN;
-	private SpaceObject cobra = null;
-	private boolean needsDestruction = true;
-	private final Vector3f vec1 = new Vector3f(0, 0, 0);
-	private final Vector3f vec2 = new Vector3f(0, 0, 0);
+    private readonly inGame: InGameManager;
+    private readonly ship: GraphicObject;
+    private readonly startTime = new Timer();
+    private state: GameOverState = GameOverState.SPAWN;
+    private cobra: SpaceObject = null;
+    private needsDestruction = true;
+    private readonly vec1 = new Vector3f(0, 0, 0);
+    private readonly vec2 = new Vector3f(0, 0, 0);
 
-	GameOverUpdater(InGameManager inGame, GraphicObject ship) {
-		this.inGame = inGame;
-		this.ship = ship;
-	}
+    constructor(inGame: InGameManager, ship: GraphicObject) {
+        this.inGame = inGame;
+        this.ship = ship;
+    }
 
-	@Override
-	public void execute(float deltaTime) {
-		switch (state) {
-			case SPAWN: spawnShip(); break;
-			case MOVE: moveShip(); break;
-			case EXPLODE: destroyShip(); break;
-			case QUIT: endSequence(); break;
-		}
-	}
+    public execute(deltaTime: number): void {
+        switch (this.state) {
+            case GameOverState.SPAWN: this.spawnShip(); break;
+            case GameOverState.MOVE: this.moveShip(); break;
+            case GameOverState.EXPLODE: this.destroyShip(); break;
+            case GameOverState.QUIT: this.endSequence(); break;
+        }
+    }
 
-	private void spawnShip() {
-		ship.computeMatrix();
-		cobra = SpaceObjectFactory.getInstance().getObjectById("cobra_mk_iii");
-		cobra.setIdentified();
-		cobra.setUpVector(ship.getUpVector());
-		cobra.setRightVector(ship.getRightVector());
-		cobra.setForwardVector(ship.getForwardVector());
-		cobra.applyDeltaRotation(15, 15, -15);
-		ship.getPosition().copy(vec1);
-		ship.getForwardVector().copy(vec2);
-		vec2.scale(-200);
-		vec1.add(vec2);
-		ship.getUpVector().copy(vec2);
-		vec2.scale(-50);
-		vec1.add(vec2);
-		cobra.setPosition(vec1);
-		cobra.setSpeed(-cobra.getMaxSpeed());
-		ship.setSpeed(0);
-		state = GameOverState.MOVE;
-		inGame.addObject(cobra);
-		inGame.getMessage().setScaledTextForDuration(L.string(R.string.msg_game_over), 14, 4.0f);
-	}
+    private spawnShip(): void {
+        this.ship.computeMatrix();
+        this.cobra = SpaceObjectFactory.getInstance().getObjectById("cobra_mk_iii");
+        this.cobra.setIdentified();
+        this.cobra.setUpVector(this.ship.getUpVector());
+        this.cobra.setRightVector(this.ship.getRightVector());
+        this.cobra.setForwardVector(this.ship.getForwardVector());
+        this.cobra.applyDeltaRotation(15, 15, -15);
+        this.ship.getPosition().copy(this.vec1);
+        this.ship.getForwardVector().copy(this.vec2);
+        this.vec2.scale(-200);
+        this.vec1.add(this.vec2);
+        this.ship.getUpVector().copy(this.vec2);
+        this.vec2.scale(-50);
+        this.vec1.add(this.vec2);
+        this.cobra.setPosition(this.vec1);
+        this.cobra.setSpeed(-this.cobra.getMaxSpeed());
+        this.ship.setSpeed(0);
+        this.state = GameOverState.MOVE;
+        this.inGame.addObject(this.cobra);
+        this.inGame.getMessage().setScaledTextForDuration(L.string("msg_game_over"), 14, 4.0);
+    }
 
-	private void moveShip() {
-		if (startTime.hasPassedSeconds(2)) {
-			state = GameOverState.EXPLODE;
-		}
-		// Nothing else to be done here; InGameManager advances the cobra...
-	}
+    private moveShip(): void {
+        if (this.startTime.hasPassedSeconds(2)) {
+            this.state = GameOverState.EXPLODE;
+        }
+        // Nothing else to be done here; InGameManager advances the cobra...
+    }
 
-	private void destroyShip() {
-		if (needsDestruction) {
-			cobra.setHullStrength(0);
-			inGame.getLaserManager().explodeWithCargo(cobra);
-			needsDestruction = false;
-		}
-		if (startTime.hasPassedSeconds(10)) {
-			state = GameOverState.QUIT;
-		}
-	}
+    private destroyShip(): void {
+        if (this.needsDestruction) {
+            this.cobra.setHullStrength(0);
+            this.inGame.getLaserManager().explodeWithCargo(this.cobra);
+            this.needsDestruction = false;
+        }
+        if (this.startTime.hasPassedSeconds(10)) {
+            this.state = GameOverState.QUIT;
+        }
+    }
 
-	private void endSequence() {
-		inGame.terminateToTitleScreen();
-	}
+    private endSequence(): void {
+        this.inGame.terminateToTitleScreen();
+    }
 }

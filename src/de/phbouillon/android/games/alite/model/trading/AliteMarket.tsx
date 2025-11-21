@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.trading;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,29 +16,32 @@ package de.phbouillon.android.games.alite.model.trading;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public class AliteMarket extends Market {
-	public AliteMarket() {
-		super(TradeGoodStore.get());
-	}
+import { Market } from "./Market";
+import { TradeGood } from "./TradeGood";
+import { TradeGoodStore } from "./TradeGoodStore";
 
-	@Override
-	public void generate() {
-		for (TradeGood tradeGood: store.goods()) {
-			if (tradeGood.isSpecialGood()) {
-				continue;
-			}
-			int product = system.getEconomy().ordinal() * tradeGood.getGradient();
-			int changing = fluct & tradeGood.getMaskByte();
-			char q = (char) ((char) (tradeGood.getBaseQuantity() + changing - product) & 0x00FF);
-			if ((q & 0x80) > 0) {
-				q = 0;
-			}
-			int val = tradeGood.getId() == TradeGoodStore.ALIEN_ITEMS ? 0 : q & 0x3f;
-			quantity.put(tradeGood, val);
+export class AliteMarket extends Market {
+    constructor() {
+        super(TradeGoodStore.get());
+    }
 
-			q = (char) (tradeGood.getBasePrice() + changing + product);
-			val = q * 4;
-			price.put(tradeGood, val);
-		}
-	}
+    public generate(): void {
+        for (const tradeGood of this.store.goods()) {
+            if (tradeGood.isSpecialGood()) {
+                continue;
+            }
+            const product = this.system.getEconomy() * tradeGood.getGradient();
+            const changing = this.fluct & tradeGood.getMaskByte();
+            let q = (tradeGood.getBaseQuantity() + changing - product) & 0x00FF;
+            if ((q & 0x80) > 0) {
+                q = 0;
+            }
+            let val = tradeGood.getId() === TradeGoodStore.ALIEN_ITEMS ? 0 : q & 0x3f;
+            this.quantity.set(tradeGood, val);
+
+            q = (tradeGood.getBasePrice() + changing + product);
+            val = q * 4;
+            this.price.set(tradeGood, val);
+        }
+    }
 }

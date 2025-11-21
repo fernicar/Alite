@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,33 +16,29 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Skysphere } from "../../../../../../../../framework/impl/gl/Skysphere";
+import { AliteObject } from "./AliteObject";
 
-import android.opengl.GLES11;
-import de.phbouillon.android.framework.impl.gl.Skysphere;
+export class SkySphereSpaceObject extends AliteObject {
+    private static readonly serialVersionUID = -3204273124041313493;
+    private readonly sphere: Skysphere;
 
-public class SkySphereSpaceObject extends AliteObject implements Serializable {
-	private static final long serialVersionUID = -3204273124041313493L;
-	private final Skysphere sphere;
+    constructor(name: string, radius: number, slices: number, stacks: number, texture: string) {
+        super(name);
+        this.sphere = new Skysphere(radius, slices, stacks, texture);
+        this.distanceFromCenterToBorder = radius;
+        this.boundingSphereRadius = 0.0;
+    }
 
-	public SkySphereSpaceObject(String name, float radius, int slices, int stacks, String texture) {
-		super(name);
-		sphere = new Skysphere(radius, slices, stacks, texture);
-		distanceFromCenterToBorder = radius;
-		boundingSphereRadius = 0.0f;
-	}
+    public render(): void {
+        // GLES11.glDisable(GLES11.GL_DEPTH_TEST);
+        this.sphere.render();
+        // GLES11.glEnable(GLES11.GL_DEPTH_TEST);
+    }
 
-	@Override
-	public void render() {
-		GLES11.glDisable(GLES11.GL_DEPTH_TEST);
-		sphere.render();
-		GLES11.glEnable(GLES11.GL_DEPTH_TEST);
-	}
-
-	public void destroy() {
-		if (sphere != null) {
-			sphere.destroy();
-		}
-	}
-
+    public destroy(): void {
+        if (this.sphere != null) {
+            this.sphere.destroy();
+        }
+    }
 }

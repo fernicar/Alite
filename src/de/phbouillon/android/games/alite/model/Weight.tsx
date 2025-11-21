@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,97 +16,80 @@ package de.phbouillon.android.games.alite.model;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import { L } from "../L";
+import { StringUtil } from "./generator/StringUtil";
+import { Unit } from "./Unit";
 
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
-import de.phbouillon.android.games.alite.model.generator.StringUtil;
+export class Weight {
+    private static readonly serialVersionUID = -7041624303034666651;
 
-public class Weight implements Comparable <Weight>, Serializable {
-	private static final long serialVersionUID = -7041624303034666651L;
+    public static readonly ZERO_GRAMS = new Weight(0);
 
-	public static final Weight ZERO_GRAMS = new Weight(0);
+    private readonly grams: number;
 
-	private final long grams;
-
-	private void writeObject(ObjectOutputStream out)
-            throws IOException {
-		try {
-			out.defaultWriteObject();
-		} catch(IOException e) {
-			AliteLog.e("PersistenceException", "Weight " + this, e);
-			throw e;
-		}
+    public static unit(u: Unit, amount: number): Weight {
+        return this.getWeight((u == null ? Unit.TONNE : u) * amount);
     }
 
-	public static Weight unit(Unit u, long amount) {
-		return getWeight((u == null ? Unit.TONNE : u).getValue() * amount);
-	}
+    public static tonnes(t: number): Weight {
+        return this.getWeight(t * Unit.TONNE);
+    }
 
-	public static Weight tonnes(long t) {
-		return getWeight(t * Unit.TONNE.getValue());
-	}
+    public static kilograms(kg: number): Weight {
+        return this.getWeight(kg * Unit.KILOGRAM);
+    }
 
-	public static Weight kilograms(long kg) {
-		return getWeight(kg * Unit.KILOGRAM.getValue());
-	}
+    public static grams(g: number): Weight {
+        return this.getWeight(Math.max(g, 0));
+    }
 
-	public static Weight grams(long g) {
-		return getWeight(Math.max(g, 0));
-	}
+    private static getWeight(grams: number): Weight {
+        return grams === 0 ? this.ZERO_GRAMS : new Weight(grams);
+    }
 
-	private static Weight getWeight(long grams) {
-		return grams == 0 ? ZERO_GRAMS : new Weight(grams);
-	}
+    private constructor(grams: number) {
+        this.grams = grams;
+    }
 
-	private Weight(long grams) {
-		this.grams = grams;
-	}
+    private getWeightInstance(grams: number): Weight {
+        return this.grams === grams ? this : Weight.grams(grams);
+    }
 
-	private Weight getWeightInstance(long grams) {
-		return this.grams == grams ? this : grams(grams);
-	}
+    public compareTo(another: Weight): number {
+        return another == null || this.grams > another.grams ? 1 : this.grams === another.grams ? 0 : -1;
+    }
 
-	@Override
-	public int compareTo(Weight another) {
-		return another == null || grams > another.grams ? 1 : grams == another.grams ? 0 : -1;
-	}
+    public add(another: Weight): Weight {
+        return this.getWeightInstance(this.grams + another.grams);
+    }
 
-	public Weight add(Weight another) {
-		return getWeightInstance(grams + another.grams);
-	}
+    public sub(another: Weight): Weight {
+        return this.getWeightInstance(this.grams - another.grams);
+    }
 
-	public Weight sub(Weight another) {
-		return getWeightInstance(grams - another.grams);
-	}
+    public getAppropriateUnit(): Unit {
+        return this.grams < Unit.KILOGRAM ? Unit.GRAM : this.grams < Unit.TONNE ? Unit.KILOGRAM : Unit.TONNE;
+    }
 
-	public Unit getAppropriateUnit() {
-		return grams < Unit.KILOGRAM.getValue() ? Unit.GRAM : grams < Unit.TONNE.getValue() ? Unit.KILOGRAM : Unit.TONNE;
-	}
+    public getQuantityInAppropriateUnit(): number {
+        return Math.floor(this.grams / this.getAppropriateUnit());
+    }
 
-	public int getQuantityInAppropriateUnit() {
-		return (int) (grams / getAppropriateUnit().getValue());
-	}
+    public getWeightInGrams(): number {
+        return this.grams;
+    }
 
-	public long getWeightInGrams() {
-		return grams;
-	}
+    public getStringWithoutUnit(): string {
+        const unit = this.getAppropriateUnit();
+        return unit === Unit.GRAM ? StringUtil.format("%d", this.grams) :
+            L.getOneDecimalFormatString("cash_amount_only", 10 * this.grams / unit);
+    }
 
-	public String getStringWithoutUnit() {
-		Unit unit = getAppropriateUnit();
-		return unit == Unit.GRAM ? StringUtil.format("%d", grams) :
-			L.getOneDecimalFormatString(R.string.cash_amount_only, 10 * grams / unit.getValue());
-	}
+    public getFormattedString(): string {
+        return this.getStringWithoutUnit() + Unit.toUnitString(this.getAppropriateUnit());
+    }
 
-	public String getFormattedString() {
-		return getStringWithoutUnit() + getAppropriateUnit().toUnitString();
-	}
-
-	@Override
-	public String toString() {
-		return getFormattedString();
-	}
+    public toString(): string {
+        return this.getFormattedString();
+    }
 }

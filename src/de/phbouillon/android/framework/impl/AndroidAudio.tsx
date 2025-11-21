@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,70 +16,67 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
+import { Audio } from "../Audio";
+import { FileIO } from "../FileIO";
+import { Music } from "../Music";
+import { Sound, SoundType } from "../Sound";
+import { AliteLog } from "../../games/alite/AliteLog";
+import { L } from "../../games/alite/L";
+import { AndroidMusic } from "./AndroidMusic";
+import { AndroidSound } from "./AndroidSound";
 
-import android.app.Activity;
-import android.media.AudioManager;
-import android.media.SoundPool;
-import de.phbouillon.android.framework.Audio;
-import de.phbouillon.android.framework.FileIO;
-import de.phbouillon.android.framework.Music;
-import de.phbouillon.android.framework.Sound;
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.L;
+export class AndroidAudio implements Audio {
+    private static readonly MAXIMUM_NUMBER_OF_CONCURRENT_SAMPLES = 20;
 
-public class AndroidAudio implements Audio {
-	private static final int MAXIMUM_NUMBER_OF_CONCURRENT_SAMPLES = 20;
+    // private readonly soundPool: any; // Web Audio API AudioContext equivalent
+    private readonly fileIO: FileIO;
 
-	private final SoundPool soundPool;
-	private final FileIO fileIO;
+    constructor(activity: any, fileIO: FileIO) {
+        // activity.setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        this.fileIO = fileIO;
+        // this.soundPool = new SoundPool(MAXIMUM_NUMBER_OF_CONCURRENT_SAMPLES, AudioManager.STREAM_MUSIC, 0);
+        AliteLog.d("AndroidAudio", "Web Audio implementation needed for audio management.");
+    }
 
-	AndroidAudio(Activity activity, FileIO fileIO) {
-		activity.setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		this.fileIO = fileIO;
-		soundPool = new SoundPool(MAXIMUM_NUMBER_OF_CONCURRENT_SAMPLES, AudioManager.STREAM_MUSIC, 0);
-	}
+    public async newMusic(fileName: string): Promise<Music> {
+        try {
+            const privatePath = await this.fileIO.getPrivatePath(fileName);
+            return new AndroidMusic(privatePath, SoundType.MUSIC, fileName);
+        } catch (ignored) {
+            AliteLog.e("Cannot load music", `Music ${fileName} not found.`);
+            return null;
+        }
+    }
 
-	@Override
-	public Music newMusic(String fileName) {
-		try {
-			return new AndroidMusic(fileIO.getPrivatePath(fileName), Sound.SoundType.MUSIC, fileName);
-		} catch (IOException ignored) {
-			AliteLog.e("Cannot load music", "Music " + fileName + " not found.");
-			return null;
-		}
-	}
+    public newSound(fileName: string): Sound {
+        return this.internalNewSound(fileName, SoundType.SOUND_FX);
+    }
 
-	@Override
-	public Sound newSound(String fileName) {
-		return newSound(fileName, Sound.SoundType.SOUND_FX);
-	}
+    public newCombatSound(fileName: string): Sound {
+        return this.internalNewSound(fileName, SoundType.COMBAT_FX);
+    }
 
-	@Override
-	public Sound newCombatSound(String fileName) {
-		return newSound(fileName, Sound.SoundType.COMBAT_FX);
-	}
+    private internalNewSound(fileName: string, soundType: SoundType): Sound {
+        try {
+            AliteLog.d("Loading Sound", `Loading sound ${fileName}`);
+            // const soundId = this.soundPool.load(this.fileIO.getPrivatePath(fileName), 0);
+            // return new AndroidSound(this.soundPool, soundId, soundType);
+            return new AndroidSound(null, 0, soundType); // Stubbed implementation
+        } catch (ignored) {
+            AliteLog.e("Cannot load sound", `Sound ${fileName} not found.`);
+            return null;
+        }
+    }
 
-	private Sound newSound(String fileName, Sound.SoundType soundType) {
-		try {
-			AliteLog.d("Loading Sound", "Loading sound " + fileName);
-			int soundId = soundPool.load((String) fileIO.getPrivatePath(fileName), 0);
-			return new AndroidSound(soundPool, soundId, soundType);
-		} catch (IOException ignored) {
-			AliteLog.e("Cannot load sound", "Sound " + fileName + " not found.");
-			return null;
-		}
-	}
-
-	@Override
-	public Sound newSoundAsset(String fileName) {
-		try {
-			AliteLog.d("Loading Sound Asset", "Loading sound asset " + fileName);
-			int soundId = soundPool.load(L.rawDescriptor(fileName), 0);
-			return new AndroidSound(soundPool, soundId, Sound.SoundType.VOICE);
-		} catch (IOException ignored) {
-			AliteLog.e("Cannot load sound asset", "Sound asset " + fileName + " not found.");
-			return null;
-		}
-	}
+    public newSoundAsset(fileName: string): Sound {
+        try {
+            AliteLog.d("Loading Sound Asset", `Loading sound asset ${fileName}`);
+            // const soundId = this.soundPool.load(L.rawDescriptor(fileName), 0);
+            // return new AndroidSound(this.soundPool, soundId, SoundType.VOICE);
+            return new AndroidSound(null, 0, SoundType.VOICE); // Stubbed implementation
+        } catch (ignored) {
+            AliteLog.e("Cannot load sound asset", `Sound asset ${fileName} not found.`);
+            return null;
+        }
+    }
 }

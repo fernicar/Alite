@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,64 +16,48 @@ package de.phbouillon.android.games.alite.screens.opengl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.graphics.Bitmap;
-import de.phbouillon.android.framework.ResourceStream;
-import de.phbouillon.android.framework.Texture;
-import de.phbouillon.android.framework.SpriteData;
+import { ResourceStream } from "../../../../../../../../framework/ResourceStream";
+import { Texture } from "../../../../../../../../framework/Texture";
+import { SpriteData } from "../../../../../../../../framework/SpriteData";
 
-public class TestTexture implements Texture {
-	@Override
-	public int addTexture(String fileName) {
-		return 0;
-	}
+export class TestTexture implements Texture {
+    public addTexture(fileName: string): number {
+        return 0;
+    }
 
-	@Override
-	public int addTextureFromStream(String fileName, ResourceStream textureInputStream) {
-		return 0;
-	}
+    public addTextureFromStream(fileName: string, textureInputStream: ResourceStream): number {
+        return 0;
+    }
 
-	@Override
-	public boolean checkTexture(String fileName) {
-		return false;
-	}
+    public checkTexture(fileName: string): boolean {
+        return false;
+    }
 
-	@Override
-	public int addTexture(String name, Bitmap bitmap) {
-		return 0;
-	}
+    public addTexture(name: string, bitmap: any): number { // Bitmap
+        return 0;
+    }
 
-	@Override
-	public void freeTexture(String fileName) {
+    public freeTexture(fileName: string): void {
 
-	}
+    }
 
-	@Override
-	public void setTexture(String fileName) {
+    public setTexture(fileName: string, textureInputStream?: ResourceStream): void {
 
-	}
+    }
 
-	@Override
-	public void setTexture(String fileName, ResourceStream textureInputStream) {
+    public getSprite(fileName: string, spriteName: string): SpriteData {
+        return new SpriteData("", 0, 0, 100, 100, 100, 100);
+    }
 
-	}
+    public freeAllTextures(): void {
 
-	@Override
-	public SpriteData getSprite(String fileName, String spriteName) {
-		return new SpriteData("", 0, 0, 100, 100, 100, 100);
-	}
+    }
 
-	@Override
-	public void freeAllTextures() {
+    public reloadAllTextures(): void {
 
-	}
+    }
 
-	@Override
-	public void reloadAllTextures() {
+    public clear(): void {
 
-	}
-
-	@Override
-	public void clear() {
-
-	}
+    }
 }

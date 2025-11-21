@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.missions;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,97 +16,85 @@ package de.phbouillon.android.games.alite.model.missions;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.File;
-import java.util.*;
+import { AliteLog } from "../../AliteLog";
+import { Assets } from "../../Assets";
+import { Mission } from "./Mission";
 
-import android.annotation.SuppressLint;
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.Assets;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+export class MissionManager {
+    public static readonly DIRECTORY_SOUND_MISSION = Assets.DIRECTORY_SOUND + "mission/";
 
-public class MissionManager {
-	public static final String DIRECTORY_SOUND_MISSION = Assets.DIRECTORY_SOUND + "mission" + File.separator;
+    private static readonly instance = new MissionManager();
 
-	private static final MissionManager instance = new MissionManager();
+    private readonly missions: Map<number, Mission> = new Map();
 
-	// We need to return the set of all stored missions at one point, hence
-	// a SparseArray is of no use to us.
-	@SuppressLint("UseSparseArrays")
-	private final Map <Integer, Mission> missions = new HashMap<>();
+    public static getInstance(): MissionManager {
+        return MissionManager.instance;
+    }
 
-	public static MissionManager getInstance() {
-		return instance;
-	}
+    private constructor() {
+    }
 
-	private MissionManager() {
-	}
+    public register(m: Mission): void {
+        this.missions.set(m.getId(), m);
+    }
 
-	public void register(Mission m) {
-		missions.put(m.getId(), m);
-	}
+    public get(id: number): Mission {
+        return this.missions.get(id);
+    }
 
-	public Mission get(int id) {
-		return missions.get(id);
-	}
+    public clear(): void {
+        this.missions.clear();
+    }
 
-	public void clear() {
-		missions.clear();
-	}
+    public getMissions(): IterableIterator<Mission> {
+        return this.missions.values();
+    }
 
-	public Collection<Mission> getMissions() {
-		return missions.values();
-	}
+    public getActiveMissions(): Mission[] {
+        const activeMissions: Mission[] = [];
+        for (const m of this.missions.values()) {
+            if (m.isActive()) {
+                activeMissions.push(m);
+            }
+        }
+        return activeMissions;
+    }
 
-	public List<Mission> getActiveMissions() {
-		List<Mission> activeMissions = new ArrayList<>();
-		for (Mission m : getMissions()) {
-			if (m.isActive()) {
-				activeMissions.add(m);
-			}
-		}
-		return activeMissions;
-		// From API 24
-		//return missions.values().stream().filter(Mission::isActive).collect(Collectors.toList());
-	}
+    public getCompletedMissionCount(): number {
+        let count = 0;
+        for (const m of this.missions.values()) {
+            if (m.isCompleted()) {
+                count++;
+            }
+        }
+        return count;
+    }
 
-	public int getCompletedMissionCount() {
-		int count = 0;
-		for (Mission m : getMissions()) {
-			if (m.isCompleted()) {
-				count++;
-			}
-		}
-		return count;
-		// From API 24
-		//return (int) missions.values().stream().filter(Mission::isCompleted).count();
-	}
+    public clearActiveMissions(): void {
+        for (const m of this.missions.values()) {
+            m.active = false;
+        }
+    }
 
-	public void clearActiveMissions() {
-		for (Mission m : getMissions()) {
-			m.active = false;
-		}
-	}
+    public toJson(): any[] {
+        const missionsArray: any[] = [];
+        for (const m of this.missions.values()) {
+            const missionJson = m.toJson({ id: m.getId() });
+            missionsArray.push(missionJson);
+        }
+        return missionsArray;
+    }
 
-	public JSONArray toJson() throws JSONException {
-		JSONArray missions = new JSONArray();
-		for (Mission m : this.missions.values()) {
-			missions.put(m.toJson(new JSONObject().put("id", m.getId())));
-		}
-		return missions;
-	}
-
-	public void fromJson(JSONArray missions) throws JSONException {
-		for (int i = 0; i < missions.length(); i++) {
-			JSONObject prop = missions.getJSONObject(i);
-			int missionId = prop.getInt("id");
-			Mission m = this.missions.get(missionId);
-			if (m != null) {
-				m.fromJson(prop);
-			} else {
-				AliteLog.e("[ALITE] loadCommander", "Invalid mission skipped, id: " + missionId);
-			}
-		}
-	}
+    public fromJson(missions: any[]): void {
+        for (let i = 0; i < missions.length; i++) {
+            const prop = missions[i];
+            const missionId = prop.id;
+            const m = this.missions.get(missionId);
+            if (m != null) {
+                m.fromJson(prop);
+            } else {
+                AliteLog.e("[ALITE] loadCommander", `Invalid mission skipped, id: ${missionId}`);
+            }
+        }
+    }
 }

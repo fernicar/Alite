@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,29 +16,27 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Cylinder } from "../../../../../../../../framework/impl/gl/Cylinder";
+import { AliteObject } from "./AliteObject";
+import { AliteColor } from "../../../../colors/AliteColor";
 
-import android.graphics.Color;
-import de.phbouillon.android.framework.impl.gl.Cylinder;
+export class CylinderSpaceObject extends AliteObject {
+    private static readonly serialVersionUID = -6155477859420162646;
 
-public class CylinderSpaceObject extends AliteObject implements Serializable {
-	private static final long serialVersionUID = -6155477859420162646L;
+    private readonly cylinder: Cylinder;
 
-	private final Cylinder cylinder;
+    constructor(name: string, length: number, radius: number, segments: number, hasTop: boolean, hasBottom: boolean, texture: string) {
+        super(name);
+        this.cylinder = new Cylinder(length, radius, segments, hasTop, hasBottom, texture);
+        this.boundingSphereRadius = length / 2.0;
+        this.hudColor = AliteColor.WHITE;
+    }
 
-	public CylinderSpaceObject(String name, float length, float radius, int segments, boolean hasTop, boolean hasBottom, String texture) {
-		super(name);
-		cylinder = new Cylinder(length, radius, segments, hasTop, hasBottom, texture);
-		boundingSphereRadius = length / 2.0f;
-		hudColor = Color.WHITE;
-	}
+    public setColor(r: number, g: number, b: number, a: number): void {
+        this.cylinder.setColor(r, g, b, a);
+    }
 
-	public void setColor(float r, float g, float b, float a) {
-		cylinder.setColor(r, g, b, a);
-	}
-
-	@Override
-	public void render() {
-		cylinder.render();
-	}
+    public render(): void {
+        this.cylinder.render();
+    }
 }

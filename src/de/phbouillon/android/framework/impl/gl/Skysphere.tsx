@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl.gl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,49 +16,42 @@ package de.phbouillon.android.framework.impl.gl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import { Alite } from "../../../games/alite/Alite";
+import { AliteLog } from "../../../games/alite/AliteLog";
+import { Sphere } from "./Sphere";
 
-import android.opengl.GLES11;
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.AliteLog;
+export class Skysphere extends Sphere {
+    private static readonly serialVersionUID = 4648170914967080291;
 
-public class Skysphere extends Sphere implements Serializable {
-	private static final long serialVersionUID = 4648170914967080291L;
-
-	public Skysphere(final float radius, final int slices, final int stacks, final String textureFilename) {
-		super(radius, slices, stacks, textureFilename, null, true);
-	}
-
-	private void writeObject(ObjectOutputStream out)
-            throws IOException {
-		try {
-			out.defaultWriteObject();
-		} catch(IOException e) {
-			AliteLog.e("PersistenceException", "Skysphere", e);
-			throw e;
-		}
+    constructor(radius: number, slices: number, stacks: number, textureFilename: string) {
+        super(radius, slices, stacks, textureFilename, null, true);
     }
 
-	public void render() {
-		GLES11.glDisableClientState(GLES11.GL_NORMAL_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-		GLES11.glDisable(GLES11.GL_CULL_FACE);
+    // Custom serialization logic can be handled with libraries like `serialijse` if needed,
+    // but for now, we'll omit the custom writeObject method.
 
-		GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, vertexBuffer);
-		GLES11.glTexCoordPointer(2, GLES11.GL_FLOAT, 0, texCoordBuffer);
+    public render(): void {
+        // All of the following are Android GLES11 calls and need to be replaced with WebGL.
+        /*
+        GLES11.glDisableClientState(GLES11.GL_NORMAL_ARRAY);
+        GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
+        GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
+        GLES11.glDisable(GLES11.GL_CULL_FACE);
 
-		GLES11.glDisable(GLES11.GL_LIGHTING);
-		GLES11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		Alite.get().getTextureManager().setTexture(textureFilename);
-		GLES11.glDrawArrays(glDrawMode, 0, numberOfVertices);
-		GLES11.glEnable(GLES11.GL_LIGHTING);
+        GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, vertexBuffer);
+        GLES11.glTexCoordPointer(2, GLES11.GL_FLOAT, 0, texCoordBuffer);
 
-		GLES11.glEnable(GLES11.GL_CULL_FACE);
-		GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-		GLES11.glDisableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glBindTexture(GLES11.GL_TEXTURE_2D, 0);
-	}
+        GLES11.glDisable(GLES11.GL_LIGHTING);
+        GLES11.glColor4f(1.0, 1.0, 1.0, 1.0);
+        Alite.getInstance().getTextureManager().setTexture(this.textureFilename);
+        GLES11.glDrawArrays(this.glDrawMode, 0, this.numberOfVertices);
+        GLES11.glEnable(GLES11.GL_LIGHTING);
+
+        GLES11.glEnable(GLES11.GL_CULL_FACE);
+        GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
+        GLES11.glDisableClientState(GLES11.GL_VERTEX_ARRAY);
+        GLES11.glBindTexture(GLES11.GL_TEXTURE_2D, 0);
+        */
+        AliteLog.d("Skysphere", "WebGL rendering logic needed here.");
+    }
 }

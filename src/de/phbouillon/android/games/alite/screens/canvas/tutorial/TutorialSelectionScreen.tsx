@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas.tutorial;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,64 +16,68 @@ package de.phbouillon.android.games.alite.screens.canvas.tutorial;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.screens.canvas.AliteScreen;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.FlightScreen;
+import { Graphics } from "../../../framework/Graphics";
+import { TouchEvent } from "../../../framework/Input";
+import { Button } from "../../Button";
+import { L } from "../../L";
+import { ScreenCodes } from "../../ScreenCodes";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { AliteScreen } from "./AliteScreen";
+import { TutAdvancedFlying } from "./tutorial/TutAdvancedFlying";
+import { TutBasicFlying } from "./tutorial/TutBasicFlying";
+import { TutEquipment } from "./tutorial/TutEquipment";
+import { TutHud } from "./tutorial/TutHud";
+import { TutIntroduction } from "./tutorial/TutIntroduction";
+import { TutNavigation } from "./tutorial/TutNavigation";
+import { TutTrading } from "./tutorial/TutTrading";
 
 //This screen never needs to be serialized, as it is not part of the InGame state.
-public class TutorialSelectionScreen extends AliteScreen {
-	private final Button[] buttons = new Button[7];
+export class TutorialSelectionScreen extends AliteScreen {
+    private readonly buttons: Button[] = new Array(7);
 
-	private Button createButton(int row, String text) {
-		return Button.createGradientTitleButton(50, 130 * (row + 1), 1620, 100, text);
-	}
+    private createButton(row: number, text: string): Button {
+        return Button.createGradientTitleButton(50, 130 * (row + 1), 1620, 100, text);
+    }
 
-	@Override
-	public void activate() {
-		game.updateMedals();
-		buttons[0] = createButton(0, L.string(R.string.tutorial_selection_introduction))
-			.setEvent(b -> newScreen = new TutIntroduction());
-		buttons[1] = createButton(1, L.string(R.string.tutorial_selection_trading))
-			.setEvent(b -> newScreen = new TutTrading());
-		buttons[2] = createButton(2, L.string(R.string.tutorial_selection_equipment))
-			.setEvent(b -> newScreen = new TutEquipment());
-		buttons[3] = createButton(3, L.string(R.string.tutorial_selection_navigation))
-			.setEvent(b -> newScreen = new TutNavigation());
-		buttons[4] = createButton(4, L.string(R.string.tutorial_selection_hud))
-			.setEvent(b -> newScreen = new TutHud((FlightScreen) null));
-		buttons[5] = createButton(5, L.string(R.string.tutorial_selection_basic_flying))
-			.setEvent(b -> newScreen = new TutBasicFlying((FlightScreen) null));
-		buttons[6] = createButton(6, L.string(R.string.tutorial_selection_advanced_flying))
-			.setEvent(b -> newScreen = new TutAdvancedFlying(0));
-	}
+    public activate(): void {
+        this.game.updateMedals();
+        this.buttons[0] = this.createButton(0, L.string("tutorial_selection_introduction"))
+            .setEvent(b => this.newScreen = new TutIntroduction());
+        this.buttons[1] = this.createButton(1, L.string("tutorial_selection_trading"))
+            .setEvent(b => this.newScreen = new TutTrading());
+        this.buttons[2] = this.createButton(2, L.string("tutorial_selection_equipment"))
+            .setEvent(b => this.newScreen = new TutEquipment());
+        this.buttons[3] = this.createButton(3, L.string("tutorial_selection_navigation"))
+            .setEvent(b => this.newScreen = new TutNavigation());
+        this.buttons[4] = this.createButton(4, L.string("tutorial_selection_hud"))
+            .setEvent(b => this.newScreen = new TutHud(null));
+        this.buttons[5] = this.createButton(5, L.string("tutorial_selection_basic_flying"))
+            .setEvent(b => this.newScreen = new TutBasicFlying(null));
+        this.buttons[6] = this.createButton(6, L.string("tutorial_selection_advanced_flying"))
+            .setEvent(b => this.newScreen = new TutAdvancedFlying(0));
+    }
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+    public present(deltaTime: number): void {
+        const g = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
 
-		displayTitle(L.string(R.string.title_training_academy));
-		for (Button b : buttons) {
-			b.render(g);
-		}
-	}
+        this.displayTitle(L.string("title_training_academy"));
+        for (const b of this.buttons) {
+            b.render(g);
+        }
+    }
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		for (Button b : buttons) {
-			if (b.isPressed(touch)) {
-				b.onEvent();
-				return;
-			}
-		}
-	}
+    protected processTouch(touch: TouchEvent): void {
+        for (const b of this.buttons) {
+            if (b.isPressed(touch)) {
+                b.onEvent();
+                return;
+            }
+        }
+    }
 
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.TUTORIAL_SELECTION_SCREEN;
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.TUTORIAL_SELECTION_SCREEN;
+    }
 
 }

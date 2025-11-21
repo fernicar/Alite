@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,20 +16,23 @@ package de.phbouillon.android.games.alite;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public class AliteConfig {
-	public static final boolean HAS_EXTENSION_APK = true;
-	static final long EXTENSION_FILE_LENGTH = 200693825L;
+export class AliteConfig {
+    // This was related to Android's OBB extension file system, not applicable to PC port.
+    public static readonly HAS_EXTENSION_APK = false;
+    public static readonly EXTENSION_FILE_LENGTH = 200693825;
 
-	public static final String GAME_NAME = "Alite 2020";
-	public static final String VERSION_STRING = BuildConfig.VERSION_NAME + " " + (HAS_EXTENSION_APK ? "OBB" : "SFI");
-	public static final String ALITE_WEBSITE = "https://alite2020.iftopic.com"; // see also manifest file if change
-	public static final String ALITE_MAIL = "alite.crash.report@gmail.com";
-	public static final String ROOT_DRIVE_FOLDER = "1OtXzUbeHWrvN9j_JolgIMKEODHSQCmEK";
+    public static readonly GAME_NAME = "Alite 2020";
+    // BuildConfig is an Android-specific generated file. Using a placeholder version.
+    public static readonly VERSION_STRING = "1.0.0 PC";
+    public static readonly ALITE_WEBSITE = "https://alite2020.iftopic.com";
+    public static readonly ALITE_MAIL = "alite.crash.report@gmail.com";
+    public static readonly ROOT_DRIVE_FOLDER = "1OtXzUbeHWrvN9j_JolgIMKEODHSQCmEK";
 
-	public static final int SCREEN_WIDTH = 1920;
-	public static final int SCREEN_HEIGHT = 1080;
-	public static final int NAVIGATION_BAR_SIZE = 200;
-	public static final int DESKTOP_WIDTH = SCREEN_WIDTH - NAVIGATION_BAR_SIZE;
+    public static readonly SCREEN_WIDTH = 1920;
+    public static readonly SCREEN_HEIGHT = 1080;
+    public static readonly NAVIGATION_BAR_SIZE = 200;
+    public static readonly DESKTOP_WIDTH = AliteConfig.SCREEN_WIDTH - AliteConfig.NAVIGATION_BAR_SIZE;
 
-	public static final int     ALITE_INTRO_B1920      = -1;//R.raw.alite_intro_b1920;
+    // This was an Android resource ID (R.raw.alite_intro_b1920)
+    public static readonly ALITE_INTRO_B1920 = -1;
 }

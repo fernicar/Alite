@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.missions;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,115 +16,101 @@ package de.phbouillon.android.games.alite.model.missions;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.model.Player;
-import de.phbouillon.android.games.alite.screens.canvas.AliteScreen;
-import de.phbouillon.android.games.alite.screens.canvas.missions.ConstrictorScreen;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectSpawnManager;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectType;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.TimedEvent;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObjectFactory;
+import { IMethodHook } from "../../../framework/IMethodHook";
+import { L } from "../../L";
+import { Player } from "../Player";
+import { AliteScreen } from "../../screens/canvas/AliteScreen";
+import { ConstrictorScreen } from "../../screens/canvas/missions/ConstrictorScreen";
+import { ObjectSpawnManager } from "../../screens/opengl/ingame/ObjectSpawnManager";
+import { ObjectType } from "../../screens/opengl/ingame/ObjectType";
+import { TimedEvent } from "../../screens/opengl/ingame/TimedEvent";
+import { SpaceObject } from "../../screens/opengl/objects/space/SpaceObject";
+import { SpaceObjectFactory } from "../../screens/opengl/objects/space/SpaceObjectFactory";
+import { Mission } from "./Mission";
 
-public class ConstrictorMission extends Mission {
-	private static final long serialVersionUID = -5769172780079332330L;
+export class ConstrictorMission extends Mission {
+    private static readonly serialVersionUID = -5769172780079332330;
 
-	public static final int ID = 1;
+    public static readonly ID = 1;
 
-	public ConstrictorMission() {
-		super(ID);
-	}
+    constructor() {
+        super(ConstrictorMission.ID);
+    }
 
-	@Override
-	protected boolean checkStart(Player player) {
-		return player.getIntergalacticJumpCounter() > 0 &&
-			player.getIntergalacticJumpCounterSinceLastMission() + player.getJumpCounterSinceLastMission() >= 64;
-	}
+    protected checkStart(player: Player): boolean {
+        return player.getIntergalacticJumpCounter() > 0 &&
+            player.getIntergalacticJumpCounterSinceLastMission() + player.getJumpCounterSinceLastMission() >= 64;
+    }
 
-	@Override
-	protected void acceptMission(boolean accept) {
-		if (accept) {
-			state = 1;
-			resetTargetName();
-		} else {
-			finalizeMission();
-		}
-	}
+    protected acceptMission(accept: boolean): void {
+        if (accept) {
+            this.state = 1;
+            this.resetTargetName();
+        } else {
+            this.finalizeMission();
+        }
+    }
 
-	@Override
-	public void onMissionComplete() {
-		alite.getPlayer().setCash(alite.getPlayer().getCash() + 100000);
-	}
+    public onMissionComplete(): void {
+        this.alite.getPlayer().setCash(this.alite.getPlayer().getCash() + 100000);
+    }
 
-	@Override
-	public AliteScreen getMissionScreen() {
-		return new ConstrictorScreen(0);
-	}
+    public getMissionScreen(): AliteScreen {
+        return new ConstrictorScreen(0);
+    }
 
-	@Override
-	public AliteScreen checkForUpdate() {
-		if (missionDidNotStart() || !positionMatchesTarget()) {
-			return null;
-		}
-		if (state == 1) {
-			return new ConstrictorScreen(2);
-		}
-		if (state >= 2 && state <= 5) {
-			return new ConstrictorScreen(3);
-		}
-		if (state == 6) {
-			// Player arrived at target, but _did not destroy_ the Constrictor...
-			// Try again...
-			state--;
-			return new ConstrictorScreen(3);
-		}
-		if (state == 7) {
-			return new ConstrictorScreen(4);
-		}
-		return null;
-	}
+    public checkForUpdate(): AliteScreen {
+        if (this.missionDidNotStart() || !this.positionMatchesTarget()) {
+            return null;
+        }
+        if (this.state === 1) {
+            return new ConstrictorScreen(2);
+        }
+        if (this.state >= 2 && this.state <= 5) {
+            return new ConstrictorScreen(3);
+        }
+        if (this.state === 6) {
+            // Player arrived at target, but _did not destroy_ the Constrictor...
+            // Try again...
+            this.state--;
+            return new ConstrictorScreen(3);
+        }
+        if (this.state === 7) {
+            return new ConstrictorScreen(4);
+        }
+        return null;
+    }
 
-	@Override
-	public TimedEvent getSpawnEvent(final ObjectSpawnManager manager) {
-		boolean result = positionMatchesTarget();
-		if (state != 6 || !result) {
-			return null;
-		}
-		TimedEvent event = new TimedEvent(0);
-		return event.addAlarmEvent(new IMethodHook() {
-			private static final long serialVersionUID = 1657605081590177007L;
+    public getSpawnEvent(manager: ObjectSpawnManager): TimedEvent {
+        const result = this.positionMatchesTarget();
+        if (this.state !== 6 || !result) {
+            return null;
+        }
+        const event = new TimedEvent(0);
+        return event.addAlarmEvent({
+            execute: (deltaTime: number) => {
+                event.remove();
+                manager.conditionRed();
+                const constrictor = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.Constrictor);
+                manager.spawnEnemyAndAttackPlayer(constrictor);
+                manager.lockConditionRedEvent();
+                constrictor.addDestructionCallback({
+                    execute: (deltaTime: number) => {
+                        this.state = 7;
+                        manager.unlockConditionRedEvent();
+                    }
+                });
+            }
+        });
+    }
 
-			@Override
-			public void execute(float deltaTime) {
-				event.remove();
-				manager.conditionRed();
-				SpaceObject constrictor = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.Constrictor);
-				manager.spawnEnemyAndAttackPlayer(constrictor);
-				manager.lockConditionRedEvent();
-				constrictor.addDestructionCallback(new IMethodHook() {
-					private static final long serialVersionUID = -7774734879444916116L;
-
-					@Override
-					public void execute(float deltaTime) {
-						state = 7;
-						manager.unlockConditionRedEvent();
-					}
-
-				});
-			}
-		});
-	}
-
-	@Override
-	public String getObjective() {
-		if (state == 2) {
-			return L.string(R.string.mission_constrictor_obj_jump);
-		}
-		if (state >= 1 && state <= 6) {
-			return L.string(R.string.mission_constrictor_obj_fly, getTargetName());
-		}
-		return "";
-	}
-
+    public getObjective(): string {
+        if (this.state === 2) {
+            return L.string("mission_constrictor_obj_jump");
+        }
+        if (this.state >= 1 && this.state <= 6) {
+            return L.string("mission_constrictor_obj_fly", this.getTargetName());
+        }
+        return "";
+    }
 }

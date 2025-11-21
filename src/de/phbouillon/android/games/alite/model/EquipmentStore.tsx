@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,73 +16,65 @@ package de.phbouillon.android.games.alite.model;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.util.*;
+import { Equipment } from "./Equipment";
 
-public class EquipmentStore {
-	public static final String FUEL = "EQ_FUEL";
-	public static final String MISSILES = "EQ_MISSILE";
-	public static final String LARGE_CARGO_BAY = "EQ_CARGO_BAY";
-	public static final String ECM_SYSTEM = "EQ_ECM";
-	public static final String PULSE_LASER = "EQ_WEAPON_PULSE_LASER";
-	public static final String BEAM_LASER = "EQ_WEAPON_BEAM_LASER";
-	public static final String FUEL_SCOOP = "EQ_FUEL_SCOOPS";
-	public static final String ESCAPE_CAPSULE = "EQ_ESCAPE_POD";
-	public static final String ENERGY_BOMB = "EQ_ENERGY_BOMB";
-	public static final String EXTRA_ENERGY_UNIT = "EQ_ENERGY_UNIT";
-	public static final String DOCKING_COMPUTER = "EQ_DOCK_COMP";
-	public static final String GALACTIC_HYPERDRIVE = "EQ_GAL_DRIVE";
-	public static final String MINING_LASER = "EQ_WEAPON_MINING_LASER";
-	public static final String MILITARY_LASER = "EQ_WEAPON_MILITARY_LASER";
-	public static final String RETRO_ROCKETS = "EQ_RETRO_ROCKETS";
-	public static final String NAVAL_ENERGY_UNIT = "EQ_NAVAL_ENERGY_UNIT";
-	public static final String CLOAKING_DEVICE = "EQ_CLOAKING_DEVICE";
-	public static final String ECM_JAMMER = "EQ_ECM_JAMMER";
+export class EquipmentStore {
+    public static readonly FUEL = "EQ_FUEL";
+    public static readonly MISSILES = "EQ_MISSILE";
+    public static readonly LARGE_CARGO_BAY = "EQ_CARGO_BAY";
+    public static readonly ECM_SYSTEM = "EQ_ECM";
+    public static readonly PULSE_LASER = "EQ_WEAPON_PULSE_LASER";
+    public static readonly BEAM_LASER = "EQ_WEAPON_BEAM_LASER";
+    public static readonly FUEL_SCOOP = "EQ_FUEL_SCOOPS";
+    public static readonly ESCAPE_CAPSULE = "EQ_ESCAPE_POD";
+    public static readonly ENERGY_BOMB = "EQ_ENERGY_BOMB";
+    public static readonly EXTRA_ENERGY_UNIT = "EQ_ENERGY_UNIT";
+    public static readonly DOCKING_COMPUTER = "EQ_DOCK_COMP";
+    public static readonly GALACTIC_HYPERDRIVE = "EQ_GAL_DRIVE";
+    public static readonly MINING_LASER = "EQ_WEAPON_MINING_LASER";
+    public static readonly MILITARY_LASER = "EQ_WEAPON_MILITARY_LASER";
+    public static readonly RETRO_ROCKETS = "EQ_RETRO_ROCKETS";
+    public static readonly NAVAL_ENERGY_UNIT = "EQ_NAVAL_ENERGY_UNIT";
+    public static readonly CLOAKING_DEVICE = "EQ_CLOAKING_DEVICE";
+    public static readonly ECM_JAMMER = "EQ_ECM_JAMMER";
 
-	private static EquipmentStore instance;
-	private final List<Equipment> equipments = new ArrayList<>();
+    private static instance: EquipmentStore;
+    private readonly equipments: Equipment[] = [];
 
-	public static EquipmentStore get() {
-		if (instance == null) {
-			instance = new EquipmentStore();
-		}
-		return instance;
-	}
+    public static get(): EquipmentStore {
+        if (!EquipmentStore.instance) {
+            EquipmentStore.instance = new EquipmentStore();
+        }
+        return EquipmentStore.instance;
+    }
 
-	private EquipmentStore() {
-	}
+    private constructor() {
+    }
 
-	public void addEquipment(Equipment equipment) {
-		if (!equipments.contains(equipment)) {
-			equipments.add(equipment);
-		}
-	}
+    public addEquipment(equipment: Equipment): void {
+        if (!this.equipments.includes(equipment)) {
+            this.equipments.push(equipment);
+        }
+    }
 
-	public Equipment getEquipmentById(String name) {
-		return getEquipmentByHash(Equipment.getEquipmentId(name));
-	}
+    public getEquipmentById(name: string): Equipment {
+        return this.getEquipmentByHash(Equipment.getEquipmentId(name));
+    }
 
-	public Equipment getEquipmentByHash(int id) {
-		for(Equipment equipment : equipments) {
-			if (equipment.getId() == id) {
-				return equipment;
-			}
-		}
-		return null;
-	}
+    public getEquipmentByHash(id: number): Equipment {
+        for (const equipment of this.equipments) {
+            if (equipment.getId() === id) {
+                return equipment;
+            }
+        }
+        return null;
+    }
 
-	public Iterator<Equipment> getIterator() {
-		return equipments.iterator();
-	}
+    public getIterator(): IterableIterator<Equipment> {
+        return this.equipments.values();
+    }
 
-	public int getEquipmentCount() {
-		int count = 0;
-		for(Equipment equipment : equipments) {
-			if (equipment.allowToFit()) {
-				count++;
-			}
-		}
-		return count;
-		// From API 24
-		//return (int) equipments.stream().filter(Equipment::allowToFit).count();
-	}
+    public getEquipmentCount(): number {
+        return this.equipments.filter(equipment => equipment.allowToFit()).length;
+    }
 }

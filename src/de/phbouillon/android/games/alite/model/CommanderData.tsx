@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,56 +16,55 @@ package de.phbouillon.android.games.alite.model;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.File;
+import { Rating } from "./Rating";
 
-public class CommanderData {
-	private final String name;
-	private final String dockedSystem;
-	private final long gameTime;
-	private final int points;
-	private final Rating rating;
-	private final String fileName;
-	private final boolean autoSaved;
+export class CommanderData {
+    private readonly name: string;
+    private readonly dockedSystem: string;
+    private readonly gameTime: number;
+    private readonly points: number;
+    private readonly rating: Rating;
+    private readonly fileName: string;
+    private readonly autoSaved: boolean;
 
-	public static final String AUTO_SAVED_COMMANDER_FILENAME = "__autosave";
-	public static final String DIRECTORY_COMMANDER = "commanders" + File.separator;
+    public static readonly AUTO_SAVED_COMMANDER_FILENAME = "__autosave";
+    public static readonly DIRECTORY_COMMANDER = "commanders/";
 
-	public CommanderData(String name, String dockedSystem, long gameTime, int points, Rating rating, String fileName) {
-		this.name = name;
-		this.dockedSystem = dockedSystem;
-		this.gameTime = gameTime;
-		this.points = points;
-		this.rating = rating;
-		this.fileName = fileName;
-		autoSaved = fileName.contains(DIRECTORY_COMMANDER + AUTO_SAVED_COMMANDER_FILENAME);
-	}
+    constructor(name: string, dockedSystem: string, gameTime: number, points: number, rating: Rating, fileName: string) {
+        this.name = name;
+        this.dockedSystem = dockedSystem;
+        this.gameTime = gameTime;
+        this.points = points;
+        this.rating = rating;
+        this.fileName = fileName;
+        this.autoSaved = fileName.includes(CommanderData.DIRECTORY_COMMANDER + CommanderData.AUTO_SAVED_COMMANDER_FILENAME);
+    }
 
-	public String getName() {
-		return name;
-	}
+    public getName(): string {
+        return this.name;
+    }
 
-	public String getDockedSystem() {
-		return dockedSystem;
-	}
+    public getDockedSystem(): string {
+        return this.dockedSystem;
+    }
 
-	public long getGameTime() {
-		return gameTime;
-	}
+    public getGameTime(): number {
+        return this.gameTime;
+    }
 
-	public int getPoints() {
-		return points;
-	}
+    public getPoints(): number {
+        return this.points;
+    }
 
-	public Rating getRating() {
-		return rating;
-	}
+    public getRating(): Rating {
+        return this.rating;
+    }
 
-	public String getFileName() {
-		return fileName;
-	}
+    public getFileName(): string {
+        return this.fileName;
+    }
 
-	public boolean isAutoSaved() {
-		return autoSaved;
-	}
-
+    public isAutoSaved(): boolean {
+        return this.autoSaved;
+    }
 }

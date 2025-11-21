@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,27 +16,26 @@ package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.model.EquipmentStore;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.InGameManager;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.SpaceObjectTraverser;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
+import { EquipmentStore } from "../../../../../model/EquipmentStore";
+import { InGameManager } from "../../ingame/InGameManager";
+import { SpaceObjectTraverser } from "../../ingame/SpaceObjectTraverser";
+import { SpaceObject } from "../../objects/space/SpaceObject";
 
-public class EnergyBombTraverser implements SpaceObjectTraverser{
-	private static final long serialVersionUID = -9064469382296503087L;
-	private final InGameManager inGame;
+export class EnergyBombTraverser implements SpaceObjectTraverser {
+    private static readonly serialVersionUID = -9064469382296503087;
+    private readonly inGame: InGameManager;
 
-	EnergyBombTraverser(final InGameManager inGame) {
-		this.inGame = inGame;
-	}
+    constructor(inGame: InGameManager) {
+        this.inGame = inGame;
+    }
 
-	@Override
-	public boolean handle(SpaceObject so) {
-		if (so.isAffectedByEnergyBomb()) {
-			so.setHullStrength(0);
-			so.executeHit(inGame.getShip());
-			inGame.getLaserManager().explode(so);
-			inGame.computeScore(so, EquipmentStore.ENERGY_BOMB);
-		}
-		return false;
-	}
+    public handle(so: SpaceObject): boolean {
+        if (so.isAffectedByEnergyBomb()) {
+            so.setHullStrength(0);
+            so.executeHit(this.inGame.getShip());
+            this.inGame.getLaserManager().explode(so);
+            this.inGame.computeScore(so, EquipmentStore.ENERGY_BOMB);
+        }
+        return false;
+    }
 }

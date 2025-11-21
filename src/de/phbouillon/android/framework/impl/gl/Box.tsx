@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl.gl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,96 +16,102 @@ package de.phbouillon.android.framework.impl.gl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.nio.FloatBuffer;
+import { Vector3f } from "../../../math/Vector3f";
+import { Alite } from "../../../games/alite/Alite";
+import { GlUtils } from "./GlUtils";
+import { AliteLog } from "../../../games/alite/AliteLog";
 
-import android.opengl.GLES11;
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.Alite;
+export class Box {
+    protected vertexBuffer: Float32Array;
+    protected texCoordBuffer: Float32Array;
+    private readonly wh: number;
+    private readonly hh: number;
+    private readonly dh: number;
+    private r = 1.0;
+    private g = 1.0;
+    private b = 1.0;
+    private a = 1.0;
+    private vertices: number[];
 
-public class Box {
-	protected FloatBuffer vertexBuffer;
-	protected FloatBuffer texCoordBuffer;
-	private final float wh, hh, dh;
-	private float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
-	private float [] vertices;
+    constructor(width: number, height?: number, depth?: number) {
+        if (height === undefined) { // Box(size) constructor
+            const sh = width / 2;
+            this.wh = sh;
+            this.dh = sh;
+            this.hh = sh;
+        } else { // Box(width, height, depth) constructor
+            this.wh = width / 2;
+            this.hh = height / 2;
+            this.dh = depth / 2;
+        }
+        this.initializeVertices();
+    }
 
-	private FloatBuffer createFaces(float [] vertexData, int ...indices) {
-		vertices = new float[indices.length * 3];
+    private initializeVertices(): void {
+        const vertexData = [
+            -this.wh, -this.hh, -this.dh, this.wh, -this.hh, -this.dh, this.wh, this.hh, -this.dh, -this.wh, this.hh, -this.dh,
+            -this.wh, -this.hh, this.dh, this.wh, -this.hh, this.dh, this.wh, this.hh, this.dh, -this.wh, this.hh, this.dh,
+        ];
 
-		int offset = 0;
-		for (int i: indices) {
-			vertices[offset]     = vertexData[i * 3];
-			vertices[offset + 1] = vertexData[i * 3 + 1];
-			vertices[offset + 2] = -vertexData[i * 3 + 2];
-			offset += 3;
-		}
+        this.createFaces(vertexData,
+            2, 1, 0, 0, 3, 2, 0, 1, 4, 1, 5, 4, 1, 2, 5, 2, 6, 5, 4, 5, 6, 6, 7, 4, 4, 7, 0, 7, 3, 0, 2, 3, 7, 7, 6, 2);
+    }
 
-		return GlUtils.toFloatBufferPositionZero(vertices);
-	}
 
-	public float [] getVertices() {
-		return vertices;
-	}
+    private createFaces(vertexData: number[], ...indices: number[]): Float32Array {
+        this.vertices = new Array(indices.length * 3);
 
-	public Box(float size) {
-		float sh = size / 2;
-		wh = sh;
-		dh = sh;
-		hh = sh;
-	    float [] vertexData = new float [] {
-	    	-sh, -sh, -sh,    sh, -sh, -sh,   sh, sh, -sh,  -sh, sh, -sh,
-	    	-sh, -sh,  sh,    sh, -sh,  sh,   sh, sh,  sh,  -sh, sh,  sh,
-	    };
+        let offset = 0;
+        for (const i of indices) {
+            this.vertices[offset] = vertexData[i * 3];
+            this.vertices[offset + 1] = vertexData[i * 3 + 1];
+            this.vertices[offset + 2] = -vertexData[i * 3 + 2];
+            offset += 3;
+        }
 
-		createFaces(vertexData,
-                2, 1, 0, 0, 3, 2, 0, 1, 4, 1, 5, 4, 1, 2, 5, 2, 6, 5, 4, 5, 6, 6, 7, 4, 4, 7, 0, 7, 3, 0, 2, 3, 7, 7, 6, 2);
-	}
+        this.vertexBuffer = GlUtils.toFloatBufferPositionZero(this.vertices);
+        return this.vertexBuffer;
+    }
 
-	public Box(float width, float height, float depth) {
-		wh = width / 2;
-		hh = height / 2;
-		dh = depth / 2;
+    public getVertices(): number[] {
+        return this.vertices;
+    }
 
-	    float [] vertexData = new float [] {
-	    	-wh, -hh, -dh,    wh, -hh, -dh,   wh, hh, -dh,  -wh, hh, -dh,
-	    	-wh, -hh,  dh,    wh, -hh,  dh,   wh, hh,  dh,  -wh, hh,  dh,
-	    };
+    public setColor(r: number, g: number, b: number, a: number): void {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.a = a;
+    }
 
-		createFaces(vertexData,
-                2, 1, 0, 0, 3, 2, 0, 1, 4, 1, 5, 4, 1, 2, 5, 2, 6, 5, 4, 5, 6, 6, 7, 4, 4, 7, 0, 7, 3, 0, 2, 3, 7, 7, 6, 2);
-	}
+    public setAlpha(a: number): void {
+        this.a = a;
+    }
 
-	public void setColor(float r, float g, float b, float a) {
-		this.r = r;
-		this.g = g;
-		this.b = b;
-		this.a = a;
-	}
+    public setFarPlane(far: Vector3f): void {
+        const vertexData = [
+            -this.wh, -this.hh, -this.dh, this.wh, -this.hh, -this.dh, this.wh, this.hh, -this.dh, -this.wh, this.hh, -this.dh,
+            far.x - this.wh, far.y - this.hh, far.z, far.x + this.wh, far.y - this.hh, far.z, far.x + this.wh, far.y + this.hh, far.z, far.x - this.wh, far.y + this.hh, far.z
+        ];
 
-	public void setAlpha(float a) {
-		this.a = a;
-	}
+        this.createFaces(vertexData,
+            2, 1, 0, 0, 3, 2, 0, 1, 4, 1, 5, 4, 1, 2, 5, 2, 6, 5, 4, 5, 6, 6, 7, 4, 4, 7, 0, 7, 3, 0, 2, 3, 7, 7, 6, 2);
+    }
 
-	public void setFarPlane(Vector3f far) {
-		float [] vertexData = new float [] {
-					-wh, -hh, -dh,    wh, -hh, -dh,   wh, hh, -dh,  -wh, hh, -dh,
-					far.x - wh, far.y - hh, far.z,   far.x + wh, far.y - hh, far.z,   far.x + wh, far.y + hh, far.z,   far.x - wh, far.y + hh, far.z
-		};
-
-		createFaces(vertexData,
-                2, 1, 0, 0, 3, 2, 0, 1, 4, 1, 5, 4, 1, 2, 5, 2, 6, 5, 4, 5, 6, 6, 7, 4, 4, 7, 0, 7, 3, 0, 2, 3, 7, 7, 6, 2);
-	}
-
-	public void render() {
-		Alite.get().getTextureManager().setTexture(null);
-		GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, vertexBuffer);
-		GLES11.glColor4f(r, g, b, a);
-		GLES11.glDisable(GLES11.GL_LIGHTING);
-		GLES11.glDrawArrays(GLES11.GL_TRIANGLES, 0, 36);
-		GLES11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		GLES11.glEnable(GLES11.GL_LIGHTING);
-		GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-	}
+    public render(): void {
+        // All of the following are Android GLES11 calls and need to be replaced with WebGL.
+        /*
+        Alite.getInstance().getTextureManager().setTexture(null);
+        GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
+        GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
+        GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, this.vertexBuffer);
+        GLES11.glColor4f(this.r, this.g, this.b, this.a);
+        GLES11.glDisable(GLES11.GL_LIGHTING);
+        GLES11.glDrawArrays(GLES11.GL_TRIANGLES, 0, 36);
+        GLES11.glColor4f(1.0, 1.0, 1.0, 1.0);
+        GLES11.glEnable(GLES11.GL_LIGHTING);
+        GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
+        */
+        AliteLog.d("Box", "WebGL rendering logic needed here.");
+    }
 }

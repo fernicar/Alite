@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,351 +16,202 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.opengles.GL10;
+import { Audio } from "../Audio";
+import { FileIO } from "../FileIO";
+import { Game } from "../Game";
+import { Graphics } from "../Graphics";
+import { Input } from "../Input";
+import { Screen } from "../Screen";
+import { Texture } from "../Texture";
+import { TimeFactorChangeListener } from "../TimeFactorChangeListener";
+import { Timer } from "../Timer";
+import { Rect } from "../Rect";
+import { AliteLog } from "../../games/alite/AliteLog";
+import { Settings } from "../../games/alite/Settings";
+import { FatalExceptionScreen } from "../../games/alite/screens/canvas/FatalExceptionScreen";
+import { TextureManager } from "../../games/alite/screens/opengl/TextureManager";
+import { AndroidAudio } from "./AndroidAudio";
+import { AndroidGraphics } from "./AndroidGraphics";
+import { AndroidInput } from "./AndroidInput";
+import { GlUtils } from "./gl/GlUtils";
 
-import android.app.Activity;
-import android.content.res.Configuration;
-import android.graphics.Rect;
-import android.opengl.GLES11;
-import android.opengl.GLSurfaceView;
-import android.opengl.GLSurfaceView.Renderer;
-import android.os.Bundle;
-import android.util.DisplayMetrics;
-import android.view.Display;
-import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import de.phbouillon.android.framework.*;
-import de.phbouillon.android.framework.impl.gl.GlUtils;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.screens.canvas.FatalExceptionScreen;
-import de.phbouillon.android.games.alite.screens.opengl.TextureManager;
+enum GLGameState {
+    Initialized,
+    Running,
+    Paused,
+    Finished,
+    Idle
+}
 
-public abstract class AndroidGame extends Activity implements Game, Renderer {
-	enum GLGameState {
-		Initialized,
-		Running,
-		Paused,
-		Finished,
-		Idle
-	}
+export abstract class AndroidGame implements Game {
+    public static resetting = false;
+    public static fps: number;
+    public static scaleFactor: number;
 
-	public static boolean resetting = false;
+    private glView: HTMLCanvasElement;
+    private graphics: Graphics;
+    private audio: Audio;
+    private input: Input;
+    private fileIO: FileIO;
+    private screen: Screen;
+    private readonly targetHeight: number;
+    private readonly targetWidth: number;
+    private deviceHeight: number;
+    private deviceWidth: number;
+    private state = GLGameState.Initialized;
+    private ticker: Timer;
+    private scheduler: Timer;
+    private frames = 0;
+    private timeFactor = 1;
+    private textureManager: Texture;
+    private fatalException: FatalExceptionScreen = null;
+    private timeFactorChangeListener: TimeFactorChangeListener = null;
 
-	private GLSurfaceView glView;
-	private Graphics graphics;
-	private Audio audio;
-	private Input input;
-	private FileIO fileIO;
-	private Screen screen;
-	private final int targetHeight;
-	private final int targetWidth;
-	private int deviceHeight;
-	private int deviceWidth;
-	private GLGameState state = GLGameState.Initialized;
-	private Timer ticker;
-	private Timer scheduler;
-	private int frames = 0;
-	private int timeFactor = 1;
-	public static float fps;
-	public static float scaleFactor;
-	private Texture textureManager;
-	private FatalExceptionScreen fatalException = null;
-	private TimeFactorChangeListener timeFactorChangeListener = null;
+    constructor(targetWidth: number, targetHeight: number) {
+        this.targetWidth = targetWidth;
+        this.targetHeight = targetHeight;
+        this.textureManager = this.getTextureManager();
 
-	public AndroidGame(int targetWidth, int targetHeight) {
-		this.targetHeight = targetHeight;
-		this.targetWidth = targetWidth;
-		textureManager = getTextureManager();
-	}
+        // Basic setup for a web environment
+        this.glView = document.createElement('canvas');
+        document.body.appendChild(this.glView);
+        this.getDisplaySize();
+        this.glView.width = this.deviceWidth;
+        this.glView.height = this.deviceHeight;
 
-	public void setTimeFactorChangeListener(TimeFactorChangeListener tfl) {
-		timeFactorChangeListener = tfl;
-	}
+        this.audio = new AndroidAudio(this, this.getFileIO());
+        this.createInputIfNecessary();
 
-	public Texture getTextureManager() {
-		if (textureManager == null) {
-			textureManager = new TextureManager(this);
-		}
-		return textureManager;
-	}
+        // Start the game loop
+        this.ticker = new Timer();
+        this.scheduler = new Timer().setAutoReset();
+        this.onSurfaceCreated();
+        requestAnimationFrame(this.onDrawFrame.bind(this));
+    }
 
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-				WindowManager.LayoutParams.FLAG_FULLSCREEN);
-		getDisplaySize();
-		glView = new GLSurfaceView(this);
-		glView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
-		glView.setRenderer(this);
-		AliteLog.d("AndroidGame", "Width/Height of Device: " + deviceWidth + ", " + deviceHeight);
-		audio = new AndroidAudio(this, getFileIO());
-		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		setContentView(glView);
-		if (getInput() != null) {
-			input.dispose();
-		}
-		createInputIfNecessary();
-	}
+    private getDisplaySize() {
+        this.deviceWidth = window.innerWidth;
+        this.deviceHeight = window.innerHeight;
+    }
 
-	private void getDisplaySize() {
-		Display display = getWindowManager().getDefaultDisplay();
-		DisplayMetrics metrics = new DisplayMetrics();
-		if (!Settings.navButtonsVisible) {
-			display.getRealMetrics(metrics);
-		} else {
-			display.getMetrics(metrics);
-		}
-		deviceWidth = metrics.widthPixels;
-		deviceHeight = metrics.heightPixels;
-	}
+    protected createInputIfNecessary() {
+        if (!this.input || this.input.isDisposed()) {
+            const aspect = this.calculateTargetRect(new Rect(0, 0, this.deviceWidth, this.deviceHeight));
+            this.input = new AndroidInput(this, this.glView, this.targetWidth / aspect.width(), this.targetHeight / aspect.height(), aspect.left, aspect.top);
+        }
+    }
 
-	protected void createInputIfNecessary() {
-		if (getInput() == null || input.isDisposed()) {
-			boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-			int frameBufferWidth = isLandscape ? targetWidth : targetHeight;
-			int frameBufferHeight = isLandscape ? targetHeight : targetWidth;
-			Rect aspect = calculateTargetRect(new Rect(0, 0, deviceWidth, deviceHeight));
-			input = new AndroidInput(this, glView, frameBufferWidth / (float) aspect.width(),
-				frameBufferHeight / (float) aspect.height(), aspect.left, aspect.top);
-			AliteLog.d("Calculating Sizes", "Sizes in OC: Width: " + deviceWidth + ", Height: " + deviceHeight + ", Aspect: " + aspect.left + ", " + aspect.top + ", " + aspect.right + ", " + aspect.bottom);
-		}
-	}
 
-	@Override
-	public float getDeviceRatio() {
-		return deviceWidth / (float) deviceHeight;
-	}
+    public onSurfaceCreated(): void {
+        AliteLog.d("AndroidGame", `onSurfaceCreated is called on ${this.screen}`);
+        this.getDisplaySize();
+        // Initialize WebGL context here...
 
-	@Override
-	public void onResume() {
-		super.onResume();
-		if (glView != null) {
-			glView.onResume();
-		}
-		if (screen != null) {
-			screen.resume();
-		}
-		state = GLGameState.Running;
-	}
+        this.screen = this.getStartScreen();
+        this.screen.loadAssets();
+        this.screen.activate();
+        this.screen.resume();
+    }
 
-	@Override
-	public void onPause() {
-		super.onPause();
-		glView.onPause();
-		SoundManager.stopAll();
-		if (screen != null) {
-			if (fatalException == null) {
-				if (resetting) {
-					resetting = false;
-				} else {
-					saveState(getCurrentScreen());
-				}
-			}
-			screen.pause();
-		}
+     public onDrawFrame(): void {
+        requestAnimationFrame(this.onDrawFrame.bind(this));
 
-		fatalException = null;
-		if (isFinishing()) {
-			state = GLGameState.Finished;
-		} else {
-			state = GLGameState.Paused;
-		}
-		if (isFinishing() && screen != null) {
-			screen.dispose();
-			screen = null;
-		}
+        const now = performance.now();
+        const deltaTime = this.ticker ? (now - this.ticker.getStartTime()) / 1000 : 0.016;
+        if(this.ticker) this.ticker.reset(); else this.ticker = new Timer();
 
-	}
+        if (this.state === GLGameState.Running) {
+            this.screen.update(deltaTime);
+            if (!this.screen.isDisposed()) {
+                this.screen.present(deltaTime);
+            }
+            this.screen.postPresent(deltaTime);
+            this.screen.renderNavigationBar();
+            this.screen.postNavigationRender(deltaTime);
 
-	protected abstract void saveState(Screen screen);
+            this.frames++;
+            if (Settings.displayFrameRate && this.scheduler.getPassedSeconds() >= 1) {
+                AndroidGame.fps = this.frames;
+                this.frames = 0;
+            }
+        }
+        // ... handle other states ...
+    }
 
-	@Override
-	public Input getInput() {
-		return input;
-	}
+    protected abstract getStartScreen(): Screen;
+    protected abstract saveState(screen: Screen): void;
 
-	@Override
-	public FileIO getFileIO() {
-		if (fileIO == null) {
-			fileIO = new AndroidFileIO(this);
-		}
-		return fileIO;
-	}
+    public setTimeFactorChangeListener(tfl: TimeFactorChangeListener) { this.timeFactorChangeListener = tfl; }
+    public getTextureManager(): Texture {
+        if (!this.textureManager) this.textureManager = new TextureManager(this);
+        return this.textureManager;
+    }
+    public getDeviceRatio(): number { return this.deviceWidth / this.deviceHeight; }
+    public onResume(): void { /* Logic for resuming the game */ this.state = GLGameState.Running; }
+    public onPause(): void { /* Logic for pausing the game */ this.state = GLGameState.Paused; }
+    public getInput(): Input { return this.input; }
+    public getFileIO(): FileIO {
+        if (!this.fileIO) this.fileIO = {} as FileIO; // Stub: new AndroidFileIO(this)
+        return this.fileIO;
+    }
 
-	@Override
-	public Graphics getGraphics() {
-		if (graphics == null) {
-			Rect aspect = calculateTargetRect(new Rect(0, 0, deviceWidth, deviceHeight));
-			AliteLog.d("Recalculating Sizes", "Sizes in OSC: Width: " + deviceWidth + ", Height: " +
-				deviceHeight + ", Aspect: " + aspect.left + ", " + aspect.top + ", " + aspect.right + ", " + aspect.bottom);
-			graphics = new AndroidGraphics(fileIO, scaleFactor, aspect, textureManager);
-		}
-		return graphics;
-	}
+    public getGraphics(): Graphics {
+        if (!this.graphics) {
+            const aspect = this.calculateTargetRect(new Rect(0, 0, this.deviceWidth, this.deviceHeight));
+            this.graphics = new AndroidGraphics(this.getFileIO(), AndroidGame.scaleFactor, aspect, this.textureManager);
+        }
+        return this.graphics;
+    }
 
-	@Override
-	public Audio getAudio() {
-		return audio;
-	}
+    public getAudio(): Audio { return this.audio; }
 
-	@Override
-	public synchronized void setScreen(Screen screen) {
-		if (screen == null) {
-			throw new IllegalArgumentException("Screen must not be null");
-		}
-		if (this.screen != null) {
-			this.screen.pause();
-		}
-		textureManager.clear();
+    public setScreen(screen: Screen): void {
+        if (!screen) throw new Error("Screen must not be null");
+        if (this.screen) this.screen.pause();
+        this.textureManager.clear();
 
-		this.screen = null;
-		screen.loadAssets();
-		this.screen = screen;
-		screen.activate();
-		screen.resume();
-		screen.update(0);
-		graphics.setClip(-1, -1, -1, -1);
-	}
+        this.screen = screen;
+        screen.loadAssets();
+        screen.activate();
+        screen.resume();
+        screen.update(0);
+        if (this.graphics) this.graphics.setClip(-1, -1, -1, -1);
+    }
 
-	@Override
-	public Screen getCurrentScreen() {
-		return screen;
-	}
+    public getCurrentScreen(): Screen { return this.screen; }
+    protected getCurrentView(): HTMLElement { return this.glView; }
 
-	protected View getCurrentView() {
-		return glView;
-	}
+    private calculateTargetRect(rect: Rect): Rect {
+        const width = rect.width();
+        const height = rect.height();
+        const xFactor = this.targetWidth / width;
+        const yFactor = this.targetHeight / height;
 
-	private Rect calculateTargetRect(Rect rect) {
-		int width = rect.right - rect.left; // "right" and "left" aren't named correctly here; right - left yields the width!
-		int height = rect.bottom - rect.top; // No adding of 1 required -- same is true for height...
-		float xFactor = targetWidth / (float) width;
-		float yFactor = targetHeight / (float) height;
+        let x1, y1, x2, y2, finalWidth, finalHeight;
+        if (xFactor > yFactor) {
+            finalWidth = width;
+            finalHeight = Math.floor(this.targetHeight / xFactor);
+            x1 = rect.left;
+            y1 = rect.top + Math.floor((height - finalHeight) / 2);
+            AndroidGame.scaleFactor = 1.0 / xFactor;
+        } else {
+            finalHeight = height;
+            finalWidth = Math.floor(this.targetWidth / yFactor);
+            x1 = rect.left + Math.floor((width - finalWidth) / 2);
+            y1 = rect.top;
+            AndroidGame.scaleFactor = 1.0 / yFactor;
+        }
+        x2 = x1 + finalWidth;
+        y2 = y1 + finalHeight;
 
-		AliteLog.d("[ALITE-CTR]", "Rect: " + rect.left + ", " + rect.top + ", " + rect.right + ", " + rect.bottom);
-		AliteLog.d("[ALITE-CTR]", "Width: " + width + ", Height: " + height);
-		AliteLog.d("[ALITE-CTR]", "TargetWidth: " + targetWidth + ", targetHeight: " + targetHeight);
-		AliteLog.d("[ALITE-CTR]", "Factors: " + xFactor + ", " + yFactor);
+        return new Rect(x1, y1, x2, y2);
+    }
 
-		int x1;
-		int y1;
-		int x2;
-		int y2;
-		if (xFactor > yFactor) {
-			x1 = rect.left;
-			x2 = rect.right;
-			height = (int) (targetHeight / xFactor);
-			y1 = rect.top + (rect.height() - height) >> 1;
-			y2 = y1 + height;
-			scaleFactor = 1.0f / xFactor;
-		} else {
-			y1 = rect.top;
-			y2 = rect.bottom;
-			width = (int) (targetWidth / yFactor);
-			x1 = rect.left + (rect.width() - width) >> 1;
-			x2 = x1 + width;
-			scaleFactor = 1.0f / yFactor;
-		}
-		return new Rect(x1, y1, x2, y2);
-	}
-
-	@Override
-	public void onSurfaceCreated(GL10 unused, EGLConfig config) {
-		AliteLog.debugGlVendorData();
-		AliteLog.d("AndroidGame", "onSurfaceCreated is called on " + screen);
-		getDisplaySize();
-
-		GLES11.glEnable(GLES11.GL_TEXTURE_2D);
-		getGraphics();
-		GlUtils.setViewport(this);
-		GlUtils.gluPerspective(this, 45.0f, 1.0f, 900000.0f);
-
-		screen = getStartScreen();
-//		glView.onResume();
-		afterSurfaceCreated();
-
-		AliteLog.d("AndroidGame", "Calling activation on " + screen.getClass().getName());
-		screen.loadAssets();
-		screen.activate();
-		screen.resume();
-		ticker = new Timer();
-		scheduler = new Timer().setAutoReset();
-	}
-
-	@Override
-	public void onSurfaceChanged(GL10 unused, int width, int height) {
-	}
-
-	private void drawFatalException() {
-		try {
-			if (fatalException != null) {
-				fatalException.update(0);
-				if (!fatalException.isDisposed()) {
-					fatalException.present(0);
-				}
-			}
-		} catch (Throwable t) {
-			throw new RuntimeException(AliteConfig.GAME_NAME + " has ended with an uncaught exception while trying to process an uncaught exception.", t);
-		}
-	}
-
-	@Override
-	public void onDrawFrame(GL10 unused) {
-		if (fatalException != null) {
-			drawFatalException();
-			return;
-		}
-		try {
-			GLGameState state = this.state;
-			while (!ticker.hasPassedMillis(33));
-			if (state == GLGameState.Running && getCurrentView() == glView) {
-				float deltaTime = ticker.getPassedSeconds();
-				ticker.reset();
-				screen.update(deltaTime);
-				if (!screen.isDisposed()) {
-					screen.present(deltaTime);
-				}
-				screen.postPresent(deltaTime);
-				screen.renderNavigationBar();
-				screen.postNavigationRender(deltaTime);
-				frames++;
-				if (Settings.displayFrameRate && scheduler.getPassedSeconds() >= 1) {
-					fps = frames;
-					frames = 0;
-				}
-			}
-			if (state == GLGameState.Paused) {
-				screen.pause();
-				this.state = GLGameState.Idle;
-			}
-			if (state == GLGameState.Finished) {
-				screen.pause();
-				screen.dispose();
-				this.state = GLGameState.Idle;
-			}
-		} catch (Throwable t) {
-			AliteLog.e("Uncaught Exception", "Alite has ended with an uncaught exception.", t);
-			fileIO.deleteFile(AliteStartManager.ALITE_STATE_FILE);
-			fatalException = new FatalExceptionScreen(t);
-			fatalException.activate();
-		}
-	}
-
-	public void afterSurfaceCreated() {
-	}
-
-	public int getTimeFactor() {
-		return timeFactor;
-	}
-
-	public void setTimeFactor(int tf) {
-		if (timeFactorChangeListener != null && timeFactor != tf) {
-			timeFactorChangeListener.timeFactorChanged(timeFactor, tf);
-		}
-		timeFactor = tf;
-	}
+    public getTimeFactor(): number { return this.timeFactor; }
+    public setTimeFactor(tf: number): void {
+        if (this.timeFactorChangeListener && this.timeFactor !== tf) {
+            this.timeFactorChangeListener.timeFactorChanged(this.timeFactor, tf);
+        }
+        this.timeFactor = tf;
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,36 +16,33 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+export abstract class Screen {
+    private disposed: boolean;
 
-public abstract class Screen {
-	private boolean disposed;
+    public isDisposed(): boolean {
+        return this.disposed;
+    }
 
-	public final boolean isDisposed() {
-		return disposed;
-	}
+    public loadAssets(): void {
+        this.disposed = false;
+    }
 
-	public void loadAssets() {
-		disposed = false;
-	}
+    public abstract activate(): void;
+    public abstract resume(): void;
+    public abstract update(deltaTime: number): void;
+    public abstract present(deltaTime: number): void;
+    public abstract postPresent(deltaTime: number): void;
+    public abstract renderNavigationBar(): void;
+    public abstract postNavigationRender(deltaTime: number): void;
+    public abstract pause(): void;
 
-	public abstract void activate();
-	public abstract void resume();
-	public abstract void update(float deltaTime);
-	public abstract void present(float deltaTime);
-	public abstract void postPresent(float deltaTime);
-	public abstract void renderNavigationBar();
-	public abstract void postNavigationRender(float deltaTime);
-	public abstract void pause();
+    public dispose(): void {
+        this.disposed = true;
+    }
 
-	public void dispose() {
-		disposed = true;
-	}
+    public abstract postScreenChange(): void;
 
-	public abstract void postScreenChange();
-
-	public abstract int getScreenCode();
-	public void saveScreenState(DataOutputStream dos) throws IOException {
-	}
+    public abstract getScreenCode(): number;
+    public saveScreenState(dos: any): void { // DataOutputStream equivalent in TS/JS
+    }
 }

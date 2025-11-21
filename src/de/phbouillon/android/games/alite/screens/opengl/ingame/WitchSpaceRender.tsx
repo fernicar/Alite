@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,69 +16,71 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { IMethodHook } from "../../../../../framework/IMethodHook";
+import { Alite } from "../../../Alite";
+import { Assets } from "../../../Assets";
+import { L } from "../../../L";
+import { SoundManager } from "../../../SoundManager";
+import { Rating } from "../../../model/Rating";
+import { InGameManager } from "./InGameManager";
+import { TimedEvent } from "./TimedEvent";
 
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.model.Rating;
+export class WitchSpaceRender {
+    private static readonly serialVersionUID = -1502376043768839904;
 
-public class WitchSpaceRender implements Serializable {
-	private static final long serialVersionUID = -1502376043768839904L;
+    private readonly inGame: InGameManager;
+    private witchSpaceKillCounter = 0;
+    private driveRepairedMessage: TimedEvent = null;
+    private hyperdriveMalfunction = false;
 
-	private final InGameManager inGame;
-	private int witchSpaceKillCounter = 0;
-	private TimedEvent driveRepairedMessage = null;
-	private boolean hyperdriveMalfunction = false;
+    constructor(inGame: InGameManager) {
+        this.inGame = inGame;
+    }
 
-	WitchSpaceRender(InGameManager inGame) {
-		this.inGame = inGame;
-	}
+    increaseWitchSpaceKillCounter(): void {
+        this.witchSpaceKillCounter++;
+        const playerRating = Alite.getInstance().getPlayer().getRating();
+        if (this.driveRepairedMessage != null || !this.hyperdriveMalfunction ||
+            this.witchSpaceKillCounter < Math.min(8, playerRating + 1)) {
+            return;
+        }
+        this.driveRepairedMessage = new TimedEvent((Math.random() * 5 + 3) * 1_000_000_000);
+        this.inGame.addTimedEvent(this.driveRepairedMessage.addAlarmEvent({
+            execute: (deltaTime: number) => {
+                this.hyperdriveMalfunction = false;
+                this.inGame.getMessage().repeatText(L.string("com_hyperdrive_repaired"), 1, 4, 1);
+                SoundManager.play(Assets.com_hyperdriveRepaired);
+                this.driveRepairedMessage.remove();
+            }
+        }));
+    }
 
-	void increaseWitchSpaceKillCounter() {
-		witchSpaceKillCounter++;
-		if (driveRepairedMessage != null || !hyperdriveMalfunction ||
-				witchSpaceKillCounter < Math.min(8, Alite.get().getPlayer().getRating().ordinal() + 1)) {
-			return;
-		}
-		driveRepairedMessage = new TimedEvent((long) ((Math.random() * 5 + 3) * 1000000000L));
-		inGame.addTimedEvent(driveRepairedMessage.addAlarmEvent(new IMethodHook() {
-			private static final long serialVersionUID = -5599485138177057364L;
+    isHyperdriveMalfunction(): boolean {
+        return this.hyperdriveMalfunction;
+    }
 
-			@Override
-			public void execute(float deltaTime) {
-				hyperdriveMalfunction = false;
-				inGame.getMessage().repeatText(L.string(R.string.com_hyperdrive_repaired), 1, 4, 1);
-				SoundManager.play(Assets.com_hyperdriveRepaired);
-				driveRepairedMessage.remove();
-			}
-		}));
-	}
+    public getWitchSpaceKillCounter(): number {
+        return this.witchSpaceKillCounter;
+    }
 
-	boolean isHyperdriveMalfunction() {
-		return hyperdriveMalfunction;
-	}
-
-	public int getWitchSpaceKillCounter() {
-		return witchSpaceKillCounter;
-	}
-
-	void enterWitchSpace() {
-		witchSpaceKillCounter = 0;
-		Alite.get().getPlayer().setHyperspaceSystem(null);
-		hyperdriveMalfunction = true;
-		if (inGame.getHud() != null) {
-			inGame.getHud().setWitchSpace();
-		}
-		inGame.getMessage().repeatText(L.string(R.string.com_hyperdrive_malfunction), 1, 4, 1);
-		SoundManager.play(Assets.com_hyperdriveMalfunction);
-		int attackers = (int) (Math.random() * (Alite.get().getPlayer().getRating().ordinal() - Rating.AVERAGE.ordinal()));
-		if (attackers < 1) {
-			attackers = 1;
-		} else if (attackers > 4) {
-			attackers = 4;
-		}
-		for (int i = 0; i < attackers; i++) {
-			inGame.getSpawnManager().spawnThargoidInWitchSpace();
-		}
-	}
+    enterWitchSpace(): void {
+        this.witchSpaceKillCounter = 0;
+        Alite.getInstance().getPlayer().setHyperspaceSystem(null);
+        this.hyperdriveMalfunction = true;
+        if (this.inGame.getHud() != null) {
+            this.inGame.getHud().setWitchSpace();
+        }
+        this.inGame.getMessage().repeatText(L.string("com_hyperdrive_malfunction"), 1, 4, 1);
+        SoundManager.play(Assets.com_hyperdriveMalfunction);
+        const playerRating = Alite.getInstance().getPlayer().getRating();
+        let attackers = Math.floor(Math.random() * (playerRating - Rating.AVERAGE));
+        if (attackers < 1) {
+            attackers = 1;
+        } else if (attackers > 4) {
+            attackers = 4;
+        }
+        for (let i = 0; i < attackers; i++) {
+            this.inGame.getSpawnManager().spawnThargoidInWitchSpace();
+        }
+    }
 }

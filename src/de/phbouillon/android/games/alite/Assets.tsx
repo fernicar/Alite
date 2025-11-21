@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,101 +16,97 @@ package de.phbouillon.android.games.alite;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Music;
-import de.phbouillon.android.framework.Pixmap;
-import de.phbouillon.android.framework.Sound;
-import de.phbouillon.android.framework.impl.gl.font.GLText;
+import { Music } from "../framework/Music";
+import { Pixmap } from "../framework/Pixmap";
+import { Sound } from "../framework/Sound";
+import { GLText } from "../framework/impl/gl/font/GLText";
+import { Alite } from "./Alite";
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
+export class Assets {
+    public static readonly DIRECTORY_SOUND = "sound/";
+    private static readonly DIRECTORY_SOUND_COMPUTER = Assets.DIRECTORY_SOUND + "computer/";
 
-public class Assets {
-	public static final String DIRECTORY_SOUND = "sound" + File.separatorChar;
-	private static final String DIRECTORY_SOUND_COMPUTER = DIRECTORY_SOUND + "computer" + File.separatorChar;
+    public static launchIcon: Pixmap;
+    public static statusIcon: Pixmap;
+    public static buyIcon: Pixmap;
+    public static inventoryIcon: Pixmap;
+    public static equipIcon: Pixmap;
+    public static galaxyIcon: Pixmap;
+    public static localIcon: Pixmap;
+    public static planetIcon: Pixmap;
+    public static diskIcon: Pixmap;
+    public static achievementsIcon: Pixmap;
+    public static optionsIcon: Pixmap;
+    public static academyIcon: Pixmap;
+    public static libraryIcon: Pixmap;
+    public static hackerIcon: Pixmap;
+    public static quitIcon: Pixmap;
+    public static aliteLogoSmall: Pixmap;
 
-	public static Pixmap launchIcon;
-	public static Pixmap statusIcon;
-	public static Pixmap buyIcon;
-	public static Pixmap inventoryIcon;
-	public static Pixmap equipIcon;
-	public static Pixmap galaxyIcon;
-	public static Pixmap localIcon;
-	public static Pixmap planetIcon;
-	public static Pixmap diskIcon;
-	public static Pixmap achievementsIcon;
-	public static Pixmap optionsIcon;
-	public static Pixmap academyIcon;
-	public static Pixmap libraryIcon;
-	public static Pixmap hackerIcon;
-	public static Pixmap quitIcon;
-	public static Pixmap aliteLogoSmall;
+    public static yesIcon: Pixmap;
+    public static noIcon: Pixmap;
 
-	public static Pixmap yesIcon;
-	public static Pixmap noIcon;
+    public static regularFont: GLText;
+    public static boldFont: GLText;
+    public static italicFont: GLText;
+    public static boldItalicFont: GLText;
+    public static titleFont: GLText;
+    public static smallFont: GLText;
 
-	public static GLText regularFont;
-	public static GLText boldFont;
-	public static GLText italicFont;
-	public static GLText boldItalicFont;
-	public static GLText titleFont;
-	public static GLText smallFont;
+    public static com_aftShieldHasFailed: Sound;
+    public static com_frontShieldHasFailed: Sound;
+    public static com_conditionRed: Sound;
+    public static com_dockingComputerEngaged: Sound;
+    public static com_dockingComputerDisengaged: Sound;
+    public static com_hyperdriveMalfunction: Sound;
+    public static com_hyperdriveRepaired: Sound;
+    public static com_incomingMissile: Sound;
+    public static com_laserTemperatureCritical: Sound;
+    public static com_cabinTemperatureCritical: Sound;
+    public static com_targetDestroyed: Sound;
+    public static com_fuelSystemMalfunction: Sound;
+    public static com_accessDeclined: Sound;
+    public static com_escapeMalfunction: Sound;
+    public static com_lostCargo: Sound;
+    public static com_launch_area_violation_1st: Sound;
+    public static com_launch_area_violation_2nd: Sound;
+    public static com_launch_area_violation_3rd: Sound;
 
-	public static Sound com_aftShieldHasFailed;
-	public static Sound com_frontShieldHasFailed;
-	public static Sound com_conditionRed;
-	public static Sound com_dockingComputerEngaged;
-	public static Sound com_dockingComputerDisengaged;
-	public static Sound com_hyperdriveMalfunction;
-	public static Sound com_hyperdriveRepaired;
-	public static Sound com_incomingMissile;
-	public static Sound com_laserTemperatureCritical;
-	public static Sound com_cabinTemperatureCritical;
-	public static Sound com_targetDestroyed;
-	public static Sound com_fuelSystemMalfunction;
-	public static Sound com_accessDeclined;
-	public static Sound com_escapeMalfunction;
-	public static Sound com_lostCargo;
-	public static Sound com_launch_area_violation_1st;
-	public static Sound com_launch_area_violation_2nd;
-	public static Sound com_launch_area_violation_3rd;
+    public static click: Sound;
+    public static error: Sound;
+    public static alert: Sound;
+    public static kaChing: Sound;
+    public static fireLaser: Sound;
+    public static laserHit: Sound;
+    public static enemyFireLaser: Sound;
+    public static hullDamage: Sound;
+    public static shipDestroyed: Sound;
+    public static scooped: Sound;
+    public static fireMissile: Sound;
+    public static missileLocked: Sound;
+    public static torus: Sound;
+    public static energyLow: Sound;
+    public static altitudeLow: Sound;
+    public static temperatureHigh: Sound;
+    public static criticalCondition: Sound;
+    public static ecm: Sound;
+    public static retroRocketsOrEscapeCapsuleFired: Sound;
+    public static identify: Sound;
+    public static hyperspace: Sound;
 
-	public static Sound click;
-	public static Sound error;
-	public static Sound alert;
-	public static Sound kaChing;
-	public static Sound fireLaser;
-	public static Sound laserHit;
-	public static Sound enemyFireLaser;
-	public static Sound hullDamage;
-	public static Sound shipDestroyed;
-	public static Sound scooped;
-	public static Sound fireMissile;
-	public static Sound missileLocked;
-	public static Sound torus;
-	public static Sound energyLow;
-	public static Sound altitudeLow;
-	public static Sound temperatureHigh;
-	public static Sound criticalCondition;
-	public static Sound ecm;
-	public static Sound retroRocketsOrEscapeCapsuleFired;
-	public static Sound identify;
-	public static Sound hyperspace;
+    public static danube: Music;
 
-	public static Music danube;
+    private static lostEquipmentSound: Map<string, Sound> = new Map();
 
-	private static Map<String,Sound> lostEquipmentSound = new HashMap<>();
+    public static getLostEquipmentSound(equipmentName: string): Sound {
+        return Assets.lostEquipmentSound.get(equipmentName);
+    }
 
-	public static Sound getLostEquipmentSound(String equipmentName) {
-		return lostEquipmentSound.get(equipmentName);
-	}
+    public static setLostEquipmentSound(equipmentName: string): void {
+        Assets.lostEquipmentSound.set(equipmentName, Assets.safeLoadSound(equipmentName));
+    }
 
-	public static void setLostEquipmentSound(String equipmentName) {
-		Assets.lostEquipmentSound.put(equipmentName, safeLoadSound(equipmentName));
-	}
-
-	public static Sound safeLoadSound(String soundFileName) {
-		return Alite.get().getAudio().newSoundAsset(DIRECTORY_SOUND_COMPUTER + soundFileName + ".ogg");
-	}
-
+    public static safeLoadSound(soundFileName: string): Sound {
+        return Alite.getInstance().getAudio().newSoundAsset(Assets.DIRECTORY_SOUND_COMPUTER + soundFileName + ".ogg");
+    }
 }
