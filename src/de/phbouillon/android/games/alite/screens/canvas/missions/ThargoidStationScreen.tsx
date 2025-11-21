@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas.missions;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,105 +16,99 @@ package de.phbouillon.android.games.alite.screens.canvas.missions;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+import { Graphics } from "../../../../framework/Graphics";
+import { AliteLog } from "../../../AliteLog";
+import { Assets } from "../../../Assets";
+import { L } from "../../../L";
+import { ScreenCodes } from "../../../ScreenCodes";
+import { ColorScheme } from "../../../colors/ColorScheme";
+import { Mission } from "../../../model/missions/Mission";
+import { MissionManager } from "../../../model/missions/MissionManager";
+import { ThargoidStationMission } from "../../../model/missions/ThargoidStationMission";
+import { AliteScreen } from "../AliteScreen";
+import { TextData } from "../TextData";
+import { MissionLine } from "./MissionLine";
 
-import android.media.MediaPlayer;
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.model.missions.Mission;
-import de.phbouillon.android.games.alite.model.missions.MissionManager;
-import de.phbouillon.android.games.alite.model.missions.ThargoidStationMission;
-import de.phbouillon.android.games.alite.screens.canvas.AliteScreen;
-import de.phbouillon.android.games.alite.screens.canvas.TextData;
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class ThargoidStationScreen extends AliteScreen {
+    // private readonly mediaPlayer: any; // MediaPlayer equivalent
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class ThargoidStationScreen extends AliteScreen {
-	private final MediaPlayer mediaPlayer;
+    private attCommander: MissionLine;
+    private missionLine: MissionLine;
+    private lineIndex = 0;
+    private missionText: TextData[];
+    private readonly givenState: number;
 
-	private MissionLine attCommander;
-	private MissionLine missionLine;
-	private int lineIndex = 0;
-	private TextData[] missionText;
-	private final int givenState;
+    constructor(state: number) {
+        super();
+        this.givenState = state;
+        const mission = MissionManager.getInstance().get(ThargoidStationMission.ID);
+        // this.mediaPlayer = new MediaPlayer(); // Web Audio equivalent needed
+        const path = MissionManager.DIRECTORY_SOUND_MISSION + "5/";
+        try {
+            this.attCommander = new MissionLine(path + "01.mp3", L.string("mission_attention_commander"));
+            if (state === 0) {
+                this.missionLine = new MissionLine(path + "02.mp3", L.string("mission_thargoid_station_mission_description"));
+                mission.setPlayerAccepts(true);
+                mission.setTargetPlanet(this.game.getPlayer().getCurrentSystem(), 1);
+            } else if (state === 1) {
+                this.missionLine = new MissionLine(path + "04.mp3", L.string("mission_thargoid_station_success"));
+                mission.missionCompleted();
+            } else {
+                AliteLog.e("Unknown State", `Invalid state variable has been passed to ThargoidStationScreen: ${state}`);
+            }
+        } catch (e) {
+            if (e instanceof Error) {
+                AliteLog.e("Error reading mission", "Could not read mission audio.", e);
+            }
+        }
+    }
 
-	public ThargoidStationScreen(int state) {
-		givenState = state;
-		Mission mission = MissionManager.getInstance().get(ThargoidStationMission.ID);
-		mediaPlayer = new MediaPlayer();
-		String path = MissionManager.DIRECTORY_SOUND_MISSION + "5/";
-		try {
-			attCommander = new MissionLine(path + "01.mp3", L.string(R.string.mission_attention_commander));
-			if (state == 0) {
-				missionLine = new MissionLine(path + "02.mp3", L.string(R.string.mission_thargoid_station_mission_description));
-				mission.setPlayerAccepts(true);
-				mission.setTargetPlanet(game.getPlayer().getCurrentSystem(), 1);
-			} else if (state == 1) {
-				missionLine = new MissionLine(path + "04.mp3", L.string(R.string.mission_thargoid_station_success));
-			 	mission.missionCompleted();
-			} else {
-				AliteLog.e("Unknown State", "Invalid state variable has been passed to ThargoidStationScreen: " + state);
-			}
-		} catch (IOException e) {
-			AliteLog.e("Error reading mission", "Could not read mission audio.", e);
-		}
-	}
+    public update(deltaTime: number): void {
+        super.update(deltaTime);
+        if (this.lineIndex === 0 && !this.attCommander.isPlaying()) {
+            // this.attCommander.play(this.mediaPlayer);
+            this.lineIndex++;
+        } else if (this.lineIndex === 1 && !this.attCommander.isPlaying() && !this.missionLine.isPlaying()) {
+            // this.missionLine.play(this.mediaPlayer);
+            this.lineIndex++;
+        }
+    }
 
-	@Override
-	public void update(float deltaTime) {
-		super.update(deltaTime);
-		if (lineIndex == 0 && !attCommander.isPlaying()) {
-			attCommander.play(mediaPlayer);
-			lineIndex++;
-		} else if (lineIndex == 1 && !attCommander.isPlaying() && !missionLine.isPlaying()) {
-			missionLine.play(mediaPlayer);
-			lineIndex++;
-		}
-	}
+    public present(deltaTime: number): void {
+        const g = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayTitle(L.string("title_mission_thargoid_station"));
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayTitle(L.string(R.string.title_mission_thargoid_station));
+        g.drawText(L.string("mission_attention_commander"), 50, 200,
+            ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT), Assets.regularFont);
+        if (this.missionText != null) {
+            this.displayText(g, this.missionText);
+        }
+    }
 
-		g.drawText(L.string(R.string.mission_attention_commander), 50, 200,
-			ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT), Assets.regularFont);
-		if (missionText != null) {
-			displayText(g, missionText);
-		}
-	}
+    public activate(): void {
+        this.missionText = this.computeTextDisplay(this.game.getGraphics(), this.missionLine.getText(), 50, 300, 800,
+            ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT));
+    }
 
-	@Override
-	public void activate() {
-		missionText = computeTextDisplay(game.getGraphics(), missionLine.getText(), 50, 300, 800,
-			ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT));
-	}
+    // saveScreenState omitted
 
-	@Override
-	public void saveScreenState(DataOutputStream dos) throws IOException {
-		dos.writeInt(givenState);
-	}
+    public dispose(): void {
+        super.dispose();
+        // if (this.mediaPlayer != null) {
+        //     this.mediaPlayer.reset();
+        // }
+    }
 
-	@Override
-	public void dispose() {
-		super.dispose();
-		if (mediaPlayer != null) {
-			mediaPlayer.reset();
-		}
-	}
+    public pause(): void {
+        super.pause();
+        // if (this.mediaPlayer != null) {
+        //     this.mediaPlayer.reset();
+        // }
+    }
 
-	@Override
-	public void pause() {
-		super.pause();
-		if (mediaPlayer != null) {
-			mediaPlayer.reset();
-		}
-	}
-
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.THARGOID_STATION_SCREEN;
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.THARGOID_STATION_SCREEN;
+    }
 }

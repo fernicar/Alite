@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.generator;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,73 +16,66 @@ package de.phbouillon.android.games.alite.model.generator;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.L;
+import { AliteLog } from "../../AliteLog";
+import { L } from "../../L";
 
-import java.nio.charset.Charset;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+export class StringUtil {
 
-public class StringUtil {
-	public static final Charset CHARSET = Charset.forName("UTF-8");
+    private constructor() {
+        // Prevent instantiation
+    }
 
-	private StringUtil() {
-		// Prevent instantiation
-	}
+    public static addSpaceAndStringToBuilder(stringToAdd: string, builder: { length: number; charAt: (arg0: number) => string; append: (arg0: string) => void; }): void {
+        if (stringToAdd != null && stringToAdd.length > 0) {
+            if (builder.length > 0 && builder.charAt(builder.length - 1) !== ' ') {
+                builder.append(" ");
+            }
+            builder.append(stringToAdd);
+        }
+    }
 
-	public static void addSpaceAndStringToBuilder(String stringToAdd, StringBuilder builder) {
-		if (stringToAdd != null && !stringToAdd.isEmpty()) {
-			if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
-				builder.append(" ");
-			}
-			builder.append(stringToAdd);
-		}
-	}
+    public static capitalize(text: string): string {
+        let i = -1;
+        while (true) {
+            i = text.indexOf(' ', i + 1);
+            if (i < 0 || i === text.length - 1) {
+                return this.toUpperFirstCase(text);
+            }
+            text = text.substring(0, i + 1) + this.toUpperFirstCase(text.substring(i + 1));
+        }
+    }
 
-	public static String capitalize(String text) {
-		int i = -1;
-		while (true) {
-			i = text.indexOf(' ', i + 1);
-			if (i < 0 || i == text.length() - 1) {
-				return toUpperFirstCase(text);
-			}
-			text = text.substring(0, i + 1) + toUpperFirstCase(text.substring(i + 1));
-		}
-	}
+    public static toUpperFirstCase(s: string): string {
+        if (s == null || s.length === 0) {
+            return "";
+        }
+        if (s.length === 1) {
+            return s;
+        }
+        // Assuming L.getInstance().getCurrentLocale() provides a locale string like 'en-US'
+        return s.substring(0, 1).toLocaleUpperCase(/* L.getInstance().getCurrentLocale() */) + s.substring(1);
+    }
 
-	public static String toUpperFirstCase(String s) {
-		if (s == null || s.isEmpty()) {
-			return "";
-		}
-		if (s.length() == 1) {
-			return s;
-		}
-		return s.substring(0,1).toUpperCase(L.getInstance().getCurrentLocale()) + s.substring(1);
-	}
+    public static format(format: string, ...args: any[]): string {
+        // This is a simple replacement and does not handle all Java String.format specifiers.
+        // A more robust library might be needed for full compatibility.
+        let i = 0;
+        return format.replace(/%[sdif]/g, () => args[i++]);
+    }
 
-	public static String format(String format, Object... args) {
-		return String.format(L.getInstance().getCurrentLocale(), format, args);
-	}
-
-	public static String computeSHAString(String text) {
-		try {
-			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			md.update(text.getBytes(CHARSET));
-			return getHexSHA(md);
-		} catch (NoSuchAlgorithmException e) {
-			AliteLog.e("[ALITE] computeSHAString", "No SHA-256 encryption!", e);
-		}
-		return "";
-	}
-
-	private static String getHexSHA(MessageDigest md) {
-		byte[] mdbytes = md.digest();
-
-		StringBuffer hexString = new StringBuffer();
-		for (byte mdbyte : mdbytes) {
-			hexString.append(Integer.toHexString(0xFF & mdbyte));
-		}
-		return hexString.toString();
-	}
-
+    public static async computeSHAString(text: string): Promise<string> {
+        try {
+            // Web Crypto API is the modern way to do this in browsers. It's async.
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (e) {
+            if (e instanceof Error) {
+                AliteLog.e("[ALITE] computeSHAString", "Error computing SHA-256 hash!", e);
+            }
+        }
+        return "";
+    }
 }

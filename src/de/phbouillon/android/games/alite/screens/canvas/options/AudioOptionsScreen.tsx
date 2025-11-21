@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas.options;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,81 +16,80 @@ package de.phbouillon.android.games.alite.screens.canvas.options;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Sound;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
+import { Graphics } from "../../../framework/Graphics";
+import { TouchEvent } from "../../../framework/Input";
+import { SoundType } from "../../../framework/Sound";
+import { Component } from "../../Component";
+import { L } from "../../L";
+import { ScreenCodes } from "../../ScreenCodes";
+import { Settings } from "../../Settings";
+import { Slider } from "../../Slider";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { OptionsScreen } from "./OptionsScreen";
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class AudioOptionsScreen extends OptionsScreen {
-	private static final float SLIDER_STEP = 0.01f;
-	private final Component<?>[] controls = new Component[7];
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class AudioOptionsScreen extends OptionsScreen {
+    private static readonly SLIDER_STEP = 0.01;
+    private readonly controls: Component<any>[] = new Array(7);
 
-	@Override
-	public void activate() {
-		controls[0] = createFloatSlider(0, 0, 1,
-			L.string(R.string.options_audio_music_volume), Settings.volumes[Sound.SoundType.MUSIC.getValue()])
-			.setEvent(s -> changeVolume(Sound.SoundType.MUSIC, s));
-		controls[1] = createFloatSlider(1, 0, 1,
-			L.string(R.string.options_audio_sound_fx_volume), Settings.volumes[Sound.SoundType.SOUND_FX.getValue()])
-			.setEvent(s -> changeVolume(Sound.SoundType.COMBAT_FX, s));
-		controls[2] = createFloatSlider(2, 0, 1,
-			L.string(R.string.options_audio_combat_fx_volume), Settings.volumes[Sound.SoundType.COMBAT_FX.getValue()])
-			.setEvent(s -> changeVolume(Sound.SoundType.COMBAT_FX, s));
-		controls[3] = createFloatSlider(3, 0, 1,
-			L.string(R.string.options_audio_voice_volume), Settings.volumes[Sound.SoundType.VOICE.getValue()])
-			.setEvent(s -> changeVolume(Sound.SoundType.VOICE, s));
-		controls[4] = createFloatSlider(4, 0, 1,
-			L.string(R.string.options_audio_vibrate_level_on_damage), Settings.vibrateLevelOnDamage)
-			.setEvent(s -> {
-				Settings.vibrateLevelOnDamage = s.getCurrentValue(SLIDER_STEP);
-				Settings.save(game.getFileIO());
-				}
-			);
-		controls[5] = createFloatSlider(5, 0, 1,
-			L.string(R.string.options_audio_vibrate_level_on_hit), Settings.vibrateLevelOnHit)
-			.setEvent(s -> {
-				Settings.vibrateLevelOnHit = s.getCurrentValue(SLIDER_STEP);
-				Settings.save(game.getFileIO());
-				}
-			);
-		controls[6] = createButton(6, L.string(R.string.options_back))
-			.setEvent(b -> newScreen = new OptionsScreen());
-	}
-
-
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-
-		displayTitle(L.string(R.string.title_audio_options));
-		for (Component<?> c : controls) {
-			c.render(g);
-
-		}
-	}
-
-	private void changeVolume(Sound.SoundType type, Slider slider) {
-		Settings.volumes[type.getValue()] = slider.getCurrentValue(SLIDER_STEP);
-		Settings.save(game.getFileIO());
-	}
+    public activate(): void {
+        this.controls[0] = this.createFloatSlider(0, 0, 1,
+            L.string("options_audio_music_volume"), Settings.volumes[SoundType.MUSIC])
+            .setEvent(s => this.changeVolume(SoundType.MUSIC, s));
+        this.controls[1] = this.createFloatSlider(1, 0, 1,
+            L.string("options_audio_sound_fx_volume"), Settings.volumes[SoundType.SOUND_FX])
+            .setEvent(s => this.changeVolume(SoundType.SOUND_FX, s));
+        this.controls[2] = this.createFloatSlider(2, 0, 1,
+            L.string("options_audio_combat_fx_volume"), Settings.volumes[SoundType.COMBAT_FX])
+            .setEvent(s => this.changeVolume(SoundType.COMBAT_FX, s));
+        this.controls[3] = this.createFloatSlider(3, 0, 1,
+            L.string("options_audio_voice_volume"), Settings.volumes[SoundType.VOICE])
+            .setEvent(s => this.changeVolume(SoundType.VOICE, s));
+        this.controls[4] = this.createFloatSlider(4, 0, 1,
+            L.string("options_audio_vibrate_level_on_damage"), Settings.vibrateLevelOnDamage)
+            .setEvent(s => {
+                Settings.vibrateLevelOnDamage = s.getCurrentValue(AudioOptionsScreen.SLIDER_STEP);
+                Settings.save(this.game.getFileIO());
+            }
+            );
+        this.controls[5] = this.createFloatSlider(5, 0, 1,
+            L.string("options_audio_vibrate_level_on_hit"), Settings.vibrateLevelOnHit)
+            .setEvent(s => {
+                Settings.vibrateLevelOnHit = s.getCurrentValue(AudioOptionsScreen.SLIDER_STEP);
+                Settings.save(this.game.getFileIO());
+            }
+            );
+        this.controls[6] = this.createButton(6, L.string("options_back"))
+            .setEvent(b => this.newScreen = new OptionsScreen());
+    }
 
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		for (Component<?> c : controls) {
-			if (c.checkEvent(touch)) {
-				c.onEvent();
-				return;
-			}
-		}
-	}
+    public present(deltaTime: number): void {
+        const g = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
 
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.AUDIO_OPTIONS_SCREEN;
-	}
+        this.displayTitle(L.string("title_audio_options"));
+        for (const c of this.controls) {
+            c.render(g);
+        }
+    }
 
+    private changeVolume(type: SoundType, slider: Slider): void {
+        Settings.volumes[type] = slider.getCurrentValue(AudioOptionsScreen.SLIDER_STEP);
+        Settings.save(this.game.getFileIO());
+    }
+
+
+    protected processTouch(touch: TouchEvent): void {
+        for (const c of this.controls) {
+            if (c.checkEvent(touch)) {
+                c.onEvent();
+                return;
+            }
+        }
+    }
+
+    public getScreenCode(): number {
+        return ScreenCodes.AUDIO_OPTIONS_SCREEN;
+    }
 }

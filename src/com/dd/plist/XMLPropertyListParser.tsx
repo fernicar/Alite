@@ -20,232 +20,140 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.dd.plist;
 
-import org.w3c.dom.*;
-import org.xml.sax.EntityResolver;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.List;
+import { DOMParser } from "xmldom";
+import { NSArray } from "./NSArray";
+import { NSData } from "./NSData";
+import { NSDate } from "./NSDate";
+import { NSDictionary } from "./NSDictionary";
+import { NSNumber } from "./NSNumber";
+import { NSObject } from "./NSObject";
+import { NSString } from "./NSString";
+import { PropertyListFormatException } from "./PropertyListFormatException";
 
 /**
  * Parses XML property lists.
  *
  * @author Daniel Dreibrodt
  */
-public class XMLPropertyListParser {
+export class XMLPropertyListParser {
+
+    private static parser = new DOMParser();
 
     /**
-     * Instantiation is prohibited by outside classes.
+     * Instantiation is prohibited.
      */
-    protected XMLPropertyListParser() {
+    private constructor() {
         /** empty **/
     }
 
-    private static DocumentBuilderFactory docBuilderFactory = null;
-
     /**
-     * Initialize the document builder factory so that it can be reused and does not need to
-     * be reinitialized for each parse action.
-     */
-    private static synchronized void initDocBuilderFactory() {
-        docBuilderFactory = DocumentBuilderFactory.newInstance();
-        docBuilderFactory.setIgnoringComments(true);
-        docBuilderFactory.setCoalescing(true);
-    }
-
-    /**
-     * Gets a DocumentBuilder to parse a XML property list.
-     * As DocumentBuilders are not thread-safe a new DocBuilder is generated for each request.
+     * Parses a XML property list from a string.
      *
-     * @return A new DocBuilder that can parse property lists w/o an internet connection.
-     * @throws javax.xml.parsers.ParserConfigurationException If a document builder for parsing a XML property list
-     *                                                        could not be created. This should not occur.
+     * @param xml The XML property list string.
+     * @returns The root object of the property list. This is usually a NSDictionary but can also be an NSArray.
+     * @throws {Error} If the XML is malformed or the property list has an invalid format.
      */
-    private static synchronized DocumentBuilder getDocBuilder() throws ParserConfigurationException {
-        if (docBuilderFactory == null)
-            initDocBuilderFactory();
-        DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
-        docBuilder.setEntityResolver(new EntityResolver() {
-            public InputSource resolveEntity(String publicId, String systemId) {
-                if ("-//Apple Computer//DTD PLIST 1.0//EN".equals(publicId) || // older publicId
-                        "-//Apple//DTD PLIST 1.0//EN".equals(publicId)) { // newer publicId
-                    // return a dummy, zero length DTD so we don't have to fetch
-                    // it from the network.
-                    return new InputSource(new ByteArrayInputStream(new byte[0]));
-                }
-                return null;
-            }
-        });
-        return docBuilder;
+    public static parse(xml: string): NSObject {
+        const doc = this.parser.parseFromString(xml, "text/xml");
+        return this.parseDocument(doc);
     }
 
-    /**
-     * Parses a XML property list file.
-     *
-     * @param f The XML property list file.
-     * @return The root object of the property list. This is usually a NSDictionary but can also be a NSArray.
-     * @see javax.xml.parsers.DocumentBuilder#parse(java.io.File)
-     * @throws javax.xml.parsers.ParserConfigurationException If a document builder for parsing a XML property list
-     *                                                        could not be created. This should not occur.
-     * @throws java.io.IOException If any IO error occurs while reading the file.
-     * @throws org.xml.sax.SAXException If any parse error occurs.
-     * @throws com.dd.plist.PropertyListFormatException If the given property list has an invalid format.
-     * @throws java.text.ParseException If a date string could not be parsed.
-     */
-    public static NSObject parse(File f) throws ParserConfigurationException, IOException, SAXException, PropertyListFormatException, ParseException {
-        DocumentBuilder docBuilder = getDocBuilder();
-
-        Document doc = docBuilder.parse(f);
-
-        return parseDocument(doc);
-    }
-
-    /**
-     * Parses a XML property list from a byte array.
-     *
-     * @param bytes The byte array containing the property list's data.
-     * @return The root object of the property list. This is usually a NSDictionary but can also be a NSArray.
-     * @throws javax.xml.parsers.ParserConfigurationException If a document builder for parsing a XML property list
-     *                                                        could not be created. This should not occur.
-     * @throws java.io.IOException If any IO error occurs while reading the file.
-     * @throws org.xml.sax.SAXException If any parse error occurs.
-     * @throws com.dd.plist.PropertyListFormatException If the given property list has an invalid format.
-     * @throws java.text.ParseException If a date string could not be parsed.
-     */
-    public static NSObject parse(final byte[] bytes) throws ParserConfigurationException, ParseException, SAXException, PropertyListFormatException, IOException {
-        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-        return parse(bis);
-    }
-
-    /**
-     * Parses a XML property list from an input stream.
-     *
-     * @param is The input stream pointing to the property list's data.
-     * @return The root object of the property list. This is usually a NSDictionary but can also be a NSArray.
-     * @see javax.xml.parsers.DocumentBuilder#parse(java.io.InputStream)
-     * @throws javax.xml.parsers.ParserConfigurationException If a document builder for parsing a XML property list
-     *                                                        could not be created. This should not occur.
-     * @throws java.io.IOException If any IO error occurs while reading the file.
-     * @throws org.xml.sax.SAXException If any parse error occurs.
-     * @throws com.dd.plist.PropertyListFormatException If the given property list has an invalid format.
-     * @throws java.text.ParseException If a date string could not be parsed.
-     */
-    public static NSObject parse(InputStream is) throws ParserConfigurationException, IOException, SAXException, PropertyListFormatException, ParseException {
-        DocumentBuilder docBuilder = getDocBuilder();
-
-        Document doc = docBuilder.parse(is);
-
-        return parseDocument(doc);
-    }
 
     /**
      * Parses the XML document by generating the appropriate NSObjects for each XML node.
      *
      * @param doc The XML document.
-     * @return The root NSObject of the property list contained in the XML document.
-     * @throws java.io.IOException If any IO error occurs while reading the file.
-     * @throws com.dd.plist.PropertyListFormatException If the given property list has an invalid format.
-     * @throws java.text.ParseException If a date string could not be parsed.
+     * @returns The root NSObject of the property list contained in the XML document.
+     * @throws {PropertyListFormatException} If the given property list has an invalid format.
      */
-    private static NSObject parseDocument(Document doc) throws PropertyListFormatException, IOException, ParseException {
-        DocumentType docType = doc.getDoctype();
-        if (docType == null) {
-            if (!doc.getDocumentElement().getNodeName().equals("plist")) {
-                throw new UnsupportedOperationException("The given XML document is not a property list.");
+    private static parseDocument(doc: Document): NSObject {
+        const docType = doc.doctype;
+        if (docType === null) {
+            if (doc.documentElement.nodeName !== "plist") {
+                throw new Error("The given XML document is not a property list.");
             }
-        } else if (!docType.getName().equals("plist")) {
-            throw new UnsupportedOperationException("The given XML document is not a property list.");
+        } else if (docType.name !== "plist") {
+            throw new Error("The given XML document is not a property list.");
         }
 
-        Node rootNode;
+        let rootNode: Node;
 
-        if (doc.getDocumentElement().getNodeName().equals("plist")) {
-            //Root element wrapped in plist tag
-            List<Node> rootNodes = filterElementNodes(doc.getDocumentElement().getChildNodes());
-            if (rootNodes.isEmpty()) {
+        if (doc.documentElement.nodeName === "plist") {
+            // Root element wrapped in plist tag
+            const rootNodes = this.filterElementNodes(doc.documentElement.childNodes);
+            if (rootNodes.length === 0) {
                 throw new PropertyListFormatException("The given XML property list has no root element!");
-            } else if (rootNodes.size() == 1) {
-                rootNode = rootNodes.get(0);
+            } else if (rootNodes.length === 1) {
+                rootNode = rootNodes[0];
             } else {
                 throw new PropertyListFormatException("The given XML property list has more than one root element!");
             }
         } else {
-            //Root NSObject not wrapped in plist-tag
-            rootNode = doc.getDocumentElement();
+            // Root NSObject not wrapped in plist-tag
+            rootNode = doc.documentElement;
         }
 
-        return parseObject(rootNode);
+        return this.parseObject(rootNode);
     }
 
     /**
      * Parses a node in the XML structure and returns the corresponding NSObject
      *
      * @param n The XML node.
-     * @return The corresponding NSObject.
-     * @throws java.io.IOException If any IO error occurs while parsing a Base64 encoded NSData object.
-     * @throws java.text.ParseException If a date string could not be parsed.
+     * @returns The corresponding NSObject.
      */
-    private static NSObject parseObject(Node n) throws ParseException, IOException {
-        String type = n.getNodeName();
-        if (type.equals("dict")) {
-            NSDictionary dict = new NSDictionary();
-            List<Node> children = filterElementNodes(n.getChildNodes());
-            for (int i = 0; i < children.size(); i += 2) {
-                Node key = children.get(i);
-                Node val = children.get(i + 1);
-
-                String keyString = getNodeTextContents(key);
-
-                dict.put(keyString, parseObject(val));
+    private static parseObject(n: Node): NSObject {
+        const type = n.nodeName;
+        switch (type) {
+            case "dict": {
+                const dict = new NSDictionary();
+                const children = this.filterElementNodes(n.childNodes);
+                for (let i = 0; i < children.length; i += 2) {
+                    const key = children[i];
+                    const val = children[i + 1];
+                    const keyString = this.getNodeTextContents(key);
+                    dict.put(keyString, this.parseObject(val));
+                }
+                return dict;
             }
-            return dict;
-        } else if (type.equals("array")) {
-            List<Node> children = filterElementNodes(n.getChildNodes());
-            NSArray array = new NSArray(children.size());
-            for (int i = 0; i < children.size(); i++) {
-                array.setValue(i, parseObject(children.get(i)));
+            case "array": {
+                const children = this.filterElementNodes(n.childNodes);
+                const array = new NSArray(children.length);
+                for (let i = 0; i < children.length; i++) {
+                    array.setValue(i, this.parseObject(children[i]));
+                }
+                return array;
             }
-            return array;
-        } else if (type.equals("true")) {
-            return new NSNumber(true);
-        } else if (type.equals("false")) {
-            return new NSNumber(false);
-        } else if (type.equals("integer")) {
-            return new NSNumber(getNodeTextContents(n));
-        } else if (type.equals("real")) {
-            return new NSNumber(getNodeTextContents(n));
-        } else if (type.equals("string")) {
-            return new NSString(getNodeTextContents(n));
-        } else if (type.equals("data")) {
-            return new NSData(getNodeTextContents(n));
-        } else if (type.equals("date")) {
-            return new NSDate(getNodeTextContents(n));
+            case "true":
+                return new NSNumber(true);
+            case "false":
+                return new NSNumber(false);
+            case "integer":
+            case "real":
+                return new NSNumber(this.getNodeTextContents(n));
+            case "string":
+                return new NSString(this.getNodeTextContents(n));
+            case "data":
+                return new NSData(this.getNodeTextContents(n));
+            case "date":
+                return new NSDate(this.getNodeTextContents(n));
+            default:
+                return null;
         }
-        return null;
     }
 
     /**
      * Returns all element nodes that are contained in a list of nodes.
      *
      * @param list The list of nodes to search.
-     * @return The sub-list containing only nodes representing actual elements.
+     * @returns The sub-list containing only nodes representing actual elements.
      */
-    private static List<Node> filterElementNodes(NodeList list) {
-        List<Node> result = new ArrayList<Node>(list.getLength());
-        for (int i = 0; i < list.getLength(); i++) {
-            if (list.item(i).getNodeType() == Node.ELEMENT_NODE) {
-                result.add(list.item(i));
+    private static filterElementNodes(list: NodeList): Node[] {
+        const result: Node[] = [];
+        for (let i = 0; i < list.length; i++) {
+            if (list.item(i).nodeType === 1 /* Node.ELEMENT_NODE */) {
+                result.push(list.item(i));
             }
         }
         return result;
@@ -253,41 +161,11 @@ public class XMLPropertyListParser {
 
     /**
      * Returns a node's text content.
-     * This method will return the text value represented by the node's direct children.
-     * If the given node is a TEXT or CDATA node, then its value is returned.
      *
      * @param n The node.
-     * @return The node's text content.
+     * @returns The node's text content.
      */
-    private static String getNodeTextContents(Node n) {
-        if (n.getNodeType() == Node.TEXT_NODE || n.getNodeType() == Node.CDATA_SECTION_NODE) {
-            Text txtNode = (Text) n;
-            String content = txtNode.getWholeText(); //This concatenates any adjacent text/cdata/entity nodes
-            if (content == null)
-                return "";
-            else
-                return content;
-        } else {
-            if (n.hasChildNodes()) {
-                NodeList children = n.getChildNodes();
-
-                for (int i = 0; i < children.getLength(); i++) {
-                    //Skip any non-text nodes, like comments or entities
-                    Node child = children.item(i);
-                    if (child.getNodeType() == Node.TEXT_NODE || child.getNodeType() == Node.CDATA_SECTION_NODE) {
-                        Text txtNode = (Text) child;
-                        String content = txtNode.getWholeText(); //This concatenates any adjacent text/cdata/entity nodes
-                        if (content == null)
-                            return "";
-                        else
-                            return content;
-                    }
-                }
-
-                return "";
-            } else {
-                return "";
-            }
-        }
+    private static getNodeTextContents(n: Node): string {
+        return n.textContent;
     }
 }

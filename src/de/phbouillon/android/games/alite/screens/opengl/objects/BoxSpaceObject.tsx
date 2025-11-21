@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,51 +16,47 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.graphics.Color;
-import de.phbouillon.android.framework.impl.gl.Box;
-import de.phbouillon.android.framework.math.Vector3f;
+import { Box } from "../../../../../../../../framework/impl/gl/Box";
+import { Vector3f } from "../../../../../../../../framework/math/Vector3f";
+import { AliteColor } from "../../../../colors/AliteColor";
+import { AliteObject } from "./AliteObject";
 
-public class BoxSpaceObject extends AliteObject {
-	private static final long serialVersionUID = -290076973449626682L;
+export class BoxSpaceObject extends AliteObject {
+    private static readonly serialVersionUID = -290076973449626682L;
 
-	private final Box box;
+    private readonly box: Box;
 
-	public BoxSpaceObject(String name, float width, float height, float depth) {
-		super(name);
-		box = new Box(width, height, depth);
-		boundingSphereRadius = width;
-		hudColor = Color.WHITE;
-		setDepthTest(false);
-	}
+    constructor(name: string, width: number, height: number, depth: number) {
+        super(name);
+        this.box = new Box(width, height, depth);
+        this.boundingSphereRadius = width;
+        this.hudColor = AliteColor.WHITE;
+        this.setDepthTest(false);
+    }
 
-	@Override
-	public void render() {
-		box.render();
-	}
+    public render(): void {
+        this.box.render();
+    }
 
-	public void setColor(float r, float g, float b) {
-		box.setColor(r, g, b, 1.0f);
-	}
+    public setColor(r: number, g: number, b: number, a?: number): void {
+        this.box.setColor(r, g, b, a === undefined ? 1.0 : a);
+    }
 
-	public void setColor(float r, float g, float b, float a) {
-		box.setColor(r, g, b, a);
-	}
+    public setAlpha(a: number): void {
+        this.box.setAlpha(a);
+    }
 
-	public void setAlpha(float a) {
-		box.setAlpha(a);
-	}
+    public setFarPlane(far: Vector3f): void {
+        this.box.setFarPlane(far);
+    }
 
-	public void setFarPlane(Vector3f far) {
-		box.setFarPlane(far);
-	}
-
-	public boolean intersect(Vector3f origin, Vector3f direction) {
-		float [] vertices = box.getVertices();
-		float [] verts = new float[vertices.length + 1];
-		float [] matrix = getMatrix();
-		for (int i = 0; i < vertices.length; i += 3) {
-			calculateVertex(verts, i, matrix, vertices, i, 1);
-		}
-		return intersectInternal(vertices.length / 3, origin, direction, verts);
-	}
+    public intersect(origin: Vector3f, direction: Vector3f): boolean {
+        const vertices = this.box.getVertices();
+        const verts = new Array(vertices.length + 1);
+        const matrix = this.getMatrix();
+        for (let i = 0; i < vertices.length; i += 3) {
+            this.calculateVertex(verts, i, matrix, vertices, i, 1);
+        }
+        return this.intersectInternal(vertices.length / 3, origin, direction, verts);
+    }
 }

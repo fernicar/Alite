@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,56 +16,39 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import { AliteLog } from "../../games/alite/AliteLog";
 
-import de.phbouillon.android.games.alite.AliteLog;
+export interface PoolObjectFactory<T> {
+    createObject(): T;
+}
 
-public class Pool <T extends Serializable> implements Serializable {
-	private static final long serialVersionUID = -5141492387845777888L;
+export class Pool<T> {
+    private static readonly serialVersionUID = -5141492387845777888;
 
-	public interface PoolObjectFactory <T extends Serializable> extends Serializable {
-		T createObject();
-	}
+    private readonly freeObjects: T[];
+    private readonly factory: PoolObjectFactory<T>;
+    private readonly maxSize: number;
 
-	private final List<T> freeObjects;
-	private final PoolObjectFactory <T> factory;
-	private final int maxSize;
+    constructor(factory: PoolObjectFactory<T>, maxSize: number) {
+        this.factory = factory;
+        this.maxSize = maxSize;
+        this.freeObjects = new Array(maxSize);
+    }
 
-	public Pool(PoolObjectFactory <T> factory, int maxSize) {
-		this.factory = factory;
-		this.maxSize = maxSize;
-		freeObjects = new ArrayList<>(maxSize);
-	}
+    public newObject(): T {
+        if (this.freeObjects.length === 0) {
+            return this.factory.createObject();
+        }
+        return this.freeObjects.pop();
+    }
 
-	private void writeObject(ObjectOutputStream out) throws IOException {
-		try {
-			out.defaultWriteObject();
-		} catch(IOException e) {
-			AliteLog.e("PersistenceException", "Pool " + getClass().getName(), e);
-			throw e;
-		}
-	}
+    public free(object: T): void {
+        if (this.freeObjects.length < this.maxSize) {
+            this.freeObjects.push(object);
+        }
+    }
 
-	public synchronized T newObject() {
-		if (freeObjects.isEmpty()) {
-			return factory.createObject();
-		}
-		T object = freeObjects.get(0);
-		freeObjects.remove(0);
-		return object;
-	}
-
-	public void free(T object) {
-		if (freeObjects.size() < maxSize) {
-			freeObjects.add(object);
-		}
-	}
-
-	public synchronized void reset() {
-		freeObjects.clear();
-	}
+    public reset(): void {
+        this.freeObjects.length = 0;
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,485 +16,235 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.FloatBuffer;
+import { FileIO } from "../FileIO";
+import { Graphics, PixmapFormat } from "../Graphics";
+import { Pixmap } from "../Pixmap";
+import { Rect } from "../Rect";
+import { Texture } from "../Texture";
+import { Settings } from "../../games/alite/Settings";
+import { StringUtil } from "../../games/alite/model/generator/StringUtil";
+import { GLText } from "./gl/font/GLText";
+import { WebGLPixmap } from "./WebGLPixmap";
 
-import android.graphics.*;
-import android.graphics.Bitmap.Config;
-import android.graphics.BitmapFactory.Options;
-import android.graphics.Rect;
-import android.opengl.GLES11;
-import de.phbouillon.android.framework.*;
-import de.phbouillon.android.framework.impl.gl.GlUtils;
-import de.phbouillon.android.framework.impl.gl.font.GLText;
-import de.phbouillon.android.games.alite.Settings;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.model.generator.StringUtil;
+export class WebGLGraphics implements Graphics {
+    private readonly scaleFactor: number;
+    private readonly visibleArea: Rect;
+    private readonly textureManager: Texture;
+    private readonly fileIO: FileIO;
+    private gl: WebGLRenderingContext;
 
-public class AndroidGraphics implements Graphics {
-	private final float scaleFactor;
-	private final Rect visibleArea;
-	private final FloatBuffer lineBuffer;
-	private final FloatBuffer rectBuffer;
-	private final FloatBuffer circleBuffer;
-	private final FloatBuffer colorBuffer;
-	private final Texture textureManager;
-	private final Canvas converterCanvas = new Canvas();
-	private final Paint paint = new Paint();
-	private final Canvas canvas = new Canvas();
-	private final Paint filterPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
-	private final Matrix scaleMatrix = new Matrix();
-	private final Options options = new Options();
-	private final FileIO fileIO;
+    constructor(gl: WebGLRenderingContext, fileIO: FileIO, scaleFactor: number, visibleArea: Rect, textureManager: Texture) {
+        this.gl = gl;
+        this.fileIO = fileIO;
+        this.scaleFactor = scaleFactor;
+        this.visibleArea = visibleArea;
+        this.textureManager = textureManager;
+    }
 
-	AndroidGraphics(FileIO fileIO, float scaleFactor, Rect visibleArea, Texture textureManager) {
-		this.fileIO = fileIO;
-		this.scaleFactor = scaleFactor;
-		this.visibleArea = visibleArea;
-		lineBuffer = GlUtils.allocateFloatBuffer(2 * 8);
-		rectBuffer = GlUtils.allocateFloatBuffer(4 * 8);
-		circleBuffer = GlUtils.allocateFloatBuffer(64 * 8);
-		colorBuffer = GlUtils.allocateFloatBuffer(4 * 16);
-		this.textureManager = textureManager;
-	}
+    public getVisibleArea(): Rect {
+        return this.visibleArea;
+    }
 
-	@Override
-	public final Rect getVisibleArea() {
-		return visibleArea;
-	}
+    public transX(x: number): number {
+        return this.scaleFactor * x + this.visibleArea.left;
+    }
 
-	@Override
-	public int transX(int x) {
-		return (int) (scaleFactor * x + visibleArea.left);
-	}
+    public transY(y: number): number {
+        return this.scaleFactor * y + this.visibleArea.top;
+    }
 
-	@Override
-	public int transY(int y) {
-		return (int) (scaleFactor * y + visibleArea.top);
-	}
+    public async existsAssetsFile(fileName: string): Promise<boolean> {
+        return this.fileIO.existsPrivateFile(fileName);
+    }
 
-	@Override
-	public boolean existsAssetsFile(String fileName) {
-		return fileIO.existsPrivateFile(fileName);
-	}
+    public async newPixmap(fileName: string, format?: PixmapFormat, width?: number, height?: number): Promise<Pixmap> {
+        const image = await this.loadImage(fileName);
+        return this.createPixmapFromImage(fileName, image, width, height);
+    }
 
-	@Override
-	public Pixmap newPixmap(String fileName) {
-		Bitmap bitmap = loadBitmap(fileName);
-		return drawBitmapAndScale(fileName, bitmap, bitmap.getWidth(), bitmap.getHeight(), scaleMatrix, canvas, filterPaint);
-	}
+    private async loadImage(fileName: string): Promise<HTMLImageElement> {
+        const stream = await this.fileIO.readPrivateFile(fileName);
+        const blob = new Blob([stream]);
+        const url = URL.createObjectURL(blob);
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(img);
+            };
+            img.onerror = (err) => {
+                URL.revokeObjectURL(url);
+                reject(`Couldn't load bitmap from asset '${fileName}': ${err}`);
+            };
+            img.src = url;
+        });
+    }
 
-	private Bitmap loadBitmap(String fileName) {
-		try (InputStream is = fileIO.readPrivateFile(fileName)) {
-			return loadBitmap(fileName, is);
-		} catch (IOException ignored) {
-			throw new RuntimeException("Couldn't load bitmap from asset '" + fileName + "'");
-		}
-	}
+    private createPixmapFromImage(fileName: string, image: HTMLImageElement, newWidth: number = -1, newHeight: number = -1): Pixmap {
+        if (newWidth === -1) newWidth = image.width;
+        if (newHeight === -1) newHeight = image.height;
 
-	private Bitmap loadBitmap(String fileName, InputStream is) {
-		options.inPreferredConfig = Settings.colorDepth == 1 ? Config.ARGB_8888 : Config.ARGB_4444;
-		options.inSampleSize = Settings.textureLevel;
-		Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-		if (bitmap == null) {
-			throw new RuntimeException("Couldn't load bitmap from asset '" + fileName + "'");
-		}
-		return bitmap;
-	}
+        newWidth *= Settings.textureLevel * this.scaleFactor;
+        newHeight *= Settings.textureLevel * this.scaleFactor;
 
-	@Override
-	public Pixmap newPixmap(String fileName, int width, int height) {
-		return drawBitmapAndScale(fileName, loadBitmap(fileName), width, height, scaleMatrix, canvas, filterPaint);
-	}
+        const textureWidth = this.determineTextureSize(newWidth);
+        const textureHeight = this.determineTextureSize(newHeight);
 
-	@Override
-	public Pixmap newPixmap(String fileName, InputStream is, int width, int height) {
-		return drawBitmapAndScale(fileName, loadBitmap(fileName, is), width, height, scaleMatrix, canvas, filterPaint);
-	}
+        const canvas = document.createElement('canvas');
+        canvas.width = textureWidth;
+        canvas.height = textureHeight;
+        const ctx = canvas.getContext('2d');
 
-	@Override
-	public Pixmap newPixmap(Bitmap bitmap, String fileName) {
-		return newPixmap(bitmap, fileName, bitmap.getWidth(), bitmap.getHeight());
-	}
+        ctx.drawImage(image, 0, 0, newWidth, newHeight);
 
-	@Override
-	public Pixmap newPixmap(Bitmap bitmap, String fileName, int width, int height) {
-		return drawBitmapAndScale(fileName, bitmap, width, height, new Matrix(), new Canvas(), new Paint(Paint.FILTER_BITMAP_FLAG));
-	}
+        const tx2 = newWidth / textureWidth;
+        const ty2 = newHeight / textureHeight;
 
-	private Pixmap drawBitmapAndScale(String fileName, Bitmap bitmap, float newWidth, float newHeight, Matrix scaleMatrix, Canvas canvas, Paint filterPaint) {
-		if (newWidth == -1) {
-			newWidth = bitmap.getWidth();
-		}
-		if (newHeight == -1) {
-			newHeight = bitmap.getHeight();
-		}
-		newWidth *= Settings.textureLevel * scaleFactor;
-		newHeight *= Settings.textureLevel * scaleFactor;
-		int textureWidth = determineTextureSize((int) newWidth);
-		int textureHeight = determineTextureSize((int) newHeight);
-		float tx2 = newWidth / textureWidth;
-		float ty2 = newHeight / textureHeight;
-		Bitmap scaledBitmap = Bitmap.createBitmap(textureWidth, textureHeight, bitmap.getConfig());
+        // Simplified format - WebGL typically uses RGBA8888
+        const format = PixmapFormat.ARGB8888;
+        return new WebGLPixmap(this.gl, canvas, format, fileName, this.textureManager as any, newWidth, newHeight, tx2, ty2);
+    }
 
-		float ratioX = newWidth / bitmap.getWidth();
-		float ratioY = newHeight / bitmap.getHeight();
-		float middleX = newWidth / 2.0f;
-		float middleY = newHeight / 2.0f;
 
-		scaleMatrix.setScale(ratioX, ratioY, middleX, middleY);
+    private determineTextureSize(size: number): number {
+        let tSize = 64;
+        while (tSize < size && tSize < 4096) {
+            tSize <<= 1;
+        }
+        return tSize;
+    }
 
-		canvas.setBitmap(scaledBitmap);
-		canvas.setMatrix(scaleMatrix);
-		canvas.drawBitmap(bitmap, middleX - bitmap.getWidth() / 2.0f, middleY - bitmap.getHeight() / 2.0f, filterPaint);
+    public clear(color: number): void {
+        const r = ((color >> 16) & 0xff) / 255;
+        const g = ((color >> 8) & 0xff) / 255;
+        const b = (color & 0xff) / 255;
+        const a = ((color >> 24) & 0xff) / 255;
+        this.gl.clearColor(r, g, b, a);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    }
 
-		MemUtil.freeBitmap(bitmap);
-		bitmap = scaledBitmap;
-		PixmapFormat format;
-		if (bitmap.getConfig() == Config.RGB_565) {
-			format = PixmapFormat.RGB565;
-		} else if (bitmap.getConfig() == Config.ARGB_4444) {
-			format = PixmapFormat.ARGB4444;
-		} else {
-			format = PixmapFormat.ARGB8888;
-		}
-		return new AndroidPixmap(bitmap, format, fileName, textureManager, (int) newWidth, (int) newHeight, tx2, ty2);
-	}
+    public drawLine(x: number, y: number, x2: number, y2: number, color: number): void {
+        // WebGL doesn't have a simple line drawing function. This would require
+        // a shader and a buffer with two vertices. This is a placeholder.
+        console.warn("drawLine is not implemented for WebGL");
+    }
 
-	private int determineTextureSize(int size) {
-		int tSize = 64;
-		while (tSize < size && tSize < 4096) {
-			tSize <<= 1;
-		}
-		return tSize;
-	}
+    public drawRect(x: number, y: number, width: number, height: number, color: number): void {
+        // Similar to drawLine, this requires a shader and vertices.
+        console.warn("drawRect is not implemented for WebGL");
+    }
 
-	@Override
-	public void clear(int color) {
-		GLES11.glClearColor(Color.red(color), Color.green(color), Color.blue(color), Color.alpha(color));
-		GLES11.glClear(GLES11.GL_COLOR_BUFFER_BIT);
-	}
+    public rec3d(x: number, y: number, width: number, height: number, borderSize: number, lightColor: number, darkColor: number): void {
+        // This would be complex to implement with WebGL.
+        console.warn("rec3d is not implemented for WebGL");
+    }
 
-	@Override
-	public void drawLine(int x, int y, int x2, int y2, int color) {
-		x = transX(x);
-		y = transY(y);
-		x2 = transX(x2 + 1);
-		y2 = transY(y2 + 1);
+    public fillRect(x: number, y: number, width: number, height: number, color: number): void {
+        // Requires a shader and vertices.
+        console.warn("fillRect is not implemented for WebGL");
+    }
 
-		GLES11.glLineWidth(scaleFactor);
-		setColor(color);
-		lineBuffer.clear();
-		lineBuffer.put(x);
-		lineBuffer.put(y);
-		lineBuffer.put(x2);
-		lineBuffer.put(y2);
-		lineBuffer.position(0);
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glVertexPointer(2, GLES11.GL_FLOAT, 0, lineBuffer);
-		GLES11.glDrawArrays(GLES11.GL_LINES, 0, 2);
-		GLES11.glLineWidth(1);
-	}
+    public verticalGradientRect(x: number, y: number, width: number, height: number, color1: number, color2: number): void {
+        console.warn("verticalGradientRect is not implemented for WebGL");
+    }
 
-	@Override
-	public void drawRect(int x, int y, int width, int height, int color) {
-		GLES11.glLineWidth(scaleFactor);
-		setColor(color);
-		if (!setRectBuffer(x, y, width, height)) return;
-		GLES11.glVertexPointer(2, GLES11.GL_FLOAT, 0, rectBuffer);
-		GLES11.glDrawArrays(GLES11.GL_LINE_LOOP, 0, 4);
-		GLES11.glLineWidth(1);
-	}
+    public diagonalGradientRect(x: number, y: number, width: number, height: number, color1: number, color2: number): void {
+        console.warn("diagonalGradientRect is not implemented for WebGL");
+    }
 
-	private boolean setRectBuffer(int left, int top, int width, int height) {
-		int bottom = transY(top + height);
-		if (bottom < 0) {
-			return false;
-		}
-		int right = transX(left + width);
-		left = transX(left);
-		top = transY(top);
-		rectBuffer.clear();
-		rectBuffer.put(left);
-		rectBuffer.put(top);
-		rectBuffer.put(right);
-		rectBuffer.put(top);
-		rectBuffer.put(right);
-		rectBuffer.put(bottom);
-		rectBuffer.put(left);
-		rectBuffer.put(bottom);
-		rectBuffer.position(0);
-		return true;
-	}
+    public fillCircle(cx: number, cy: number, r: number, color: number): void {
+        console.warn("fillCircle is not implemented for WebGL");
+    }
 
-	@Override
-	public void rec3d(int x, int y, int width, int height, int borderSize, int lightColor, int darkColor) {
-		for (int i = 0; i < borderSize; i++) {
-			drawLine(x + i, y + i + 1, x + i, y + height - 2 - i, lightColor);
-			drawLine(x + i, y + i, x + width - 2 - i, y + i, lightColor);
-			drawLine(x + width - 1 - i, y + i, x + width - 1 - i, y + height - 2 - i, darkColor);
-			drawLine(x + i, y + height - 1 - i, x + width - 1 - i, y + height - 1 - i, darkColor);
-		}
-	}
+    public drawArc(cx: number, cy: number, r: number, color: number, angle: number): void {
+        console.warn("drawArc is not implemented for WebGL");
+    }
 
-	@Override
-	public void fillRect(int x, int y, int width, int height, int color) {
-		setColor(color);
-		if (!setRectBuffer(x, y, width, height)) return;
-		GLES11.glVertexPointer(2, GLES11.GL_FLOAT, 0, rectBuffer);
-		GLES11.glDrawArrays(GLES11.GL_TRIANGLE_FAN, 0, 4);
-	}
+    public drawCircle(cx: number, cy: number, r: number, color: number): void {
+        console.warn("drawCircle is not implemented for WebGL");
+    }
 
-	@Override
-	public void verticalGradientRect(int x, int y, int width, int height, int color1, int color2) {
-		gradientRect(x, y, width, height, false, color1, color2);
-	}
+    public drawDashedCircle(cx: number, cy: number, r: number, color: number): void {
+        console.warn("drawDashedCircle is not implemented for WebGL");
+    }
 
-	@Override
-	public void diagonalGradientRect(int x, int y, int width, int height, int color1, int color2) {
-		gradientRect(x, y, width, height, true, color1, color2);
-	}
+    public drawPixmap(pixmap: Pixmap, x: number, y: number, pixmapAlpha?: number): void {
+        (pixmap as WebGLPixmap).render(this.transX(x), this.transY(y), pixmapAlpha);
+    }
 
-	private void gradientRect(int x, int y, int width, int height, boolean horizontal, int color1, int color2) {
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_COLOR_ARRAY);
-		if (!setRectBuffer(x, y, width, height)) return;
-		colorBuffer.clear();
-		putToColorBuffer(color1);
-		putToColorBuffer(horizontal ? color2 : color1);
-		putToColorBuffer(color2);
-		putToColorBuffer(color2);
-		colorBuffer.position(0);
-		GLES11.glColorPointer(4, GLES11.GL_FLOAT, 0, colorBuffer);
-		GLES11.glVertexPointer(2, GLES11.GL_FLOAT, 0, rectBuffer);
-		GLES11.glDrawArrays(GLES11.GL_TRIANGLE_FAN, 0, 4);
-		GLES11.glDisableClientState(GLES11.GL_COLOR_ARRAY);
-	}
+    public applyFilterToPixmap(pixmap: Pixmap, filter: any): void {
+        // ColorFilter is an Android class. A similar effect would require a custom shader in WebGL.
+        console.warn("applyFilterToPixmap is not implemented for WebGL");
+    }
 
-	private void putToColorBuffer(int color) {
-		colorBuffer.put(Color.red(color) / 255.0f);
-		colorBuffer.put(Color.green(color) / 255.0f);
-		colorBuffer.put(Color.blue(color) / 255.0f);
-		colorBuffer.put(Color.alpha(color) / 255.0f);
-	}
+    public drawText(text: string, x: number, y: number, color: number, font: GLText, scale?: number | boolean): void {
+        if (typeof scale !== 'number') scale = 1.0;
+        if (!font) return;
 
-	@Override
-	public void fillCircle(int cx, int cy, int r, int color) {
-		drawCircleWithMode(cx, cy, r, color, 32, GLES11.GL_TRIANGLE_FAN, 360);
-	}
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA); // Common blend for text
+        this.setColor(color);
+        font.begin();
+        font.draw(text, this.transX(x), this.transY(y - font.getSize()), scale as number);
+        font.end();
+        this.gl.disable(this.gl.BLEND);
+        // this.textureManager.setTexture(null); // Assuming texture manager handles this
+    }
 
-	private void drawCircleWithMode(int cx, int cy, int r, int color, int segments, int mode, float angle) {
-		if (segments > 64) {
-			segments = 64;
-		}
-		cx = transX(cx);
-		cy = transY(cy);
-		r = (int) (r * scaleFactor);
+    public drawUnderlinedText(text: string, x: number, y: number, color: number, font: GLText): void {
+        this.drawText(text, x, y, color, font);
+        const linePos = y + font.getDescent();
+        this.drawLine(x, linePos, x + this.getTextWidth(text, font), linePos, color);
+    }
 
-		circleBuffer.clear();
-		float step = angle / (segments - 1);
-		for (int i = 0; i < segments; i++) {
-			float ang = (float) (Math.toRadians(i * step) - Math.PI / 2);
-			circleBuffer.put((float) (cx + Math.cos(ang) * r));
-			circleBuffer.put((float) (cy + Math.sin(ang) * r));
-		}
-		circleBuffer.position(0);
-		setColor(color);
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glVertexPointer(2, GLES11.GL_FLOAT, 0, circleBuffer);
-		GLES11.glDrawArrays(mode, 0, segments);
-	}
 
-	@Override
-	public void drawArc(int cx, int cy, int r, int color, int angle) {
-		drawCircleWithMode(cx, cy, r, color,  64, GLES11.GL_LINE_STRIP, angle);
-	}
+    public drawCenteredText(text: string, x: number, y: number, color: number, font: GLText, scale: number): void {
+        this.drawText(text, x - (font.getWidth(text, scale) / this.scaleFactor >> 1), y, color, font, scale);
+    }
 
-	@Override
-	public void drawCircle(int cx, int cy, int r, int color) {
-		drawCircleWithMode(cx, cy, r, color, 64, GLES11.GL_LINE_LOOP, 360);
-	}
 
-	@Override
-	public void drawDashedCircle(int cx, int cy, int r, int color) {
-		drawCircleWithMode(cx, cy, r, color, 64, GLES11.GL_LINES, 360);
-	}
+    public getTextWidth(text: string, font: GLText): number {
+        if (!font) return 0;
+        return font.getWidth(text, 1) / this.scaleFactor;
+    }
 
-	@Override
-	public void drawPixmapUnscaled(Pixmap pixmap, int x, int y, int srcX, int srcY, int srcWidth, int srcHeight) {
-		x = transX(x);
-		y = transY(y);
+    public getTextHeight(text: string, font: GLText): number {
+        if (!font) return 0;
+        return font.getHeight() / this.scaleFactor;
+    }
 
-		srcX = Math.round(srcX * scaleFactor);
-		srcY = Math.round(srcY * scaleFactor);
-		srcWidth = Math.round(srcWidth * scaleFactor);
-		srcHeight = Math.round(srcHeight * scaleFactor);
+    public setClip(x1: number, y1: number, x2: number, y2: number): void {
+        if (x1 === -1 && y1 === -1 && x2 === -1 && y2 === -1) {
+            this.gl.disable(this.gl.SCISSOR_TEST);
+            return;
+        }
 
-		pixmap.setTextureCoordinates(srcX, srcY, srcX + srcWidth - 1, srcY + srcHeight - 1);
-		pixmap.setCoordinates(x, y, x + srcWidth - 1, y + srcHeight - 1);
-		pixmap.render(1);
-		pixmap.resetTextureCoordinates();
-	}
+        const x = x1 === -1 ? Math.max(this.visibleArea.left - 1, 0) : this.transX(x1);
+        const y = y1 === -1 ? Math.max(this.visibleArea.top - 1, 0) : this.transY(y1);
+        const width = (x2 === -1 ? Math.min(this.visibleArea.right + 1, this.visibleArea.width()) : this.transX(x2)) - x + 1;
+        const height = (y2 === -1 ? Math.min(this.visibleArea.bottom + 1, this.visibleArea.height()) : this.transY(y2)) - y + 1;
 
-	@Override
-	public Pixmap getNotificationNumber(GLText font, int number) {
-		Paint paint = new Paint();
-		paint.setTypeface(font.getTypeface());
-		paint.setTextSize(font.getSize());
+        this.gl.enable(this.gl.SCISSOR_TEST);
+        this.gl.scissor(x, this.gl.drawingBufferHeight - (y + height), width, height); // y is from bottom in WebGL
+    }
 
-		String text = StringUtil.format("%d", number);
+    public setColor(color: number, alpha?: number): void {
+        const r = ((color >> 16) & 0xff) / 255.0;
+        const g = ((color >> 8) & 0xff) / 255.0;
+        const b = (color & 0xff) / 255.0;
+        const a = alpha !== undefined ? alpha : ((color >> 24) & 0xff) / 255.0;
+        // This is a simplification. The color would typically be passed to a shader as a uniform.
+        // For now, let's just log it.
+        // console.log(`Setting color to: rgba(${r*255}, ${g*255}, ${b*255}, ${a})`);
+    }
 
-		int width = getTextWidth(text, font);
-		int r = (Math.max(width, getTextHeight(text, font)) >> 1) + 5;
+    public drawArrow(x1: number, y1: number, x2: number, y2: number, color: number, arrowHead: any): void {
+        console.warn("drawArrow is not implemented for WebGL");
+    }
 
-		Bitmap bitmap = Bitmap.createBitmap(r << 1, r << 1,
-			Settings.colorDepth  == 1 ? Bitmap.Config.ARGB_8888 : Bitmap.Config.ARGB_4444);
-		bitmap.eraseColor(Color.TRANSPARENT);
-
-		Canvas canvas = new Canvas(bitmap);
-		paint.setColor(ColorScheme.get(ColorScheme.COLOR_WARNING_MESSAGE));
-		paint.setStyle(Paint.Style.FILL);
-		canvas.drawCircle(r, r, r, paint);
-
-		paint.setColor(ColorScheme.get(ColorScheme.COLOR_MESSAGE));
-		canvas.drawText(text, r - (width >> 1), r  + ((int)font.getSize() >> 1) - 5, paint);
-		return newPixmap(bitmap, "notificationCircle" + number);
-	}
-
-	@Override
-	public void drawPixmap(Pixmap pixmap, int x, int y) {
-		pixmap.render(transX(x), transY(y));
-	}
-
-	@Override
-	public void drawPixmap(Pixmap pixmap, int x, int y, float pixmapAlpha) {
-		pixmap.render(transX(x), transY(y), pixmapAlpha);
-	}
-
-	@Override
-	public void applyFilterToPixmap(Pixmap pixmap, ColorFilter filter) {
-		Bitmap bit = pixmap.getBitmap();
-		converterCanvas.setBitmap(bit);
-	    paint.setColorFilter(filter);
-	    converterCanvas.drawBitmap(bit, 0, 0, paint);
-	    pixmap.setBitmap(bit);
-	}
-
-	@Override
-	public void drawText(String text, int x, int y, int color, GLText font) {
-		drawText(text, x, y, color, font, false);
-	}
-
-	private void drawText(String text, int x, int y, int color, GLText font, boolean underlined) {
-		if (font == null) {
-			return;
-		}
-		GLES11.glBlendFunc(GLES11.GL_ONE, GLES11.GL_ONE);
-		GLES11.glEnable(GLES11.GL_TEXTURE_2D);
-		drawTextCommon(text, x, y, color, font, 1);
-		if (underlined) {
-			int linePos = (int) (y + font.getDescent());
-			drawLine(x, linePos, x + getTextWidth(text, font), linePos, color);
-		}
-		GLES11.glDisable(GLES11.GL_TEXTURE_2D);
-	}
-
-	@Override
-	public void drawUnderlinedText(String text, int x, int y, int color, GLText font) {
-		drawText(text, x, y, color, font, true);
-	}
-
-	private void drawTextCommon(String text, int x, int y, int color, GLText font, float scale) {
-		GLES11.glEnable(GLES11.GL_BLEND);
-	    setColor(color);
-		font.begin();
-		font.draw(text, transX(x), transY(y - (int) font.getSize()), scale);
-		font.end();
-		GLES11.glDisable(GLES11.GL_BLEND);
-		textureManager.setTexture(null);
-	}
-
-	@Override
-	public void drawText(String text, int x, int y, int color, GLText font, float scale) {
-		if (font == null) {
-			return;
-		}
-		GLES11.glDisable(GLES11.GL_LIGHTING);
-		GLES11.glDisable(GLES11.GL_CULL_FACE);
-		GLES11.glBlendFunc(GLES11.GL_ONE, GLES11.GL_ONE_MINUS_SRC_ALPHA);
-		drawTextCommon(text, x, y, color, font, scale);
-		GLES11.glEnable(GLES11.GL_CULL_FACE);
-		GLES11.glEnable(GLES11.GL_LIGHTING);
-	}
-
-	@Override
-	public void drawCenteredText(String text, int x, int y, int color, GLText font, float scale) {
-		drawText(text, x - ((int) font.getWidth(text, scale) >> 1), y, color, font, scale);
-	}
-
-	@Override
-	public int getTextWidth(String text, GLText font) {
-		if (font == null) {
-			return 0;
-		}
-		return (int) (font.getWidth(text, 1) / scaleFactor);
-	}
-
-	@Override
-	public int getTextHeight(String text, GLText font) {
-		if (font == null) {
-			return 0;
-		}
-		return (int) (font.getHeight() / scaleFactor);
-	}
-
-	@Override
-	public void setClip(int x1, int y1, int x2, int y2) {
-		if (x1 == -1 && y1 == -1 && x2 == -1 && y2 == -1) {
-			GLES11.glDisable(GLES11.GL_SCISSOR_TEST);
-			return;
-		}
-		x1 = x1 == -1 ? Math.max(visibleArea.left - 1, 0) : transX(x1);
-		y1 = y1 == -1 ? Math.max(visibleArea.top  - 1, 0) : transY(y1);
-		x2 = x2 == -1 ? Math.min(visibleArea.right + 1, visibleArea.width()) : transX(x2);
-		y2 = y2 == -1 ? Math.min(visibleArea.bottom + 1, visibleArea.height()) : transY(y2);
-		GLES11.glEnable(GLES11.GL_SCISSOR_TEST);
-		GLES11.glScissor(x1, y1, x2 - x1 + 1, y2 - y1 + 1);
-	}
-
-	@Override
-	public void setColor(int color, float alpha) {
-		GLES11.glColor4f(Color.red(color) / 255.0f, Color.green(color) / 255.0f, Color.blue(color) / 255.0f, alpha);
-	}
-
-	@Override
-	public void setColor(int color) {
-		setColor(color, Color.alpha(color) / 255.0f);
-	}
-
-	@Override
-	public void drawArrow(int x1, int y1, int x2, int y2, int color, ArrowDirection arrowHead) {
-		int temp;
-		if (x1 > x2) {
-			temp = x1;
-			x1 = x2;
-			x2 = temp;
-		}
-		if (y1 > y2) {
-			temp = y1;
-			y1 = y2;
-			y2 = temp;
-		}
-		drawLine(x1, y1, x2, y2, color);
-		for (int i = 1; i < 10; i++) {
-			switch (arrowHead) {
-				case LEFT:  drawLine(x1 + i, y1 - i, x1 + i, y1 + i, color); break;
-				case RIGHT: drawLine(x2 - i, y1 - i, x2 - i, y1 + i, color); break;
-				case UP:    drawLine(x1 - i, y1 + i, x1 + i, y1 + i, color); break;
-				case DOWN:  drawLine(x1 - i, y2 - i, x1 + i, y2 - i, color); break;
-			}
-		}
-	}
-
+    public getNotificationNumber(font: GLText, number: number): Pixmap {
+        // This is a complex operation involving canvas rendering.
+        // Returning null for now.
+        return null;
+    }
 }

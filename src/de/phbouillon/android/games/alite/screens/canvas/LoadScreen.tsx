@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,88 +16,76 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import { TouchEvent } from "../../../framework/Input";
+import { Assets } from "../../Assets";
+import { L } from "../../L";
+import { ScreenCodes } from "../../ScreenCodes";
+import { SoundManager } from "../../SoundManager";
+import { CommanderData } from "../../model/CommanderData";
+import { AliteScreen, RESULT_NONE, RESULT_YES } from "./AliteScreen";
+import { CatalogScreen } from "./CatalogScreen";
+import { StatusScreen } from "./StatusScreen";
 
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.model.CommanderData;
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class LoadScreen extends CatalogScreen {
+    private confirmedLoad = false;
+    private pendingShowMessage: boolean;
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class LoadScreen extends CatalogScreen {
-	private boolean confirmedLoad = false;
-	private boolean pendingShowMessage;
+    constructor(titleOrStream: string | any) {
+        if (typeof titleOrStream === 'string') {
+            super(titleOrStream);
+        } else {
+            // Deserialization constructor - omitting implementation for now
+            super(L.string("title_cmdr_load"));
+            // title = L.string("title_cmdr_load");
+        }
+    }
 
-	LoadScreen(String title) {
-		super(title);
-	}
+    public activate(): void {
+        super.activate();
+        this.deleteButton = null;
+        if (this.pendingShowMessage) {
+            this.showQuestionDialog(L.string("cmdr_load_confirm", this.selectedCommanderData[0].getName()));
+            this.confirmDelete = false;
+            this.pendingShowMessage = false;
+        }
+    }
 
-	public LoadScreen(final DataInputStream dis) throws IOException {
-		super(dis);
-		title = L.string(R.string.title_cmdr_load);
-	}
+    // saveScreenState omitted as it's Java-specific serialization
 
-	@Override
-	public void activate() {
-		super.activate();
-		deleteButton = null;
-		if (pendingShowMessage) {
-			showQuestionDialog(L.string(R.string.cmdr_load_confirm, selectedCommanderData.get(0).getName()));
-			confirmDelete = false;
-			pendingShowMessage = false;
-		}
-	}
+    protected processTouch(touch: TouchEvent): void {
+        super.processTouch(touch);
+        if (this.confirmedLoad) {
+            this.newScreen = new StatusScreen();
+            this.confirmedLoad = false;
+        }
+        if (this.selectedCommanderData.length === 1) {
+            if (this.messageResult === RESULT_NONE) {
+                this.showQuestionDialog(L.string("cmdr_load_confirm", this.selectedCommanderData[0].getName()));
+                this.pendingShowMessage = true;
+                this.confirmDelete = false;
+                SoundManager.play(Assets.alert);
+                return;
+            }
+            this.pendingShowMessage = false;
+            if (this.messageResult === RESULT_YES) {
+                try {
+                    this.game.loadCommander(this.selectedCommanderData[0].getFileName());
+                    this.showMessageDialog(L.string("cmdr_load_succeeded", this.selectedCommanderData[0].getDockedSystem()));
+                    SoundManager.play(Assets.alert);
+                    this.confirmedLoad = true;
+                } catch (e) {
+                    if (e instanceof Error) {
+                        this.showMessageDialog(L.string("cmdr_load_failed", this.selectedCommanderData[0].getName(), e.message));
+                    }
+                }
+            }
+            this.clearSelection();
+            this.messageResult = RESULT_NONE;
+        }
+    }
 
-	@Override
-	public void saveScreenState(DataOutputStream dos) throws IOException {
-		dos.writeInt(currentPage);
-		dos.writeBoolean(confirmDelete);
-		dos.writeInt(selectedCommanderData.size());
-		for (CommanderData c: selectedCommanderData) {
-			// This is o(n^2), but does it really matter?
-			// The commander data could be transformed to a map, and doing it
-			// here would simplify to o(n) (2 * n, to be precise), but even if
-			// someone has stored 10000 commanders and wants to delete all of them,
-			// this lookup isn't the problem.
-			dos.writeInt(commanderData.indexOf(c));
-		}
-		dos.writeBoolean(pendingShowMessage);
-	}
-
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		super.processTouch(touch);
-		if (confirmedLoad) {
-			newScreen = new StatusScreen();
-			confirmedLoad = false;
-		}
-		if (selectedCommanderData.size() == 1) {
-			if (messageResult == RESULT_NONE) {
-				showQuestionDialog(L.string(R.string.cmdr_load_confirm, selectedCommanderData.get(0).getName()));
-				pendingShowMessage = true;
-				confirmDelete = false;
-				SoundManager.play(Assets.alert);
-				return;
-			}
-			pendingShowMessage = false;
-			if (messageResult == RESULT_YES) {
-				try {
-					game.loadCommander(selectedCommanderData.get(0).getFileName());
-					showMessageDialog(L.string(R.string.cmdr_load_succeeded, selectedCommanderData.get(0).getDockedSystem()));
-					SoundManager.play(Assets.alert);
-					confirmedLoad = true;
-				} catch (IOException e) {
-					showMessageDialog(L.string(R.string.cmdr_load_failed, selectedCommanderData.get(0).getName(), e.getMessage()));
-				}
-			}
-			clearSelection();
-			messageResult = RESULT_NONE;
-		}
-	}
-
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.LOAD_SCREEN;
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.LOAD_SCREEN;
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,83 +16,82 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.Screen;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.FlightScreen;
+import { TouchEvent } from "../../../framework/Input";
+import { Screen } from "../../../framework/Screen";
+import { AliteConfig } from "../../AliteConfig";
+import { AliteLog } from "../../AliteLog";
+import { L } from "../../L";
+import { FlightScreen } from "../opengl/ingame/FlightScreen";
+import { AliteScreen, RESULT_NONE, RESULT_YES, RESULT_NO } from "./AliteScreen";
+import { StatusScreen } from "./StatusScreen";
 
-import java.io.IOException;
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class QuitScreen extends AliteScreen {
+    private callingScreen: Screen;
+    private mockStatusScreen: Screen;
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class QuitScreen extends AliteScreen {
-	private Screen callingScreen;
-	private Screen mockStatusScreen;
+    // default public constructor is required for navigation bar
+    constructor() {
+        super();
+        this.mockStatusScreen = new StatusScreen();
+        this.mockStatusScreen.loadAssets();
+        if (this.game.getCurrentScreen() instanceof FlightScreen) {
+            this.callingScreen = this.game.getCurrentScreen();
+        } else {
+            this.callingScreen = this.mockStatusScreen;
+        }
+    }
 
-	// default public constructor is required for navigation bar
-	@SuppressWarnings("unused")
-	public QuitScreen() {
-		mockStatusScreen = new StatusScreen();
-		mockStatusScreen.loadAssets();
-		if (game.getCurrentScreen() instanceof FlightScreen) {
-			callingScreen = game.getCurrentScreen();
-		} else {
-			callingScreen = mockStatusScreen;
-		}
-	}
+    public activate(): void {
+        this.mockStatusScreen.activate();
+        this.setUpForDisplay();
+        this.showModalQuestionDialog(L.string("quit_confirm", AliteConfig.GAME_NAME));
+    }
 
-	@Override
-	public void activate() {
-		mockStatusScreen.activate();
-		setUpForDisplay();
-		showModalQuestionDialog(L.string(R.string.quit_confirm, AliteConfig.GAME_NAME));
-	}
+    public processTouch(touch: TouchEvent): void {
+        if (this.messageResult === RESULT_NONE) {
+            return;
+        }
+        if (this.messageResult === RESULT_YES) {
+            try {
+                AliteLog.d("[ALITE]", "Performing autosave. [Quit]");
+                this.game.autoSave();
+            } catch (e) {
+                if (e instanceof Error) {
+                    AliteLog.e("[ALITE]", "Autosaving commander failed.", e);
+                }
+            }
+            // game.finishAffinity(); // Not applicable in a web context.
+            AliteLog.d("QuitScreen", "User confirmed quit. In a real web app, you might close the tab/window if allowed, or navigate away.");
+        }
+    }
 
-	@Override
-	public void processTouch(TouchEvent touch) {
-		if (messageResult == RESULT_NONE) {
-			return;
-		}
-		if (messageResult == RESULT_YES) {
-			try {
-				AliteLog.d("[ALITE]", "Performing autosave. [Quit]");
-				game.autoSave();
-			} catch (IOException e) {
-				AliteLog.e("[ALITE]", "Autosaving commander failed.", e);
-			}
-			game.finishAffinity();
-		}
-	}
+    public present(deltaTime: number): void {
+        if (this.messageResult === RESULT_NO) {
+            this.messageResult = RESULT_NONE;
+            this.newScreen = this.callingScreen;
+            if (this.callingScreen !== this.mockStatusScreen) {
+                (this.callingScreen as FlightScreen).setInformationScreen(null);
+            }
+            this.callingScreen.present(deltaTime);
+        } else {
+            this.mockStatusScreen.present(deltaTime);
+        }
+    }
 
-	@Override
-	public void present(float deltaTime) {
-		if (messageResult == RESULT_NO) {
-			messageResult = RESULT_NONE;
-			newScreen = callingScreen;
-			if (callingScreen != mockStatusScreen) {
-				((FlightScreen) callingScreen).setInformationScreen(null);
-			}
-			callingScreen.present(deltaTime);
-		} else {
-			mockStatusScreen.present(deltaTime);
-		}
-	}
+    public dispose(): void {
+        if (this.mockStatusScreen != null) {
+            this.mockStatusScreen.dispose();
+            this.mockStatusScreen = null;
+        }
+        super.dispose();
+    }
 
-	@Override
-	public void dispose() {
-		if (mockStatusScreen != null) {
-			mockStatusScreen.dispose();
-			mockStatusScreen = null;
-		}
-		super.dispose();
-	}
+    public loadAssets(): void {
+        this.mockStatusScreen.loadAssets();
+    }
 
-	@Override
-	public void loadAssets() {
-		mockStatusScreen.loadAssets();
-	}
-
-	@Override
-	public int getScreenCode() {
-		return callingScreen.getScreenCode();
-	}
+    public getScreenCode(): number {
+        return this.callingScreen.getScreenCode();
+    }
 }

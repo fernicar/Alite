@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,76 +16,51 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
+import { Pool, PoolObjectFactory } from "../../../../../framework/impl/Pool";
+import { GraphicObject } from "../../../../../framework/impl/gl/GraphicObject";
+import { Vector3f } from "../../../../../framework/math/Vector3f";
+import { WayPointFactory } from "./WayPointFactory";
 
-import de.phbouillon.android.framework.impl.Pool;
-import de.phbouillon.android.framework.impl.Pool.PoolObjectFactory;
-import de.phbouillon.android.framework.impl.gl.GraphicObject;
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.AliteLog;
+export class WayPoint {
+    private static readonly serialVersionUID = 1457361922469761843;
 
-public class WayPoint implements Serializable {
-	private static final long serialVersionUID = 1457361922469761843L;
+    public readonly upVector = new Vector3f(0, 0, 0);
+    public readonly position = new Vector3f(0, 0, 0);
+    public orientFirst = false;
 
-	public final Vector3f upVector = new Vector3f(0, 0, 0);
-	public final Vector3f position = new Vector3f(0, 0, 0);
-	public boolean orientFirst = false;
+    private static waypointFactory: PoolObjectFactory<WayPoint> = new WayPointFactory();
+    private static pool: Pool<WayPoint> = new Pool<WayPoint>(WayPoint.waypointFactory, 100);
 
-	private static transient PoolObjectFactory <WayPoint> waypointFactory = new WayPointFactory();
-	private static transient Pool <WayPoint> pool = new Pool<WayPoint>(waypointFactory, 100);
+    constructor() {
+    }
 
-	WayPoint() {
-	}
+    public static newWayPoint(position?: Vector3f | number, up?: Vector3f | number, z?: number, ux?: number, uy?: number, uz?: number): WayPoint {
+        if (position instanceof Vector3f && up instanceof Vector3f) {
+            return this.newWayPoint(position.x, position.y, position.z, up.x, up.y, up.z);
+        } else if (typeof position === 'number' && typeof up === 'number' && z !== undefined) {
+            const result = this.pool.newObject();
+            result.position.x = position;
+            result.position.y = up;
+            result.position.z = z;
+            result.upVector.x = ux;
+            result.upVector.y = uy;
+            result.upVector.z = uz;
+            result.orientFirst = false;
+            return result;
+        } else {
+            return this.newWayPoint(0, 0, 0, 0, 0, 0);
+        }
+    }
 
-	private void readObject(ObjectInputStream in) throws IOException {
-		try {
-			AliteLog.d("readObject", "WayPoint.readObject");
-			in.defaultReadObject();
-			AliteLog.d("readObject", "WayPoint.readObject I");
-			waypointFactory = new WayPointFactory();
-			pool = new Pool<WayPoint>(waypointFactory, 100);
-			pool.reset();
-			AliteLog.d("readObject", "WayPoint.readObject II");
-		} catch (ClassNotFoundException e) {
-			AliteLog.e("Class not found", e.getMessage(), e);
-		}
-	}
+    public reached(): void {
+        WayPoint.pool.free(this);
+    }
 
-	public static WayPoint newWayPoint() {
-		return newWayPoint(0, 0, 0, 0, 0, 0);
-	}
+    public distanceSq(go: GraphicObject): number {
+        return this.position.distanceSq(go.getPosition());
+    }
 
-	public static WayPoint newWayPoint(Vector3f position, Vector3f up) {
-		return newWayPoint(position.x, position.y, position.z, up.x, up.y, up.z);
-	}
-
-	public static WayPoint newWayPoint(float x, float y, float z, float ux, float uy, float uz) {
-		WayPoint result = pool.newObject();
-
-		result.position.x = x;
-		result.position.y = y;
-		result.position.z = z;
-
-		result.upVector.x = ux;
-		result.upVector.y = uy;
-		result.upVector.z = uz;
-
-		result.orientFirst = false;
-
-		return result;
-	}
-
-	public void reached() {
-		pool.free(this);
-	}
-
-	public float distanceSq(GraphicObject go) {
-		return position.distanceSq(go.getPosition());
-	}
-
-	public String toString() {
-		return position.toString();
-	}
+    public toString(): string {
+        return this.position.toString();
+    }
 }

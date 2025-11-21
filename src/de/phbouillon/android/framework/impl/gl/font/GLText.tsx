@@ -1,377 +1,268 @@
-// This is a OpenGL ES 1.0 dynamic font rendering system. It loads actual font
-// files, generates a font map (texture) from them, and allows rendering of
-// text strings.
+// This is a dynamic font rendering system for WebGL. It loads font files,
+// generates a font map (texture) from them using HTML5 Canvas, and allows
+// rendering of text strings.
 //
-// NOTE: the rendering portions of this class uses a sprite batcher in order
-// provide decent speed rendering. Also, rendering assumes a BOTTOM-LEFT
-// origin, and the (x,y) positions are relative to that, as well as the
-// bottom-left of the string to render.
-// Taken from here: http://fractiousg.blogspot.de/2012/04/rendering-text-in-opengl-on-android.html
+// NOTE: the rendering portions of this class use a sprite batcher to provide
+// decent speed rendering. Also, rendering assumes a BOTTOM-LEFT origin,
+// and the (x,y) positions are relative to that, as well as the bottom-left
+// of the string to render.
+// Original Android implementation from here: http://fractiousg.blogspot.de/2012/04/rendering-text-in-opengl-on-android.html
 
-package de.phbouillon.android.framework.impl.gl.font;
+import { L } from "../../../games/alite/L";
+import { R } from "../../../games/alite/R";
+import { CharacterData } from "./CharacterData";
+import { SpriteBatch } from "./SpriteBatch";
 
-/* Alite - Discover the Universe on your Favorite Android Device
- * Copyright (C) 2015 Philipp Bouillon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful and
- * fun, but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see
- * http://http://www.gnu.org/licenses/gpl-3.0.txt.
- */
+export class GLText {
 
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Typeface;
-import android.opengl.GLES11;
-import android.opengl.GLUtils;
-import androidx.core.content.res.ResourcesCompat;
-import de.phbouillon.android.framework.MemUtil;
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
+    private static readonly CHAR_UNKNOWN = '\u00b0'; // Code of the Unknown Character
+    private static readonly FONT_SIZE_MIN = 6;
+    private static readonly FONT_SIZE_MAX = 180;
+    private static readonly CHAR_BATCH_SIZE = 100;
 
-public class GLText {
+    private readonly charCount: number;
+    private givenFontSize: number;
 
-	/*
-	Every strings.xml must contain a string array with name "char_sets".
-	Its items must contain start and end char code of required chars for the current locale
-	in format "start_char_code..end_char_code".
-	In default values/strings.xml resource file can be used '\\uXXXX' form
-	but the form '&#xXXXX;' can be used in the all other "external" language packs
-	since those are plain xml files rather than resource files.
-	See the following example to defining char sets in
-	strings.xml resource				strings.xml of language packs
-	<string-array name="char_sets">		<string-array name="char_sets">
-		<item>\u0020..\u007e</item>			<item>&#x0020;..&#x007e;</item>
-		<item>\u00a1..\u00ff</item>			<item>&#x00a1;..&#x00ff;</item>
-		<item>\u0100..\u017f</item>			<item>&#x0100;..&#x017f;</item>
-	</string-array>						</string-array>
-	*/
+    // --Members--//
+    private batch: SpriteBatch;
+    private typefaceName: string;
+    private fontPadX: number;
+    private fontPadY: number;
 
-	private static final char CHAR_UNKNOWN = '\u00b0'; // Code of the Unknown Character
+    private fontHeight: number;
+    private fontAscent: number;
+    private fontDescent: number;
 
-	private final int charCount = getCharCount();
+    private textureId: WebGLTexture;
+    private textureWidth: number;
+    private textureHeight: number;
 
-	private static final int FONT_SIZE_MIN = 6; // Minumum Font Size (Pixels)
-	private static final int FONT_SIZE_MAX = 180; // Maximum Font Size (Pixels)
+    private charWidthMax: number;
+    private charHeight: number;
+    private charWidths: number[];
+    private charData: CharacterData[];
+    private cellWidth: number;
+    private cellHeight: number;
+    private rowCnt: number;
+    private colCnt: number;
 
-	private static final int CHAR_BATCH_SIZE = 100; // Number of Characters to Render Per Batch
+    private spaceX: number;
 
-	private int givenFontSize;
+    private gl: WebGLRenderingContext;
 
-	// --Members--//
-	private SpriteBatch batch; // Batch Renderer
+    constructor(gl: WebGLRenderingContext) {
+        this.gl = gl;
+        this.charCount = this.getCharCount();
+        this.charWidths = new Array(this.charCount);
+        this.charData = new Array(this.charCount);
 
-	private Typeface typeface;
-	private int fontPadX;
-	private int fontPadY; // Font Padding (Pixels; On Each Side, ie. Doubled on Both X+Y Axis)
+        this.batch = new SpriteBatch(this.gl, GLText.CHAR_BATCH_SIZE);
 
-	private float fontHeight; // Font Height (Actual; Pixels)
-	private float fontAscent; // Font Ascent (Above Baseline; Pixels)
-	private float fontDescent; // Font Descent (Below Baseline; Pixels)
+        this.fontPadX = 0;
+        this.fontPadY = 0;
+        this.fontHeight = 0.0;
+        this.fontAscent = 0.0;
+        this.fontDescent = 0.0;
+        this.textureId = null;
+        this.textureWidth = 0;
+        this.textureHeight = 0;
+        this.charWidthMax = 0;
+        this.charHeight = 0;
+        this.cellWidth = 0;
+        this.cellHeight = 0;
+        this.rowCnt = 0;
+        this.colCnt = 0;
+        this.spaceX = 0.0;
+    }
 
-	private int textureId; // Font Texture ID
-	private int textureWidth;
-	private int textureHeight;
+    public async load(fontName: string, size: number, givenSize: number, padX: number, padY: number): Promise<GLText> {
+        this.typefaceName = fontName;
+        this.fontPadX = padX;
+        this.fontPadY = padY;
+        this.givenFontSize = givenSize;
 
-	private float charWidthMax; // Character Width (Maximum; Pixels)
-	private float charHeight; // Character Height (Maximum; Pixels)
-	private float[] charWidths = new float[charCount]; // Width of Each Character (Actual; Pixels)
-	private CharacterData[] charData = new CharacterData[charCount]; // Data of Each Character (Width, height, texture Coordinates)
-	private int cellWidth;
-	private int cellHeight; // Character Cell Width/Height
-	private int rowCnt;
-	private int colCnt; // Number of Rows/Columns
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
 
-	private float spaceX; // Additional (X,Y Axis) Spacing (Unscaled)
-	private Bitmap.Config config;
+        ctx.font = `${size}px ${fontName}`;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textBaseline = "alphabetic";
 
-	// --Constructor--//
-	// D: save GL instance + asset manager, create arrays, and initialize the members
-	// A: gl - OpenGL ES 10 Instance
-
-	private GLText(int colorDepth) {
-		config = colorDepth == 1 ? Bitmap.Config.ARGB_8888 : Bitmap.Config.ARGB_4444;
-		batch = new SpriteBatch(CHAR_BATCH_SIZE); // Create Sprite Batch (with Defined Size)
-
-		// initialize remaining members
-		fontPadX = 0;
-		fontPadY = 0;
-
-		fontHeight = 0.0f;
-		fontAscent = 0.0f;
-		fontDescent = 0.0f;
-
-		textureId = -1;
-		textureWidth = 0;
-		textureHeight = 0;
-
-		charWidthMax = 0;
-		charHeight = 0;
-
-		cellWidth = 0;
-		cellHeight = 0;
-		rowCnt = 0;
-		colCnt = 0;
-
-		spaceX = 0.0f;
-	}
-
-	// --Load Font--//
-	// description
-	// this will load the specified font file, create a texture for the defined
-	// character range, and setup all required values used to render with it.
-	// arguments:
-	// fontId - font (.ttf, .otf) to use in 'res/font' folder.
-	// size - Requested pixel size of font (height)
-	// padX, padY - Extra padding per character (X+Y Axis); to prevent
-	// overlapping characters.
-	public static GLText load(Context context, int colorDepth, int fontId, int size, int givenSize, int padX, int padY) {
-		return new GLText(colorDepth).load(ResourcesCompat.getFont(context, fontId), size, givenSize, padX, padY);
-	}
-
-	private GLText load(Typeface tf, int size, int givenSize, int padX, int padY) {
-		typeface = tf;
-		// setup requested values
-		fontPadX = padX; // Set Requested X Axis Padding
-		fontPadY = padY; // Set Requested Y Axis Padding
-
-		givenFontSize = givenSize;
-
-		// load the font and setup paint instance for drawing
-
-		Paint paint = new Paint(); // Create Android Paint Instance
-		paint.setAntiAlias(true); // Enable Anti Alias
-		paint.setTextSize(size); // Set Text Size
-		paint.setColor(Color.WHITE); // Set ARGB (White, Opaque)
-		paint.setTypeface(tf); // Set Typeface
-
-		// get font metrics
-		Paint.FontMetrics fm = paint.getFontMetrics(); // Get Font Metrics
-		fontHeight = (float) Math.ceil(Math.abs(fm.bottom) + Math.abs(fm.top)); // Calculate Font Height
-		fontAscent = (float) Math.ceil(Math.abs(fm.ascent)); // Save Font Ascent
-		fontDescent = (float) Math.ceil(Math.abs(fm.descent)); // Save Font Descent
-
-		// determine the width of each character (including unknown character)
-		// also determine the maximum character width
-		charWidthMax = 0;
-		charHeight = 0; // Reset Character Width/Height Maximums
-		float[] w = new float[2]; // Working Width Value
-		int cnt = 0; // Array Counter
-		for (String charRange : L.array(R.array.char_sets)) {
-			for (char c = charRange.charAt(0); c <= charRange.charAt(3); c++) { // FOR Each Character
-				paint.getTextWidths("" + c, 0, 1, w); // Get Character Bounds
-				charWidths[cnt] = w[0]; // Get Width
-				if (charWidths[cnt] > charWidthMax) // IF Width Larger Than Max Width
-					charWidthMax = charWidths[cnt]; // Save New Max Width
-				cnt++; // Advance Array Counter
-			}
-		}
-
-		// set character height to font height
-		charHeight = fontHeight; // Set Character Height
-
-		// find the maximum size, validate, and setup cell sizes
-		cellWidth = (int) charWidthMax + 2 * fontPadX; // Set Cell Width
-		cellHeight = (int) charHeight + 2 * fontPadY; // Set Cell Height
-		int maxSize = cellWidth > cellHeight ? cellWidth : cellHeight; // Save Max Size (Width/Height)
-		if (maxSize < FONT_SIZE_MIN || maxSize > FONT_SIZE_MAX) // IF Maximum Size Outside Valid Bounds
-			// Return Error
-			return this;
-
-		colCnt = (int) Math.ceil(Math.sqrt(cnt * cellWidth * cellHeight) / cellWidth);
-		rowCnt = (int) Math.ceil(charCount / (float) colCnt);
-
-		textureWidth = colCnt * cellWidth;
-		textureHeight = rowCnt * cellHeight;
-
-		// create an empty bitmap (alpha only)
-		Bitmap bitmap = Bitmap.createBitmap(textureWidth, textureHeight, config); // Create Bitmap
-		Canvas canvas = new Canvas(bitmap); // Create Canvas for Rendering to Bitmap
-		bitmap.eraseColor(0x00000000); // Set Transparent Background (ARGB)
+        // Simplified font metrics for web - not as precise as Android's
+        // This is a common approximation.
+        const metrics = ctx.measureText("M"); // Measure a capital letter for ascent/descent approximation
+        this.fontAscent = metrics.actualBoundingBoxAscent;
+        this.fontDescent = metrics.actualBoundingBoxDescent;
+        this.fontHeight = this.fontAscent + this.fontDescent;
 
 
-		// render each of the characters to the canvas (ie. build the font map)
-		float x = 0; // Set Start Position (X)
-		float y = 0;// Set Start Position (Y)
-		float yShift = (cellHeight - 1) - fontDescent - fontPadY;
-		cnt = 0;
-		for (String charRange : L.array(R.array.char_sets)) {
-			for (char c = charRange.charAt(0); c <= charRange.charAt(3); c++) { // FOR Each Character
-				canvas.drawText("" + c, x + fontPadX, y + yShift, paint); // Draw Character
-				charData[cnt] = new CharacterData((int)charWidths[cnt], (int)charHeight, textureWidth, textureHeight,
-					x, y, cellWidth - 1, cellHeight - 1); // Create Region for Character
-				x += cellWidth; // Move to Next Character
-				if (x + cellWidth > textureWidth) { // IF End of Line Reached
-					x = 0; // Set X for New Row
-					y += cellHeight; // Move Down a Row
-				}
-				cnt++; // Advance Array Counter
-			}
-		}
+        this.charWidthMax = 0;
+        this.charHeight = 0;
+        let cnt = 0;
+        for (const charRange of L.array(R.array.char_sets)) {
+            for (let c = charRange.charCodeAt(0); c <= charRange.charCodeAt(3); c++) {
+                const char = String.fromCharCode(c);
+                const width = ctx.measureText(char).width;
+                this.charWidths[cnt] = width;
+                if (width > this.charWidthMax) {
+                    this.charWidthMax = width;
+                }
+                cnt++;
+            }
+        }
 
-		// generate a new texture
-		int[] textureIds = new int[1]; // Array to Get Texture Id
-		GLES11.glGenTextures(1, textureIds, 0); // Generate New Texture
-		textureId = textureIds[0]; // Save Texture Id
-		// setup filters for texture
-		GLES11.glBindTexture(GLES11.GL_TEXTURE_2D, textureId); // Bind Texture
-		GLES11.glTexParameterf(GLES11.GL_TEXTURE_2D, GLES11.GL_TEXTURE_MAG_FILTER, GLES11.GL_LINEAR); // Set Magnification Filter
-		GLES11.glTexParameterf(GLES11.GL_TEXTURE_2D, GLES11.GL_TEXTURE_MIN_FILTER, GLES11.GL_NEAREST); // Set Minification Filter
-		GLES11.glTexParameterf(GLES11.GL_TEXTURE_2D, GLES11.GL_TEXTURE_WRAP_S, GLES11.GL_CLAMP_TO_EDGE); // Set U Wrapping
-		GLES11.glTexParameterf(GLES11.GL_TEXTURE_2D, GLES11.GL_TEXTURE_WRAP_T, GLES11.GL_CLAMP_TO_EDGE); // Set V Wrapping
+        this.charHeight = this.fontHeight;
+        this.cellWidth = Math.ceil(this.charWidthMax) + 2 * this.fontPadX;
+        this.cellHeight = Math.ceil(this.charHeight) + 2 * this.fontPadY;
+        const maxSize = Math.max(this.cellWidth, this.cellHeight);
+        if (maxSize < GLText.FONT_SIZE_MIN || maxSize > GLText.FONT_SIZE_MAX) {
+            console.error("Font size out of bounds");
+            return this;
+        }
 
-		// load the generated bitmap onto the texture
-		GLUtils.texImage2D(GLES11.GL_TEXTURE_2D, 0, bitmap, 0); // Load Bitmap to Texture
-		GLES11.glBindTexture(GLES11.GL_TEXTURE_2D, 0); // Unbind Texture
+        this.colCnt = Math.ceil(Math.sqrt(this.charCount * this.cellWidth * this.cellHeight) / this.cellWidth);
+        this.rowCnt = Math.ceil(this.charCount / this.colCnt);
 
-/*
-		// Save font bitmap to file 'font.png' for test purposes
-		try {
-			FileOutputStream fos = new FileOutputStream(new File(
-				new AndroidFileIO(Alite.get().getApplicationContext()).getFileName("font.png")));
-			bitmap.compress(Bitmap.CompressFormat.PNG, 85, fos);
-			fos.flush();
-			fos.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-*/
-		// release the bitmap
-		MemUtil.freeBitmap(bitmap);
-		return this;
-	}
+        this.textureWidth = this.colCnt * this.cellWidth;
+        this.textureHeight = this.rowCnt * this.cellHeight;
 
-	public void begin() {
-		GLES11.glBindTexture(GLES11.GL_TEXTURE_2D, textureId); // Bind the Texture
-		batch.beginBatch(); // Begin Batch
-	}
+        canvas.width = this.textureWidth;
+        canvas.height = this.textureHeight;
 
-	public void end() {
-		batch.endBatch(); // End Batch
-		GLES11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f); // Restore Default Color/Alpha
-	}
+        // Re-apply font settings after resize
+        ctx.font = `${size}px ${fontName}`;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textBaseline = 'alphabetic';
 
-	// --Draw Text--//
-	// D: draw text at the specified x,y position
-	// A: text - the string to draw
-	// x, y - the x,y position to draw text at (bottom left of text; including descent)
-	// R: [none]
-	public void draw(String text, float x, float y, float scale) {
-		float chrHeight = cellHeight * scale; // Calculate Scaled Character Height
-		float chrWidth = cellWidth * scale; // Calculate Scaled Character Width
-		int len = text.length(); // Get String Length
-		x += chrWidth / 2.0f - fontPadX * scale; // Adjust Start X
-		y += chrHeight / 2.0f - fontPadY * scale; // Adjust Start Y
-		for (int i = 0; i < len; i++) { // FOR Each Character in String
-			int c = getCharIndex(text.charAt(i));
-			batch.drawSprite(x, y, chrWidth, chrHeight, charData[c]); // Draw the Character
-			x += (charWidths[c] + spaceX)  * scale; // Advance X Position by Scaled Character Width
-		}
-	}
 
-	private int getCharCount() {
-		int count = 0;
-		for (String charRange : L.array(R.array.char_sets)) {
-			count += charRange.charAt(3) - charRange.charAt(0) + 1;
-		}
-		return count;
-	}
+        let x = 0;
+        let y = 0;
+        const yShift = this.cellHeight - this.fontPadY - this.fontDescent;
 
-	private int getCharIndex(char c) {
-		int index = 0;
-		for (String charRange : L.array(R.array.char_sets)) {
-			if (c >= charRange.charAt(0) && c <= charRange.charAt(3)) {
-				return index + c - charRange.charAt(0);
-			}
-			index += charRange.charAt(3) - charRange.charAt(0) + 1;
-		}
-		return c == CHAR_UNKNOWN ? 0 : getCharIndex(CHAR_UNKNOWN);
-	}
+        cnt = 0;
+        for (const charRange of L.array(R.array.char_sets)) {
+            for (let c = charRange.charCodeAt(0); c <= charRange.charCodeAt(3); c++) {
+                const char = String.fromCharCode(c);
+                ctx.fillText(char, x + this.fontPadX, y + yShift);
+                this.charData[cnt] = new CharacterData(this.charWidths[cnt], this.charHeight, this.textureWidth, this.textureHeight,
+                    x, y, this.cellWidth - 1, this.cellHeight - 1);
+                x += this.cellWidth;
+                if (x + this.cellWidth > this.textureWidth) {
+                    x = 0;
+                    y += this.cellHeight;
+                }
+                cnt++;
+            }
+        }
 
-	// --Set Space--//
-	// D: set the spacing (unscaled; ie. pixel size) to use for the font
-	// A: space - space for x axis spacing
-	// R: [none]
-	public void setSpace(float space) {
-		spaceX = space;
-	}
+        this.textureId = this.gl.createTexture();
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.textureId);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 
-	// --Get Space--//
-	// D: get the current spacing used for the font
-	// A: [none]
-	// R: the x/y space currently used for scale
-	public float getSpace() {
-		return spaceX;
-	}
+        return this;
+    }
 
-	// --Get width of a String--//
-	// D: return the width of the specified string if rendered using current settings
-	// A: text - the string to get length for
-	// R: the length of the specified string (pixels)
-	public float getWidth(String text, float scale) {
-		float len = 0.0f; // Working Length
-		int strLen = text.length(); // Get String Length (Characters)
-		for (int i = 0; i < strLen; i++) { // For Each Character in String (Except Last
-			if (text.charAt(i) == '\n') {
-				break;
-			}
-			len += charWidths[getCharIndex(text.charAt(i))] * scale; // Add Scaled Character Width to Total Length
-		}
-		len += strLen > 1 ? (strLen - 1) * spaceX * scale : 0; // Add Space Length
-		return len; // Return Total Length
-	}
+    public begin(): void {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.textureId);
+        this.batch.beginBatch();
+    }
 
-	// --Get unscaled Width/Height of Character--//
-	// D: return the unscaled width/height of a character, or max character width
-	// NOTE: since all characters are the same height, no character index is required!
-	// NOTE: excludes spacing!!
-	// A: chr - the character to get width for
-	// R: the requested character size (unscaled)
-	public float getCharWidth(char chr) {
-		return charWidths[getCharIndex(chr)]; // Return unscaled Character Width
-	}
+    public end(): void {
+        this.batch.endBatch();
+    }
 
-	public float getCharWidthMax() {
-		return charWidthMax; // Return unscaled Max Character Width
-	}
+    public draw(text: string, x: number, y: number, scale: number): void {
+        const chrHeight = this.cellHeight * scale;
+        const chrWidth = this.cellWidth * scale;
+        const len = text.length;
+        x += chrWidth / 2.0 - this.fontPadX * scale;
+        y += chrHeight / 2.0 - this.fontPadY * scale;
+        for (let i = 0; i < len; i++) {
+            const c = this.getCharIndex(text.charAt(i));
+            this.batch.drawSprite(x, y, chrWidth, chrHeight, this.charData[c]);
+            x += (this.charWidths[c] + this.spaceX) * scale;
+        }
+    }
 
-	private float getCharHeight() {
-		return charHeight; // Return unscaled Character Height
-	}
+    private getCharCount(): number {
+        let count = 0;
+        for (const charRange of L.array(R.array.char_sets)) {
+            count += charRange.charCodeAt(3) - charRange.charCodeAt(0) + 1;
+        }
+        return count;
+    }
 
-	// --Get Font Metrics--//
-	// D: return the specified (unscaled) font metric
-	// A: [none]
-	// R: the requested font metric (unscaled)
-	public float getAscent() {
-		return fontAscent;
-	}
+    private getCharIndex(c: string): number {
+        const charCode = c.charCodeAt(0);
+        let index = 0;
+        for (const charRange of L.array(R.array.char_sets)) {
+            const start = charRange.charCodeAt(0);
+            const end = charRange.charCodeAt(3);
+            if (charCode >= start && charCode <= end) {
+                return index + charCode - start;
+            }
+            index += end - start + 1;
+        }
+        return c === GLText.CHAR_UNKNOWN ? 0 : this.getCharIndex(GLText.CHAR_UNKNOWN);
+    }
 
-	public float getDescent() {
-		return fontDescent;
-	}
+    public setSpace(space: number): void {
+        this.spaceX = space;
+    }
 
-	public float getHeight() {
-		return fontHeight;
-	}
+    public getSpace(): number {
+        return this.spaceX;
+    }
 
-	public float getSize() {
-		return givenFontSize;
-	}
+    public getWidth(text: string, scale: number): number {
+        let len = 0.0;
+        const strLen = text.length;
+        for (let i = 0; i < strLen; i++) {
+            if (text.charAt(i) === '\n') {
+                break;
+            }
+            len += this.charWidths[this.getCharIndex(text.charAt(i))] * scale;
+        }
+        len += strLen > 1 ? (strLen - 1) * this.spaceX * scale : 0;
+        return len;
+    }
 
-	public Typeface getTypeface() {
-		return typeface;
-	}
+
+    public getCharWidth(chr: string): number {
+        return this.charWidths[this.getCharIndex(chr)];
+    }
+
+    public getCharWidthMax(): number {
+        return this.charWidthMax;
+    }
+
+    private getCharHeight(): number {
+        return this.charHeight;
+    }
+
+
+    public getAscent(): number {
+        return this.fontAscent;
+    }
+
+    public getDescent(): number {
+        return this.fontDescent;
+    }
+
+    public getHeight(): number {
+        return this.fontHeight;
+    }
+
+    public getSize(): number {
+        return this.givenFontSize;
+    }
+
+    public getTypeface(): string {
+        return this.typefaceName;
+    }
 }

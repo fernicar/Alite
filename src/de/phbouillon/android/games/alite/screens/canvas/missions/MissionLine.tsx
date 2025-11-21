@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas.missions;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,50 +16,52 @@ package de.phbouillon.android.games.alite.screens.canvas.missions;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
+import { AliteLog } from "../../../AliteLog";
+import { L } from "../../../L";
 
-import android.content.res.AssetFileDescriptor;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.L;
+// Represents a line of dialogue in a mission, with associated text and an audio file.
+export class MissionLine {
+    private readonly text: string;
+    private readonly speechObject: any; // AssetFileDescriptor equivalent
+    private isPlaying = false;
 
-class MissionLine implements OnCompletionListener {
-	private final String text;
-	private final AssetFileDescriptor speechObject;
-	private boolean isPlaying = false;
+    constructor(speechPath: string, text: string) {
+        // L.rawDescriptor is Android-specific. This needs a web audio replacement.
+        this.speechObject = speechPath == null ? null : null; // L.rawDescriptor(speechPath);
+        this.text = text;
+    }
 
-	MissionLine(String speechPath, String text) throws IOException {
-		speechObject = speechPath == null ? null : L.rawDescriptor(speechPath);
-		this.text = text;
-	}
+    play(mp: any): void { // MediaPlayer equivalent
+        if (this.isPlaying || this.speechObject == null) {
+            return;
+        }
+        try {
+            this.isPlaying = true;
+            // The following is Android MediaPlayer logic and needs to be replaced with Web Audio API.
+            // mp.reset();
+            // mp.setDataSource(speechObject.getFileDescriptor(), speechObject.getStartOffset(), speechObject.getLength());
+            // mp.setOnCompletionListener(this);
+            // mp.prepare();
+            // mp.start();
+            AliteLog.d("MissionLine", `Simulating playback of: ${this.text}`);
+            // For now, immediately call completion
+            this.onCompletion(mp);
+        } catch (e) {
+            if (e instanceof Error) {
+                AliteLog.e("Error playing speech file", "Error playing speech file", e);
+            }
+        }
+    }
 
-	void play(MediaPlayer mp) {
-		if (isPlaying || speechObject == null) {
-			return;
-		}
-		try {
-			isPlaying = true;
-			mp.reset();
-			mp.setDataSource(speechObject.getFileDescriptor(), speechObject.getStartOffset(), speechObject.getLength());
-			mp.setOnCompletionListener(this);
-			mp.prepare();
-			mp.start();
-		} catch (IOException e) {
-			AliteLog.e("Error playing speech file", "Error playing speech file", e);
-		}
-	}
+    isPlaying(): boolean {
+        return this.isPlaying;
+    }
 
-	boolean isPlaying() {
-		return isPlaying;
-	}
+    onCompletion(mp: any): void { // MediaPlayer
+        this.isPlaying = false;
+    }
 
-	@Override
-	public void onCompletion(MediaPlayer mp) {
-		isPlaying = false;
-	}
-
-	String getText() {
-		return text;
-	}
+    getText(): string {
+        return this.text;
+    }
 }

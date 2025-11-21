@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,170 +16,168 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-import java.util.*;
+import { IMethodHook } from "../../../framework/IMethodHook";
+import { GraphicObject } from "../../../framework/impl/gl/GraphicObject";
+import { Vector3f } from "../../../framework/math/Vector3f";
 
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.framework.impl.gl.GraphicObject;
-import de.phbouillon.android.framework.math.Vector3f;
+export enum ZPositioning {
+    Front,
+    Normal,
+    Back
+}
 
-public class AliteObject extends GraphicObject implements Serializable {
-	private static final long serialVersionUID = -5229181033103145634L;
+export class AliteObject extends GraphicObject {
+    private static readonly serialVersionUID = -5229181033103145634;
 
-	public enum ZPositioning {
-		Front,
-		Normal,
-		Back
-	}
+    private visible = true;
+    private remove = false;
+    private positionMode: ZPositioning = ZPositioning.Normal;
+    protected boundingSphereRadius: number;
+    private readonly destructionCallbacks: Set<IMethodHook> = new Set();
+    protected hudColor: number;
+    private visibleOnHud = false;
+    private saving = false;
+    private readonly displayMatrix: number[] = new Array(16);
+    distanceFromCenterToBorder: number;
+    private depthTest = true;
 
-	private boolean visible = true;
-	private boolean remove = false;
-	private ZPositioning positionMode = ZPositioning.Normal;
-	protected float boundingSphereRadius;
-	private final Set<IMethodHook> destructionCallbacks = new LinkedHashSet<>();
-	protected int hudColor; // scan_class, scanner_display_color1,2, scanner_hostile_display_color1,2
-	private boolean visibleOnHud = false;
-	private transient boolean saving = false;
-	private final float[] displayMatrix = new float[16];
-	float distanceFromCenterToBorder;
-	private boolean depthTest = true;
+    protected readonly v0 = new Vector3f(0, 0, 0);
+    protected readonly v1 = new Vector3f(0, 0, 0);
+    private readonly v2 = new Vector3f(0, 0, 0);
+    private readonly edge1 = new Vector3f(0, 0, 0);
+    private readonly edge2 = new Vector3f(0, 0, 0);
+    private readonly pvec = new Vector3f(0, 0, 0);
+    private readonly qvec = new Vector3f(0, 0, 0);
+    private readonly tvec = new Vector3f(0, 0, 0);
 
-	protected final Vector3f v0    = new Vector3f(0, 0, 0);
-	protected final Vector3f v1    = new Vector3f(0, 0, 0);
-	private final Vector3f v2    = new Vector3f(0, 0, 0);
-	private final Vector3f edge1 = new Vector3f(0, 0, 0);
-	private final Vector3f edge2 = new Vector3f(0, 0, 0);
-	private final Vector3f pvec  = new Vector3f(0, 0, 0);
-	private final Vector3f qvec  = new Vector3f(0, 0, 0);
-	private final Vector3f tvec  = new Vector3f(0, 0, 0);
+    constructor(id: string) {
+        super(id);
+    }
 
-	public AliteObject(String id) {
-		super(id);
-	}
+    public setSaving(b: boolean): void {
+        this.saving = b;
+        if (this.saving) {
+            this.destructionCallbacks.clear();
+        }
+    }
 
-	public void setSaving(boolean b) {
-		saving = b;
-		if (saving) {
-			destructionCallbacks.clear();
-		}
-	}
+    public addDestructionCallback(callback: IMethodHook): void {
+        if (this.saving) {
+            return;
+        }
+        this.destructionCallbacks.add(callback);
+    }
 
-	public void addDestructionCallback(final IMethodHook callback) {
-		if (saving) {
-			return;
-		}
-		destructionCallbacks.add(callback);
-	}
+    public hasDestructionCallback(): boolean {
+        return !this.saving && this.destructionCallbacks.size > 0;
+    }
 
-	public boolean hasDestructionCallback() {
-		return !saving && !destructionCallbacks.isEmpty();
-	}
+    public setDepthTest(depthTest: boolean): void {
+        this.depthTest = depthTest;
+    }
 
-	public void setDepthTest(boolean depthTest) {
-		this.depthTest = depthTest;
-	}
+    public isDepthTest(): boolean {
+        return this.depthTest;
+    }
 
-	public boolean isDepthTest() {
-		return depthTest;
-	}
+    public setVisible(visible: boolean): void {
+        this.visible = visible;
+    }
 
-	public void setVisible(boolean visible) {
-		this.visible = visible;
-	}
+    public isVisible(): boolean {
+        return this.visible;
+    }
 
-	public boolean isVisible() {
-		return visible;
-	}
+    public setRemove(remove: boolean): void {
+        this.remove = remove;
+    }
 
-	public void setRemove(boolean remove) {
-		this.remove = remove;
-	}
+    public mustBeRemoved(): boolean {
+        return this.remove;
+    }
 
-	public boolean mustBeRemoved() {
-		return remove;
-	}
+    public getZPositioningMode(): ZPositioning {
+        return this.positionMode;
+    }
 
-	public ZPositioning getZPositioningMode() {
-		return positionMode;
-	}
+    public setZPositioningMode(posMode: ZPositioning): void {
+        this.positionMode = posMode;
+    }
 
-	public void setZPositioningMode(ZPositioning posMode) {
-		positionMode = posMode;
-	}
+    public getBoundingSphereRadius(): number {
+        return this.boundingSphereRadius;
+    }
 
-	public float getBoundingSphereRadius() {
-		return boundingSphereRadius;
-	}
+    public executeDestructionCallbacks(): void {
+        for (const dc of this.destructionCallbacks) {
+            dc.execute(0);
+        }
+    }
 
-	public void executeDestructionCallbacks() {
-		for (IMethodHook dc : destructionCallbacks) {
-			dc.execute(0);
-		}
-	}
+    protected intersectInternal(numberOfVertices: number, origin: Vector3f, direction: Vector3f, verts: number[]): boolean {
+        for (let i = 0; i < numberOfVertices * 3; i += 9) {
+            this.v0.x = verts[i + 0];
+            this.v0.y = verts[i + 1];
+            this.v0.z = verts[i + 2];
 
-	protected boolean intersectInternal(int numberOfVertices, Vector3f origin, Vector3f direction, float [] verts) {
-		for (int i = 0; i < numberOfVertices * 3; i += 9) {
-			v0.x = verts[i + 0];
-			v0.y = verts[i + 1];
-			v0.z = verts[i + 2];
+            this.v1.x = verts[i + 3];
+            this.v1.y = verts[i + 4];
+            this.v1.z = verts[i + 5];
 
-			v1.x = verts[i + 3];
-			v1.y = verts[i + 4];
-			v1.z = verts[i + 5];
+            this.v2.x = verts[i + 6];
+            this.v2.y = verts[i + 7];
+            this.v2.z = verts[i + 8];
 
-			v2.x = verts[i + 6];
-			v2.y = verts[i + 7];
-			v2.z = verts[i + 8];
-
-			v1.sub(v0, edge1);
-			v2.sub(v0, edge2);
-			direction.cross(edge2, pvec);
-			float det = edge1.dot(pvec);
-			if (Math.abs(det) < 0.00001f) {
-				continue;
-			}
-			float invDet = 1.0f / det;
-			origin.sub(v0, tvec);
-			float u = tvec.dot(pvec) * invDet;
-			if (u < 0.0f || u > 1.0f) {
-				continue;
-			}
-			tvec.cross(edge1, qvec);
-			float v = direction.dot(qvec) * invDet;
-			if (v < 0.0f || u + v > 1.0f) {
-				continue;
-			}
-			return true;
-		}
-		return false;
-	}
+            this.v1.sub(this.v0, this.edge1);
+            this.v2.sub(this.v0, this.edge2);
+            direction.cross(this.edge2, this.pvec);
+            const det = this.edge1.dot(this.pvec);
+            if (Math.abs(det) < 0.00001) {
+                continue;
+            }
+            const invDet = 1.0 / det;
+            origin.sub(this.v0, this.tvec);
+            const u = this.tvec.dot(this.pvec) * invDet;
+            if (u < 0.0 || u > 1.0) {
+                continue;
+            }
+            this.tvec.cross(this.edge1, this.qvec);
+            const v = direction.dot(this.qvec) * invDet;
+            if (v < 0.0 || u + v > 1.0) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
 
 
-	public boolean isVisibleOnHud() {
-		return visibleOnHud;
-	}
+    public isVisibleOnHud(): boolean {
+        return this.visibleOnHud;
+    }
 
-	public void setVisibleOnHud(boolean visibleOnHud) {
-		this.visibleOnHud = visibleOnHud;
-	}
+    public setVisibleOnHud(visibleOnHud: boolean): void {
+        this.visibleOnHud = visibleOnHud;
+    }
 
-	public int getHudColor() {
-		return hudColor;
-	}
+    public getHudColor(): number {
+        return this.hudColor;
+    }
 
-	public void render() {
-	}
+    public render(): void {
+    }
 
-	public float getDistanceFromCenterToBorder() {
-		return distanceFromCenterToBorder;
-	}
+    public getDistanceFromCenterToBorder(): number {
+        return this.distanceFromCenterToBorder;
+    }
 
-	public void setDisplayMatrix(float[] matrix) {
-		System.arraycopy(matrix, 0, displayMatrix, 0, matrix.length);
-	}
+    public setDisplayMatrix(matrix: number[]): void {
+        for(let i=0; i<matrix.length; i++) {
+            this.displayMatrix[i] = matrix[i];
+        }
+    }
 
-	public float[] getDisplayMatrix() {
-		return displayMatrix;
-	}
-
+    public getDisplayMatrix(): number[] {
+        return this.displayMatrix;
+    }
 }

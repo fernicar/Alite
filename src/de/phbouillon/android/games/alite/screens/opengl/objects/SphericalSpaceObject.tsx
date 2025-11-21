@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,48 +16,46 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Sphere } from "../../../../../../../../framework/impl/gl/Sphere";
+import { AliteObject } from "./AliteObject";
 
-import de.phbouillon.android.framework.impl.gl.Sphere;
+export class SphericalSpaceObject extends AliteObject {
+    private static readonly serialVersionUID = 5293882896307129631;
 
-public class SphericalSpaceObject extends AliteObject implements Serializable {
-	private static final long serialVersionUID = 5293882896307129631L;
+    private readonly sphere: Sphere;
 
-	private final Sphere sphere;
+    constructor(name: string, radius: number, texture: string) {
+        super(name);
+        this.sphere = new Sphere(radius, 32, 32, texture, null, false);
+        this.boundingSphereRadius = radius;
+        this.distanceFromCenterToBorder = radius;
+        this.setVisibleOnHud(true);
+    }
 
-	public SphericalSpaceObject(String name, float radius, String texture) {
-		super(name);
-		sphere = new Sphere(radius, 32, 32, texture, null, false);
-		boundingSphereRadius = radius;
-		distanceFromCenterToBorder = radius;
-		setVisibleOnHud(true);
-	}
+    public getRadius(): number {
+        return this.sphere.getRadius();
+    }
 
-	public float getRadius() {
-		return sphere.getRadius();
-	}
+    public setNewSize(radius: number): void {
+        this.sphere.setNewSize(radius);
+        this.boundingSphereRadius = radius;
+        this.distanceFromCenterToBorder = radius;
+    }
 
-	public void setNewSize(float radius) {
-		sphere.setNewSize(radius);
-		boundingSphereRadius = radius;
-		distanceFromCenterToBorder = radius;
-	}
+    protected glSetUp(): void {
+    }
 
-	protected void glSetUp() {
-	}
+    protected glTearDown(): void {
+    }
 
-	protected void glTearDown() {
-	}
+    public render(): void {
+        this.glSetUp();
+        this.sphere.render();
+        this.glTearDown();
+    }
 
-	@Override
-	public void render() {
-		glSetUp();
-		sphere.render();
-		glTearDown();
-	}
-
-	public void setColor(float r, float g, float b, float a) {
-		sphere.setColor(r, g, b, a);
-	}
+    public setColor(r: number, g: number, b: number, a: number): void {
+        this.sphere.setColor(r, g, b, a);
+    }
 
 }

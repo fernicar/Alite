@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,63 +16,57 @@ package de.phbouillon.android.framework.impl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.media.SoundPool;
-import de.phbouillon.android.framework.Sound;
-import de.phbouillon.android.framework.Timer;
+import { Sound, SoundType } from "../Sound";
+import { Timer } from "../Timer";
+import { AliteLog } from "../../games/alite/AliteLog";
 
-public class AndroidSound implements Sound {
-	private final int soundId;
-	private final SoundPool soundPool;
-	private int currentStreamId = -1;
-	private final SoundType soundType;
-	private Timer delayToNextPlay = new Timer().setAutoResetWithImmediateAtFirstCall();
+export class AndroidSound implements Sound {
+    private readonly soundId: number;
+    // private readonly soundPool: any; // SoundPool equivalent in Web Audio
+    private currentStreamId = -1;
+    private readonly soundType: SoundType;
+    private delayToNextPlay = new Timer().setAutoResetWithImmediateAtFirstCall();
 
-	public AndroidSound(SoundPool soundPool, int soundId, SoundType st) {
-		this.soundId = soundId;
-		this.soundPool = soundPool;
-		this.soundType = st;
-	}
+    constructor(soundPool: any, soundId: number, st: SoundType) {
+        this.soundId = soundId;
+        // this.soundPool = soundPool;
+        this.soundType = st;
+        AliteLog.d("AndroidSound", "Web Audio implementation needed for sound playback.");
+    }
 
-	@Override
-	public SoundType getType() {
-		return soundType;
-	}
+    public getType(): SoundType {
+        return this.soundType;
+    }
 
-	@Override
-	public void play(float volume) {
-		soundPool.play(soundId, volume, volume, 0, 0, 1);
-	}
+    public play(volume: number): void {
+        // Web Audio API implementation needed
+    }
 
-	@Override
-	public void playOnce(float volume, long delayInMs) {
-		if (delayToNextPlay.hasPassedMillis(delayInMs)) {
-			play(volume);
-		}
-	}
+    public playOnce(volume: number, delayInMs: number): void {
+        if (this.delayToNextPlay.hasPassedMillis(delayInMs)) {
+            this.play(volume);
+        }
+    }
 
-	@Override
-	public void repeat(float volume) {
-		if (currentStreamId != -1) {
-			stop();
-		}
-		currentStreamId = soundPool.play(soundId, volume, volume, 0, -1, 1);
-	}
+    public repeat(volume: number): void {
+        if (this.currentStreamId !== -1) {
+            this.stop();
+        }
+        // Web Audio API implementation needed
+    }
 
-	@Override
-	public boolean isPlaying() {
-		return currentStreamId != -1;
-	}
+    public isPlaying(): boolean {
+        return this.currentStreamId !== -1;
+    }
 
-	@Override
-	public void stop() {
-		if (currentStreamId != -1) {
-			soundPool.stop(currentStreamId);
-		}
-		currentStreamId = -1;
-	}
+    public stop(): void {
+        if (this.currentStreamId !== -1) {
+            // Web Audio API implementation needed
+        }
+        this.currentStreamId = -1;
+    }
 
-	@Override
-	public void dispose() {
-		soundPool.unload(soundId);
-	}
+    public dispose(): void {
+        // Web Audio API implementation needed
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,32 +16,31 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.model.Player;
-import de.phbouillon.android.games.alite.model.generator.SystemData;
+import { L } from "../../L";
+import { ScreenCodes } from "../../ScreenCodes";
+import { GalaxyScreen } from "./GalaxyScreen";
 
 //This screen never needs to be serialized, as it is not part of the InGame state.
-public class LocalScreen extends GalaxyScreen {
+export class LocalScreen extends GalaxyScreen {
 
-	// default public constructor is required for navigation bar
-	public LocalScreen() {
-	}
+    // default public constructor is required for navigation bar
+    constructor(zoomFactor?: number, centerX?: number, centerY?: number) {
+        if (zoomFactor !== undefined && centerX !== undefined && centerY !== undefined) {
+            super(zoomFactor, centerX, centerY);
+        } else {
+            super();
+        }
+    }
 
-	public LocalScreen(float zoomFactor, int centerX, int centerY) {
-		super(zoomFactor, centerX, centerY);
-	}
+    public activate(): void {
+        const player = this.game.getPlayer();
+        const hyper = player.getHyperspaceSystem();
+        this.initPosition(hyper == null ? player.getPosition().x : hyper.getX(),
+            hyper == null ? player.getPosition().y : hyper.getY(), 4);
+        this.activateScreen(L.string("title_local_nav_chart"));
+    }
 
-		@Override
-	public void activate() {
-		Player player = game.getPlayer();
-		SystemData hyper = player.getHyperspaceSystem();
-		initPosition(hyper == null ? player.getPosition().x : hyper.getX(),
-			hyper == null ? player.getPosition().y : hyper.getY(), 4);
-		activateScreen(L.string(R.string.title_local_nav_chart));
-	}
-
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.LOCAL_SCREEN;
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.LOCAL_SCREEN;
+    }
 }

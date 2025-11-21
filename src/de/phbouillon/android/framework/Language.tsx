@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,54 +16,44 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.content.res.AssetFileDescriptor;
-import androidx.annotation.ArrayRes;
-import androidx.annotation.PluralsRes;
-import androidx.annotation.StringRes;
+import { ResourceStream } from "./ResourceStream";
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Locale;
+export interface Language {
+    addDefaultResource(path: string, stream: ResourceStream, resPrefix: string): Promise<void>;
+    addDefaultResource(key: number, value: string | string[]): void;
+    addLocalizedResource(path: string, stream: ResourceStream, resPrefix: string): Promise<void>;
+    addLocalizedResource(key: number, value: string | string[]): void;
 
-public interface Language {
-	void addDefaultResource(String path, ResourceStream stream, String resPrefix) throws IOException;
-	void addDefaultResource(Integer key, String value);
-	void addDefaultResource(Integer key, String[] value);
-	void addLocalizedResource(String path, ResourceStream stream, String resPrefix) throws IOException;
-	void addLocalizedResource(Integer key, String value);
-	void addLocalizedResource(Integer key, String[] value);
+    getCurrentLocale(): any; // Locale equivalent
+    setLocale(locale: any): void;
 
-	Locale getCurrentLocale();
-	void setLocale(Locale locale);
+    /**
+     * Executes all java scripts in the given statement param between <js></js> tags.
+     */
+    executeScript(statement: string): string;
 
-	/**
-	 * Executes all java scripts in the given statement param between &lt;js>&lt;/js> tags.
-	 */
-	String executeScript(String statement);
+    /**
+     * Adds default locale and adds name of locale files from the given file list
+     * by calling addLocaleFile.
+     */
+    loadLocaleList(localeFiles: any[]): void; // File[] equivalent
 
-	/**
-	 * Adds default locale and adds name of locale files from the given file list
-	 * by calling addLocaleFile.
-	 */
-	void loadLocaleList(File[] localeFiles);
+    /**
+     * Returns the name of the next locale on the list read by method {@link #loadLocaleList}
+     * Returns default locale (0. item) after the last locale name exceeded.
+     */
+    getNextLocale(): any; // Locale equivalent
 
-	/**
-	 * Returns the name of the next locale on the list read by method {@link #loadLocaleList}
-	 * Returns default locale (0. item) after the last locale name exceeded.
-	 */
-	Locale getNextLocale();
+    stringById(id: string | number, ...formatArgs: any[]): string;
+    arrayById(id: string | number): string[];
+    pluralsById(id: string | number, quantity: number, ...formatArgs: any[]): string;
+    rawAssetsByFilename(fileName: string): Promise<any>; // InputStream
+    rawByFilename(path: string, fileName: string): Promise<any>; // InputStream
+    rawDescriptorByFilename(fileName: string): Promise<any>; // AssetFileDescriptor
 
-	String stringById(@StringRes int id, Object... formatArgs);
-	String[] arrayById(@ArrayRes int id);
-	String pluralsById(@PluralsRes int id, int quantity, Object... formatArgs);
-	InputStream rawAssetsByFilename(String fileName) throws IOException;
-	InputStream rawByFilename(String path, String fileName) throws IOException;
-	AssetFileDescriptor rawDescriptorByFilename(String fileName) throws IOException;
-
-	/**
-	 * Returns list of file and sub-directory names only in the given path (but not deeper)
-	 * within the currently selected locale file or null for default locale.
-	 */
-	String[] list(String path);
+    /**
+     * Returns list of file and sub-directory names only in the given path (but not deeper)
+     * within the currently selected locale file or null for default locale.
+     */
+    list(path: string): string[];
 }

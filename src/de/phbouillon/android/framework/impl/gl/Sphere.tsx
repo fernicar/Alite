@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl.gl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,290 +16,185 @@ package de.phbouillon.android.framework.impl.gl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.nio.FloatBuffer;
+import { GLES11 } from "./GLES11";
+import { GlUtils } from "./GlUtils";
+import { Alite } from "../../../games/alite/Alite";
+import { SpriteData } from "../../SpriteData";
 
-import android.opengl.GLES11;
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.framework.SpriteData;
 
-public class Sphere implements Serializable {
-	private static final long serialVersionUID = 604349083831769333L;
+export class Sphere {
+    protected normalBuffer: Float32Array;
+    protected vertexBuffer: Float32Array;
+    protected texCoordBuffer: Float32Array;
 
-	protected transient FloatBuffer normalBuffer;
-	protected transient FloatBuffer vertexBuffer;
-	protected transient FloatBuffer texCoordBuffer;
+    protected readonly numberOfVertices: number;
+    protected readonly glDrawMode: number;
+    protected readonly textureFilename: string;
 
-	protected final int numberOfVertices;
-	protected final int glDrawMode;
-	protected final String textureFilename;
+    protected readonly allNormals: Float32Array;
+    protected radius: number;
+    private readonly slices: number;
+    private readonly stacks: number;
+    private readonly inside: boolean;
+    private readonly hasNormals: boolean;
+    private readonly spriteData: SpriteData;
+    private r: number; private g: number; private b: number; private a: number;
 
-	protected final float [] allNormals;
-	protected float radius;
-	private final int slices;
-	private final int stacks;
-	private final boolean inside;
-	private final boolean hasNormals;
-	private final SpriteData spriteData;
-	private float r, g, b, a;
+    constructor(radius: number, slices: number, stacks: number, textureFilename: string, spriteData: SpriteData, inside: boolean) {
+        this.numberOfVertices = slices * stacks * 6;
+        this.radius = radius;
+        this.spriteData = spriteData;
+        this.slices = slices;
+        this.stacks = stacks;
+        this.inside = inside;
+        this.hasNormals = !inside;
 
-	public Sphere(final float radius, final int slices, final int stacks, final String textureFilename, final SpriteData spriteData, final boolean inside) {
-		numberOfVertices = slices * stacks * 6;
-		this.radius = radius;
-		this.spriteData = spriteData;
-		this.slices = slices;
-		this.stacks = stacks;
-		this.inside = inside;
-		hasNormals = !inside;
+        this.vertexBuffer = new Float32Array(3 * this.numberOfVertices);
+        this.texCoordBuffer = textureFilename ? new Float32Array(2 * this.numberOfVertices) : null;
+        if (this.hasNormals) {
+            this.normalBuffer = new Float32Array(3 * this.numberOfVertices);
+            this.allNormals = new Float32Array(3 * this.numberOfVertices);
+        }
 
-		vertexBuffer   = GlUtils.allocateFloatBuffer(4 * 3 * numberOfVertices);
-		if (textureFilename != null) {
-			texCoordBuffer = GlUtils.allocateFloatBuffer(4 * 2 * numberOfVertices);
-		} else {
-			texCoordBuffer = null;
-		}
-		if (hasNormals) {
-			normalBuffer = GlUtils.allocateFloatBuffer(4 * 3 * numberOfVertices);
-			allNormals   = new float[3 * numberOfVertices];
-		} else {
-			normalBuffer = null;
-			allNormals = null;
-		}
-
-		plotSpherePoints(slices, stacks, radius, inside);
-		this.textureFilename = textureFilename;
-		if (textureFilename != null) {
-			Alite.get().getTextureManager().addTexture(textureFilename);
-		}
-		glDrawMode = GLES11.GL_TRIANGLES;
-	}
-
-	private void readObject(ObjectInputStream in) throws IOException {
-		try {
-			AliteLog.d("readObject", "Sphere.readObject");
-			in.defaultReadObject();
-			AliteLog.d("readObject", "Sphere.readObject I");
-			vertexBuffer   = GlUtils.allocateFloatBuffer(4 * 3 * numberOfVertices);
-			if (textureFilename != null) {
-				texCoordBuffer = GlUtils.allocateFloatBuffer(4 * 2 * numberOfVertices);
-			} else {
-				texCoordBuffer = null;
-			}
-			if (hasNormals) {
-				normalBuffer = GlUtils.allocateFloatBuffer(4 * 3 * numberOfVertices);
-			} else {
-				normalBuffer = null;
-			}
-			plotSpherePoints(slices, stacks, radius, inside);
-			AliteLog.d("readObject", "Sphere.readObject II");
-		} catch (ClassNotFoundException e) {
-			AliteLog.e("Class not found", e.getMessage(), e);
-		}
-	}
-
-	private void writeObject(ObjectOutputStream out)
-            throws IOException {
-		try {
-			out.defaultWriteObject();
-		} catch(IOException e) {
-			AliteLog.e("PersistenceException", "Sphere " + textureFilename, e);
-			throw e;
-		}
+        this.plotSpherePoints(slices, stacks, radius, inside);
+        this.textureFilename = textureFilename;
+        if (textureFilename) {
+            Alite.get().getTextureManager().addTexture(textureFilename);
+        }
+        this.glDrawMode = GLES11.GL_TRIANGLES;
+        this.setColor(1,1,1,1);
     }
 
-	public void setNewSize(float newRadius) {
-		radius = newRadius;
-		vertexBuffer.clear();
-		if (hasNormals) {
-			for (float n: allNormals) {
-				vertexBuffer.put(newRadius * n);
-			}
-		}
-		vertexBuffer.position(0);
-	}
+    public setNewSize(newRadius: number): void {
+        this.radius = newRadius;
+        if (this.hasNormals) {
+            for (let i = 0; i < this.allNormals.length; i++) {
+                this.vertexBuffer[i] = newRadius * this.allNormals[i];
+            }
+        }
+    }
 
-	public float getRadius() {
-		return radius;
-	}
+    public getRadius(): number { return this.radius; }
 
-	private void plotSpherePoints(int slices, int stacks, float radius, boolean inside) {
-	    float theta, phi;
-	    float phi_step = (float) (2.0f * Math.PI / (slices - 1));
-	    float theta_step = (float) (Math.PI / (stacks - 1));
+    private plotSpherePoints(slices: number, stacks: number, radius: number, inside: boolean): void {
+        const phi_step = 2.0 * Math.PI / (slices - 1);
+        const theta_step = Math.PI / (stacks - 1);
+        const u_step = 1.0 / (slices - 1);
+        const v_step = -1.0 / (stacks - 1);
 
-	    float u, v;
-	    float u_step = 1.0f / (slices - 1);
-	    float v_step = -1.0f / (stacks - 1);
+        let vertOffset = 0;
+        let normOffset = 0;
+        let texOffset = 0;
 
-	    int normalOffset = 0;
+        for (let phi = 0, u = 0; phi < 2.0 * Math.PI; phi += phi_step, u += u_step) {
+            for (let theta = 0, v = 0; theta < Math.PI; theta += theta_step, v += v_step) {
+                const sin_phi = Math.sin(phi);
+                const cos_phi = Math.cos(phi);
+                const sin_theta = Math.sin(theta);
+                const cos_theta = Math.cos(theta);
 
-		/* Step 360 degrees around pole (slice loop) */
-	    for (phi = 0f, u = 0f; phi < 2.0 * Math.PI; phi += phi_step, u += u_step) {
-			/* For current slice calculate 180 degree stack from pole to pole */
-			for (theta = 0, v = 0; theta < Math.PI; theta += theta_step, v += v_step) {
-				/*
-				 * Calculate quad. Original showed a pole facing viewer so swapped
-				 * Y and Z to have poles going up/down rather than rotate geometry;
-				 * also negated new Y (the old Z) to flip texture so North pole
-				 * is up.
-				 */
-				float x1 = (float) (Math.sin(phi) * Math.sin(theta));
-				float y1 = (float) (-Math.cos(theta));
-				float z1 = (float) (Math.cos(phi) * Math.sin(theta));
+                const sin_phi_step = Math.sin(phi + phi_step);
+                const cos_phi_step = Math.cos(phi + phi_step);
+                const sin_theta_step = Math.sin(theta + theta_step);
+                const cos_theta_step = Math.cos(theta + theta_step);
 
-	            float x2 = (float) (Math.sin(phi + phi_step) * Math.sin(theta));
-	            float y2 = (float) (-Math.cos(theta));
-	            float z2 = (float) (Math.cos(phi + phi_step) * Math.sin(theta));
+                const x1 = sin_phi * sin_theta;
+                const y1 = -cos_theta;
+                const z1 = cos_phi * sin_theta;
 
-	            float x3 = (float) (Math.sin(phi + phi_step) * Math.sin(theta + theta_step));
-	            float y3 = (float) (-Math.cos(theta + theta_step));
-	            float z3 = (float) (Math.cos(phi + phi_step) * Math.sin(theta + theta_step));
+                const x2 = sin_phi_step * sin_theta;
+                const y2 = -cos_theta;
+                const z2 = cos_phi_step * sin_theta;
 
-	            float x4 = (float) (Math.sin(phi) * Math.sin(theta + theta_step));
-	            float y4 = (float) (-Math.cos(theta + theta_step));
-	            float z4 = (float) (Math.cos(phi) * Math.sin(theta + theta_step));
+                const x3 = sin_phi_step * sin_theta_step;
+                const y3 = -cos_theta_step;
+                const z3 = cos_phi_step * sin_theta_step;
 
-				/*
-				 * Split quad into 2 triangles (although 2 vertices are shared we output
-				 * 6 vertices because the shared vertices will need different uv values;
-				 * an index array would provide a TnL performance improvement).
-				 */
-				vertexBuffer.put(radius * x1);
-				vertexBuffer.put(radius * y1);
-				vertexBuffer.put(radius * z1);
-				vertexBuffer.put(radius * x2);
-				vertexBuffer.put(radius * y2);
-				vertexBuffer.put(radius * z2);
-				vertexBuffer.put(radius * x3);
-				vertexBuffer.put(radius * y3);
-				vertexBuffer.put(radius * z3);
-				vertexBuffer.put(radius * x1);
-				vertexBuffer.put(radius * y1);
-				vertexBuffer.put(radius * z1);
-				vertexBuffer.put(radius * x3);
-				vertexBuffer.put(radius * y3);
-				vertexBuffer.put(radius * z3);
-				vertexBuffer.put(radius * x4);
-				vertexBuffer.put(radius * y4);
-				vertexBuffer.put(radius * z4);
+                const x4 = sin_phi * sin_theta_step;
+                const y4 = -cos_theta_step;
+                const z4 = cos_phi * sin_theta_step;
 
-				if (hasNormals) {
-					normalBuffer.put(x1); allNormals[normalOffset++] = x1;
-					normalBuffer.put(y1); allNormals[normalOffset++] = y1;
-					normalBuffer.put(z1); allNormals[normalOffset++] = z1;
-					normalBuffer.put(x2); allNormals[normalOffset++] = x2;
-					normalBuffer.put(y2); allNormals[normalOffset++] = y2;
-					normalBuffer.put(z2); allNormals[normalOffset++] = z2;
-					normalBuffer.put(x3); allNormals[normalOffset++] = x3;
-					normalBuffer.put(y3); allNormals[normalOffset++] = y3;
-					normalBuffer.put(z3); allNormals[normalOffset++] = z3;
-					normalBuffer.put(x1); allNormals[normalOffset++] = x1;
-					normalBuffer.put(y1); allNormals[normalOffset++] = y1;
-					normalBuffer.put(z1); allNormals[normalOffset++] = z1;
-					normalBuffer.put(x3); allNormals[normalOffset++] = x3;
-					normalBuffer.put(y3); allNormals[normalOffset++] = y3;
-					normalBuffer.put(z3); allNormals[normalOffset++] = z3;
-					normalBuffer.put(x4); allNormals[normalOffset++] = x4;
-					normalBuffer.put(y4); allNormals[normalOffset++] = y4;
-					normalBuffer.put(z4); allNormals[normalOffset++] = z4;
-				}
+                // Triangle 1
+                this.vertexBuffer[vertOffset++] = radius * x1; this.vertexBuffer[vertOffset++] = radius * y1; this.vertexBuffer[vertOffset++] = radius * z1;
+                this.vertexBuffer[vertOffset++] = radius * x2; this.vertexBuffer[vertOffset++] = radius * y2; this.vertexBuffer[vertOffset++] = radius * z2;
+                this.vertexBuffer[vertOffset++] = radius * x3; this.vertexBuffer[vertOffset++] = radius * y3; this.vertexBuffer[vertOffset++] = radius * z3;
 
-				if (spriteData == null) {
-					if (texCoordBuffer != null) {
-						texCoordBuffer.put(inside ? -u : u);
-						texCoordBuffer.put(v);
-						texCoordBuffer.put(inside ? -(u + u_step) : u + u_step);
-						texCoordBuffer.put(v);
-						texCoordBuffer.put(inside ? -(u + u_step) : u + u_step);
-						texCoordBuffer.put(v + v_step);
+                // Triangle 2
+                this.vertexBuffer[vertOffset++] = radius * x1; this.vertexBuffer[vertOffset++] = radius * y1; this.vertexBuffer[vertOffset++] = radius * z1;
+                this.vertexBuffer[vertOffset++] = radius * x3; this.vertexBuffer[vertOffset++] = radius * y3; this.vertexBuffer[vertOffset++] = radius * z3;
+                this.vertexBuffer[vertOffset++] = radius * x4; this.vertexBuffer[vertOffset++] = radius * y4; this.vertexBuffer[vertOffset++] = radius * z4;
 
-						texCoordBuffer.put(inside ? -u : u);
-						texCoordBuffer.put(v);
-						texCoordBuffer.put(inside ? -(u + u_step) : u + u_step);
-						texCoordBuffer.put(v + v_step);
-						texCoordBuffer.put(inside ? -u : u);
-						texCoordBuffer.put(v + v_step);
-					}
-				} else {
-					float dx = spriteData.x2 - spriteData.x;
-					float dy = spriteData.y2 - spriteData.y;
-					texCoordBuffer.put(spriteData.x + u * dx);
-					texCoordBuffer.put(spriteData.y + v * dy);
-					texCoordBuffer.put(spriteData.x + (u + u_step) * dx);
-					texCoordBuffer.put(spriteData.y + v * dy);
-					texCoordBuffer.put(spriteData.x + (u + u_step) * dx);
-					texCoordBuffer.put(spriteData.y + (v + v_step) * dy);
-					texCoordBuffer.put(spriteData.x + u * dx);
-					texCoordBuffer.put(spriteData.y + v * dy);
-					texCoordBuffer.put(spriteData.x + (u + u_step) * dx);
-					texCoordBuffer.put(spriteData.y + (v + v_step) * dy);
-					texCoordBuffer.put(spriteData.x + u * dx);
-					texCoordBuffer.put(spriteData.y + (v + v_step) * dy);
-				}
-	        }
-	    }
-	    vertexBuffer.position(0);
-	    if (texCoordBuffer != null) {
-	    	texCoordBuffer.position(0);
-	    }
-	    if (hasNormals) {
-	    	normalBuffer.position(0);
-	    }
-	}
+                if (this.hasNormals) {
+                     // Normals for triangle 1 & 2
+                    [x1, y1, z1, x2, y2, z2, x3, y3, z3, x1, y1, z1, x3, y3, z3, x4, y4, z4].forEach(val => {
+                        this.normalBuffer[normOffset] = val;
+                        this.allNormals[normOffset] = val;
+                        normOffset++;
+                    });
+                }
 
-	public void render() {
-		if (hasNormals) {
-			GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
-			GLES11.glNormalPointer(GLES11.GL_FLOAT, 0, normalBuffer);
-		} else {
-			GLES11.glDisableClientState(GLES11.GL_NORMAL_ARRAY);
-		}
-		GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, vertexBuffer);
-		if (textureFilename != null) {
-			GLES11.glTexCoordPointer(2, GLES11.GL_FLOAT, 0, texCoordBuffer);
-		} else {
-			GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-			GLES11.glDisable(GLES11.GL_LIGHTING);
-			GLES11.glColor4f(r, g, b, a);
-		}
-		Alite.get().getTextureManager().setTexture(textureFilename);
-		GLES11.glDrawArrays(glDrawMode, 0, numberOfVertices);
-		if (!hasNormals) {
-			GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
-		}
-		if (textureFilename == null) {
-			GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-			GLES11.glEnable(GLES11.GL_LIGHTING);
-			GLES11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		}
-	}
+                if (this.texCoordBuffer) {
+                    if (!this.spriteData) {
+                        const u_val = inside ? -u : u;
+                        const u_step_val = inside ? -(u + u_step) : u + u_step;
+                        // Tex coords for triangle 1 & 2
+                        this.texCoordBuffer[texOffset++] = u_val; this.texCoordBuffer[texOffset++] = v;
+                        this.texCoordBuffer[texOffset++] = u_step_val; this.texCoordBuffer[texOffset++] = v;
+                        this.texCoordBuffer[texOffset++] = u_step_val; this.texCoordBuffer[texOffset++] = v + v_step;
+                        this.texCoordBuffer[texOffset++] = u_val; this.texCoordBuffer[texOffset++] = v;
+                        this.texCoordBuffer[texOffset++] = u_step_val; this.texCoordBuffer[texOffset++] = v + v_step;
+                        this.texCoordBuffer[texOffset++] = u_val; this.texCoordBuffer[texOffset++] = v + v_step;
+                    } else {
+                        const { x, y, x2, y2 } = this.spriteData;
+                        const dx = x2 - x;
+                        const dy = y2 - y;
+                         this.texCoordBuffer[texOffset++] = x + u * dx; this.texCoordBuffer[texOffset++] = y + v * dy;
+                         this.texCoordBuffer[texOffset++] = x + (u + u_step) * dx; this.texCoordBuffer[texOffset++] = y + v * dy;
+                         this.texCoordBuffer[texOffset++] = x + (u + u_step) * dx; this.texCoordBuffer[texOffset++] = y + (v + v_step) * dy;
+                         this.texCoordBuffer[texOffset++] = x + u * dx; this.texCoordBuffer[texOffset++] = y + v * dy;
+                         this.texCoordBuffer[texOffset++] = x + (u + u_step) * dx; this.texCoordBuffer[texOffset++] = y + (v + v_step) * dy;
+                         this.texCoordBuffer[texOffset++] = x + u * dx; this.texCoordBuffer[texOffset++] = y + (v + v_step) * dy;
+                    }
+                }
+            }
+        }
+    }
 
-	public void drawArrays() {
-		GLES11.glDrawArrays(glDrawMode, 0, numberOfVertices);
-	}
 
-	public void destroy() {
-		if (textureFilename != null) {
-			Alite.get().getTextureManager().freeTexture(textureFilename);
-		}
-	}
+    public render(): void {
+        if (this.hasNormals) {
+            GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
+            GLES11.glNormalPointer(GLES11.GL_FLOAT, 0, this.normalBuffer);
+        } else {
+            GLES11.glDisableClientState(GLES11.GL_NORMAL_ARRAY);
+        }
+        GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, this.vertexBuffer);
 
-	public void setColor(float r, float g, float b, float a) {
-		this.r = r;
-		this.g = g;
-		this.b = b;
-		this.a = a;
-	}
+        if (this.textureFilename) {
+            GLES11.glTexCoordPointer(2, GLES11.GL_FLOAT, 0, this.texCoordBuffer);
+            Alite.get().getTextureManager().setTexture(this.textureFilename);
+        } else {
+            GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
+            GLES11.glDisable(GLES11.GL_LIGHTING);
+            GLES11.glColor4f(this.r, this.g, this.b, this.a);
+        }
 
-	public float getR() { return r; }
+        GLES11.glDrawArrays(this.glDrawMode, 0, this.numberOfVertices);
 
-	public float getG() { return g; }
+        if (!this.hasNormals) GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
+        if (!this.textureFilename) {
+            GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
+            GLES11.glEnable(GLES11.GL_LIGHTING);
+            GLES11.glColor4f(1.0, 1.0, 1.0, 1.0);
+        }
+    }
 
-	public float getB() { return b; }
 
-	public float getA() { return a; }
+    public drawArrays(): void { GLES11.glDrawArrays(this.glDrawMode, 0, this.numberOfVertices); }
+    public destroy(): void { if (this.textureFilename) Alite.get().getTextureManager().freeTexture(this.textureFilename); }
+    public setColor(r: number, g: number, b: number, a: number): void { this.r = r; this.g = g; this.b = b; this.a = a; }
+    public getR(): number { return this.r; }
+    public getG(): number { return this.g; }
+    public getB(): number { return this.b; }
+    public getA(): number { return this.a; }
 }

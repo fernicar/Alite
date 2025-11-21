@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,302 +16,284 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+import { Music } from "../../framework/Music";
+import { Timer } from "../../framework/Timer";
+import { TouchEvent } from "../../framework/Input";
+import { GLES11 } from "../../framework/impl/gl/GLES11";
+import { GlUtils } from "../../framework/impl/gl/GlUtils";
+import { Vector3f } from "../../framework/math/Vector3f";
+import { Alite } from "../Alite";
+import { AliteConfig } from "../AliteConfig";
+import { AliteLog } from "../AliteLog";
+import { Assets } from "../Assets";
+import { Button } from "../Button";
+import { L } from "../L";
+import { R } from "../R";
+import { ScreenCodes } from "../ScreenCodes";
+import { ColorScheme } from "../colors/ColorScheme";
+import { ObjectType } from "../opengl/ingame/ObjectType";
+import { SkySphereSpaceObject } from "../opengl/objects/SkySphereSpaceObject";
+import { MathHelper } from "../opengl/objects/space/MathHelper";
+import { SpaceObject } from "../opengl/objects/space/SpaceObject";
+import { SpaceObjectAI } from "../opengl/objects/space/SpaceObjectAI";
+import { SpaceObjectFactory } from "../opengl/objects/space/SpaceObjectFactory";
+import { AliteScreen } from "./AliteScreen";
+import { LoadScreen } from "./LoadScreen";
+import { StatusScreen } from "./StatusScreen";
+import { LoadingScreen } from "./LoadingScreen";
 
-import android.opengl.GLES11;
-import de.phbouillon.android.framework.*;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.impl.gl.GlUtils;
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectType;
-import de.phbouillon.android.games.alite.screens.opengl.objects.SkySphereSpaceObject;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.*;
+enum DisplayMode {
+    ZOOM_IN,
+    DANCE,
+    ZOOM_OUT
+}
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class ShipIntroScreen extends AliteScreen {
-	private static final boolean DEBUG_EXHAUST = false;
-	private static final boolean ONLY_CHANGE_SHIPS_AFTER_SWEEP = false;
-	private static final boolean SHOW_DOCKING = false;
-	private static final boolean DANCE = true;
+export class ShipIntroScreen extends AliteScreen {
+    private static readonly DEBUG_EXHAUST = false;
+    private static readonly ONLY_CHANGE_SHIPS_AFTER_SWEEP = false;
+    private static readonly SHOW_DOCKING = false;
+    private static readonly DANCE = true;
 
-	private SkySphereSpaceObject skysphere;
-	private SpaceObject currentShip;
+    private skysphere: SkySphereSpaceObject;
+    private currentShip: SpaceObject;
 
-	private final Timer timer = new Timer().setAutoReset();
-	private final Timer danceTimer = new Timer().setAutoReset();
-	private final Vector3f currentDelta = new Vector3f(0,0,0);
-	private final Vector3f targetDelta = new Vector3f(0,0,0);
+    private readonly timer = new Timer().setAutoReset();
+    private readonly danceTimer = new Timer().setAutoReset();
+    private readonly currentDelta = new Vector3f(0, 0, 0);
+    private readonly targetDelta = new Vector3f(0, 0, 0);
 
-	private Button yesButton;
-	private Button noButton;
-	private Button tapToStartButton;
-	private int selectionDirection = 1;
-	private SpaceObject coriolis;
+    private yesButton: Button;
+    private noButton: Button;
+    private tapToStartButton: Button;
+    private selectionDirection = 1;
+    private coriolis: SpaceObject;
 
-	enum DisplayMode {
-		ZOOM_IN,
-		DANCE,
-		ZOOM_OUT
-	}
+    private displayMode = DisplayMode.ZOOM_IN;
+    private theChase: Music;
+    private readonly showLoadNewCommander: boolean;
 
-	private DisplayMode displayMode = DisplayMode.ZOOM_IN;
-	private Music theChase;
-	private final boolean showLoadNewCommander;
+    constructor(objectId?: string) {
+        super();
+        this.showLoadNewCommander = this.game.existsSavedCommander();
+        this.theChase = this.game.getAudio().newMusic(`${LoadingScreen.DIRECTORY_MUSIC}the_chase.mp3`);
+        if (objectId) {
+            this.currentShip = SpaceObjectFactory.getInstance().getObjectById(objectId);
+            this.selectionDirection = 0;
+        }
+    }
 
-	public ShipIntroScreen() {
-		showLoadNewCommander = game.existsSavedCommander();
-		theChase = game.getAudio().newMusic(LoadingScreen.DIRECTORY_MUSIC + "the_chase.mp3");
-	}
+    public update(deltaTime: number): void {
+        this.updateWithoutNavigation(deltaTime);
+        if (ShipIntroScreen.DANCE) {
+            MathHelper.updateAxes(this.currentDelta, this.targetDelta);
+        }
+        if (this.currentShip) {
+            this.currentShip.applyDeltaRotation(this.currentDelta.x, this.currentDelta.y, this.currentDelta.z);
+            this.currentShip.update(deltaTime);
+        }
+        switch (this.displayMode) {
+            case DisplayMode.ZOOM_IN: this.zoomIn(); break;
+            case DisplayMode.DANCE: this.dance(); break;
+            case DisplayMode.ZOOM_OUT: this.zoomOut(); break;
+        }
+    }
 
-	public ShipIntroScreen(String objectId) {
-		this();
-		currentShip = SpaceObjectFactory.getInstance().getObjectById(objectId);
-		selectionDirection = 0;
-	}
+    protected processTouch(touch: TouchEvent): void {
+        if (touch.type === TouchEvent.TOUCH_SWEEP) {
+            if (this.displayMode === DisplayMode.DANCE) {
+                this.displayMode = DisplayMode.ZOOM_OUT;
+            }
+            this.selectionDirection = touch.x2 > 0 ? -1 : 1;
+        }
+        if (this.yesButton.isPressed(touch)) {
+            this.newScreen = new LoadScreen(L.string(R.string.title_cmdr_load));
+            this.game.getNavigationBar().setActiveIndex(Alite.NAVIGATION_BAR_DISK);
+        }
+        if (this.noButton.isPressed(touch)) {
+            this.newScreen = new StatusScreen();
+        }
+        if (this.tapToStartButton.isPressed(touch)) {
+            this.newScreen = new StatusScreen();
+        }
+        if (this.newScreen) {
+            this.disposeMusic();
+        }
+    }
 
-	@Override
-	public void update(float deltaTime) {
-		updateWithoutNavigation(deltaTime);
-		if (DANCE) {
-			MathHelper.updateAxes(currentDelta, targetDelta);
-		}
-		if (currentShip != null) {
-			currentShip.applyDeltaRotation(currentDelta.x, currentDelta.y, currentDelta.z);
-			currentShip.update(deltaTime);
-		}
-		switch (displayMode) {
-			case ZOOM_IN:  zoomIn();  break;
-			case DANCE:    dance();   break;
-			case ZOOM_OUT: zoomOut(); break;
-		}
-	}
+    public renderNavigationBar(): void {}
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		if (touch.type == TouchEvent.TOUCH_SWEEP) {
-			if (displayMode == DisplayMode.DANCE) {
-				displayMode = DisplayMode.ZOOM_OUT;
-			}
-			if (touch.x2 > 0) {
-				AliteLog.d("TouchSweep", touch.x + ", " + touch.x2 + ", " + touch.y + ", " + touch.y2);
-				selectionDirection = -1;
-			} else {
-				selectionDirection = 1;
-			}
-		}
-		if (yesButton.isPressed(touch)) {
-			newScreen = new LoadScreen(L.string(R.string.title_cmdr_load));
-			game.getNavigationBar().setActiveIndex(Alite.NAVIGATION_BAR_DISK);
-		}
-		if (noButton.isPressed(touch)) {
-			newScreen = new StatusScreen();
-		}
-		if (tapToStartButton.isPressed(touch)) {
-			newScreen = new StatusScreen();
-		}
-		if (newScreen != null) {
-			if (theChase != null) {
-				theChase.stop();
-				theChase.dispose();
-				theChase = null;
-			}
-		}
-	}
+    private debugExhausts(): void {
+        if (ShipIntroScreen.DEBUG_EXHAUST && this.currentShip) {
+            const ok = this.currentShip.getNumberOfLasers() < 2 || this.currentShip.getLaserX(0) > this.currentShip.getLaserX(1);
+            this.centerTextWide(ok ? "Ok!" : "NOT OK!", 150, Assets.titleFont,
+                ColorScheme.get(ok ? ColorScheme.COLOR_CONDITION_GREEN : ColorScheme.COLOR_CONDITION_RED));
+        }
+    }
 
-	@Override
-	public void renderNavigationBar() {
-	}
+    public present(deltaTime: number): void {
+        const g = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayShip();
 
-	private void debugExhausts() {
-		if (DEBUG_EXHAUST && currentShip != null) {
-			boolean ok = currentShip.getNumberOfLasers() < 2 || currentShip.getLaserX(0) > currentShip.getLaserX(1);
-			centerTextWide(ok ? "Ok!" : "NOT OK!", 150, Assets.titleFont,
-				ColorScheme.get(ok ? ColorScheme.COLOR_CONDITION_GREEN : ColorScheme.COLOR_CONDITION_RED));
-		}
-	}
+        if (this.showLoadNewCommander) {
+            g.drawText(L.string(R.string.cmdr_load_new_commander), 300, 1015, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
+        }
+        this.centerTextWide(this.currentShip.getName(), 80, Assets.titleFont, ColorScheme.get(ColorScheme.COLOR_SHIP_TITLE));
+        g.drawText(L.string(R.string.about_game_inspired_by, AliteConfig.GAME_NAME), 1350, 1020, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.smallFont);
+        g.drawText(L.string(R.string.about_elite_copyright), 1350, 1050, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.smallFont);
 
-	@Override
-	public void present(float deltaTime) {
-		final Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayShip();
-		if (showLoadNewCommander) {
-			g.drawText(L.string(R.string.cmdr_load_new_commander), 300, 1015, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
-		}
-		centerTextWide(currentShip.getName(), 80, Assets.titleFont, ColorScheme.get(ColorScheme.COLOR_SHIP_TITLE));
-		g.drawText(L.string(R.string.about_game_inspired_by, AliteConfig.GAME_NAME),
-			1350, 1020, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.smallFont);
-		g.drawText(L.string(R.string.about_elite_copyright), 1350, 1050, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.smallFont);
-		debugExhausts();
-		game.getTextureManager().setTexture(null);
-		yesButton.render(g);
-		noButton.render(g);
-		tapToStartButton.render(g);
-	}
+        this.debugExhausts();
+        this.game.getTextureManager().setTexture(null);
+        this.yesButton.render(g);
+        this.noButton.render(g);
+        this.tapToStartButton.render(g);
+    }
 
-	private void initDisplay() {
-		GLES11.glEnable(GLES11.GL_TEXTURE_2D);
-		GLES11.glEnable(GLES11.GL_CULL_FACE);
-		GLES11.glMatrixMode(GLES11.GL_PROJECTION);
-		GLES11.glLoadIdentity();
-		GlUtils.gluPerspective(game, 45.0f, 1.0f, 900000.0f);
-		GLES11.glMatrixMode(GLES11.GL_MODELVIEW);
-		GLES11.glLoadIdentity();
+    private initDisplay(): void {
+        GLES11.glEnable(GLES11.GL_TEXTURE_2D);
+        GLES11.glEnable(GLES11.GL_CULL_FACE);
+        GLES11.glMatrixMode(GLES11.GL_PROJECTION);
+        GLES11.glLoadIdentity();
+        GlUtils.gluPerspective(this.game, 45.0, 1.0, 900000.0);
+        GLES11.glMatrixMode(GLES11.GL_MODELVIEW);
+        GLES11.glLoadIdentity();
 
-		GLES11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-		GLES11.glPushMatrix();
-		GLES11.glMultMatrixf(skysphere.getMatrix(), 0);
-		skysphere.render();
-		GLES11.glPopMatrix();
+        GLES11.glColor4f(1.0, 1.0, 1.0, 1.0);
+        GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
+        GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
+        GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
+        GLES11.glPushMatrix();
+        GLES11.glMultMatrixf(this.skysphere.getMatrix(), 0);
+        this.skysphere.render();
+        GLES11.glPopMatrix();
 
-		GLES11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY);
-		GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-		GLES11.glEnable(GLES11.GL_DEPTH_TEST);
-		GLES11.glDepthFunc(GLES11.GL_LESS);
-		GLES11.glClear(GLES11.GL_DEPTH_BUFFER_BIT);
+        GLES11.glColor4f(1.0, 1.0, 1.0, 1.0);
+        GLES11.glEnable(GLES11.GL_DEPTH_TEST);
+        GLES11.glDepthFunc(GLES11.GL_LESS);
+        GLES11.glClear(GLES11.GL_DEPTH_BUFFER_BIT);
+        GLES11.glDisable(GLES11.GL_BLEND);
+    }
 
-		GLES11.glDisable(GLES11.GL_BLEND);
-	}
+    private endDisplay(): void {
+        GLES11.glDisable(GLES11.GL_DEPTH_TEST);
+        GLES11.glDisable(GLES11.GL_TEXTURE_2D);
+        this.setUpForDisplay();
+    }
 
-	private void endDisplay() {
-		GLES11.glDisable(GLES11.GL_DEPTH_TEST);
-		GLES11.glDisable(GLES11.GL_TEXTURE_2D);
-		setUpForDisplay();
-	}
+    private displayShip(): void {
+        this.initDisplay();
 
-	private void displayShip() {
-		initDisplay();
+        if (ShipIntroScreen.SHOW_DOCKING && this.coriolis) {
+            GLES11.glPushMatrix();
+            GLES11.glMultMatrixf(this.coriolis.getMatrix(), 0);
+            this.coriolis.render();
+            GLES11.glPopMatrix();
+        }
+        GLES11.glPushMatrix();
+        GLES11.glMultMatrixf(this.currentShip.getMatrix(), 0);
+        this.currentShip.render();
+        GLES11.glPopMatrix();
 
-		if (SHOW_DOCKING && coriolis != null) {
-			GLES11.glPushMatrix();
-			GLES11.glMultMatrixf(coriolis.getMatrix(), 0);
-			coriolis.render();
-			GLES11.glPopMatrix();
-		}
-		GLES11.glPushMatrix();
-		GLES11.glMultMatrixf(currentShip.getMatrix(), 0);
-		currentShip.render();
-		GLES11.glPopMatrix();
+        this.endDisplay();
+    }
 
-		endDisplay();
-	}
+    public activate(): void {
+        this.theChase.setLooping(true);
+        this.theChase.play();
+        this.initGl();
+        this.skysphere = new SkySphereSpaceObject("skysphere", 8000.0, 16, 16, "textures/star_map.png");
+        this.currentShip = SpaceObjectFactory.getInstance().getNextObject(this.currentShip, this.selectionDirection, ShipIntroScreen.DEBUG_EXHAUST);
+        this.selectionDirection = 1;
+        this.currentShip.setPosition(0.0, 0.0, -this.currentShip.getMaxExtentWithoutExhaust() * 2.0);
 
-	@Override
-	public void activate() {
-		theChase.setLooping(true);
-		theChase.play();
-		initGl();
-		skysphere = new SkySphereSpaceObject("skysphere", 8000.0f, 16, 16, "textures/star_map.png");
-		currentShip = SpaceObjectFactory.getInstance().getNextObject(currentShip, selectionDirection, DEBUG_EXHAUST);
-		selectionDirection = 1;
-		currentShip.setPosition(0.0f, 0.0f, -currentShip.getMaxExtentWithoutExhaust() * 2.0f);
-		if (SHOW_DOCKING) {
-			coriolis = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.Coriolis);
-			coriolis.applyDeltaRotation(0, 0, 90);
-			coriolis.setPosition(0, 0, -1300);
-		}
-		MathHelper.getRandomRotationAngles(targetDelta);
-		timer.reset();
-		displayMode = DisplayMode.DANCE;
-		currentShip.setAIState(SpaceObjectAI.AI_STATE_GLOBAL);
-		currentShip.setSpeed(-currentShip.getMaxSpeed());
-		yesButton = Button.createGradientPictureButton(1000, 950, 110, 110, Assets.yesIcon)
-			.setVisible(showLoadNewCommander);
-		noButton = Button.createGradientPictureButton(1150, 950, 110, 110, Assets.noIcon)
-			.setVisible(showLoadNewCommander);
-		tapToStartButton = Button.createGradientRegularButton(530, 980, 800, 80, L.string(R.string.intro_btn_tap_to_start))
-			.setTextColor(ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT))
-			.setVisible(!showLoadNewCommander);
-	}
+        if (ShipIntroScreen.SHOW_DOCKING) {
+            this.coriolis = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.Coriolis);
+            this.coriolis.applyDeltaRotation(0, 0, 90);
+            this.coriolis.setPosition(0, 0, -1300);
+        }
 
-	@Override
-	public void saveScreenState(DataOutputStream dos) throws IOException {
-		ScreenBuilder.writeString(dos, currentShip.getId());
-	}
+        MathHelper.getRandomRotationAngles(this.targetDelta);
+        this.timer.reset();
+        this.displayMode = DisplayMode.DANCE;
+        this.currentShip.setAIState(SpaceObjectAI.AI_STATE_GLOBAL);
+        this.currentShip.setSpeed(-this.currentShip.getMaxSpeed());
 
-	@Override
-	public void loadAssets() {
-	}
+        this.yesButton = Button.createGradientPictureButton(1000, 950, 110, 110, Assets.yesIcon).setVisible(this.showLoadNewCommander);
+        this.noButton = Button.createGradientPictureButton(1150, 950, 110, 110, Assets.noIcon).setVisible(this.showLoadNewCommander);
+        this.tapToStartButton = Button.createGradientRegularButton(530, 980, 800, 80, L.string(R.string.intro_btn_tap_to_start)).setTextColor(ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT)).setVisible(!this.showLoadNewCommander);
+    }
 
-	private void disposeMusic() {
-		if (theChase != null) {
-			theChase.stop();
-			theChase.dispose();
-			theChase = null;
-		}
-	}
+    public saveScreenState(dos: any): void {
+        ScreenBuilder.writeString(dos, this.currentShip.getId());
+    }
 
-	@Override
-	public void pause() {
-		super.pause();
-		disposeMusic();
-	}
+    public loadAssets(): void {}
 
-	@Override
-	public void dispose() {
-		super.dispose();
-		disposeMusic();
-	}
+    private disposeMusic(): void {
+        if (this.theChase) {
+            this.theChase.stop();
+            this.theChase.dispose();
+            this.theChase = null;
+        }
+    }
 
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.SHIP_INTRO_SCREEN;
-	}
+    public pause(): void {
+        super.pause();
+        this.disposeMusic();
+    }
 
-	private void zoomIn() {
-		if (currentShip == null) {
-			return;
-		}
-		float step = 2.0f * currentShip.getMaxExtentWithoutExhaust();
-		float newZ = currentShip.getPosition().z + step;
-		if (newZ >= -step) {
-			newZ = -step;
-			displayMode = DisplayMode.DANCE;
-			timer.reset();
-		}
-		currentShip.setPosition(0, 0, newZ);
-	}
+    public dispose(): void {
+        super.dispose();
+        this.disposeMusic();
+    }
 
-	private void dance() {
-		if (DANCE && danceTimer.hasPassedSeconds(4)) {
-			MathHelper.getRandomRotationAngles(targetDelta);
-		}
-		if (timer.hasPassedSeconds(15) && !ONLY_CHANGE_SHIPS_AFTER_SWEEP) {
-			displayMode = DisplayMode.ZOOM_OUT;
-		}
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.SHIP_INTRO_SCREEN;
+    }
 
-	private void zoomOut() {
-		if (currentShip == null) {
-			return;
-		}
-		float step = 2.0f *currentShip.getMaxExtentWithoutExhaust();
-		float newZ = currentShip.getPosition().z - step;
-		if (newZ <= -50 * step) {
-			if (currentShip != null) {
-				currentShip.dispose();
-			}
-			currentShip = getNextShip();
-			newZ = -50 * currentShip.getMaxExtentWithoutExhaust();
-			displayMode = DisplayMode.ZOOM_IN;
-			timer.reset();
-		}
-		currentShip.setPosition(0, 0, newZ);
-	}
+    private zoomIn(): void {
+        if (!this.currentShip) return;
 
-	private SpaceObject getNextShip() {
-		SpaceObject ao = SpaceObjectFactory.getInstance().getNextObject(currentShip, selectionDirection, DEBUG_EXHAUST);
-		selectionDirection = 1;
-		ao.setAIState(SpaceObjectAI.AI_STATE_GLOBAL);
-		ao.setSpeed(-ao.getMaxSpeed());
-		return ao;
-	}
+        const step = 2.0 * this.currentShip.getMaxExtentWithoutExhaust();
+        let newZ = this.currentShip.getPosition().z + step;
+        if (newZ >= -step) {
+            newZ = -step;
+            this.displayMode = DisplayMode.DANCE;
+            this.timer.reset();
+        }
+        this.currentShip.setPosition(0, 0, newZ);
+    }
+
+    private dance(): void {
+        if (ShipIntroScreen.DANCE && this.danceTimer.hasPassedSeconds(4)) {
+            MathHelper.getRandomRotationAngles(this.targetDelta);
+        }
+        if (this.timer.hasPassedSeconds(15) && !ShipIntroScreen.ONLY_CHANGE_SHIPS_AFTER_SWEEP) {
+            this.displayMode = DisplayMode.ZOOM_OUT;
+        }
+    }
+
+    private zoomOut(): void {
+        if (!this.currentShip) return;
+
+        const step = 2.0 * this.currentShip.getMaxExtentWithoutExhaust();
+        let newZ = this.currentShip.getPosition().z - step;
+        if (newZ <= -50 * step) {
+            if (this.currentShip) this.currentShip.dispose();
+
+            this.currentShip = this.getNextShip();
+            newZ = -50 * this.currentShip.getMaxExtentWithoutExhaust();
+            this.displayMode = DisplayMode.ZOOM_IN;
+            this.timer.reset();
+        }
+        this.currentShip.setPosition(0, 0, newZ);
+    }
+
+    private getNextShip(): SpaceObject {
+        const ao = SpaceObjectFactory.getInstance().getNextObject(this.currentShip, this.selectionDirection, ShipIntroScreen.DEBUG_EXHAUST);
+        this.selectionDirection = 1;
+        ao.setAIState(SpaceObjectAI.AI_STATE_GLOBAL);
+        ao.setSpeed(-ao.getMaxSpeed());
+        return ao;
+    }
 }

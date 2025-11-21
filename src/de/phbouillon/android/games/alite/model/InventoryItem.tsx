@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,79 +16,78 @@ package de.phbouillon.android.games.alite.model;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.model.trading.TradeGood;
-import org.json.JSONException;
-import org.json.JSONObject;
+import { TradeGood } from "./trading/TradeGood";
+import { Weight } from "./Weight";
 
-public class InventoryItem {
-	private final TradeGood good;
-	private Weight weight = Weight.ZERO_GRAMS;
-	private Weight unpunished = Weight.ZERO_GRAMS;
-	// It is set if scooped object is not cargo
-	// EscapeCapsule -> SLAVES, Thargon -> ALIEN_ITEMS, Alloy (Platlet) -> ALLOYS
-	private int nonCargo;
-	private long totalBuyPrice;
+export class InventoryItem {
+    private readonly good: TradeGood;
+    private weight: Weight = Weight.ZERO_GRAMS;
+    private unpunished: Weight = Weight.ZERO_GRAMS;
+    // It is set if scooped object is not cargo
+    // EscapeCapsule -> SLAVES, Thargon -> ALIEN_ITEMS, Alloy (Platlet) -> ALLOYS
+    private nonCargo: number = 0;
+    private totalBuyPrice: number = 0;
 
-	public InventoryItem(TradeGood good) {
-		this.good = good;
-	}
+    constructor(good: TradeGood) {
+        this.good = good;
+    }
 
-	public void add(Weight w, long price) {
-		totalBuyPrice += price;
-		weight = weight.add(w);
-	}
+    public add(w: Weight, price: number): void {
+        this.totalBuyPrice += price;
+        this.weight = this.weight.add(w);
+    }
 
-	public void set(Weight w, long price) {
-		totalBuyPrice = price;
-		weight = w;
-	}
+    public set(w: Weight, price: number): void {
+        this.totalBuyPrice = price;
+        this.weight = w;
+    }
 
-	public void addUnpunished(Weight weight, int nonCargoInTonne) {
-		unpunished = unpunished.add(weight);
-		nonCargo += nonCargoInTonne;
-	}
+    public addUnpunished(weight: Weight, nonCargoInTonne: number): void {
+        this.unpunished = this.unpunished.add(weight);
+        this.nonCargo += nonCargoInTonne;
+    }
 
-	public void subUnpunished(Weight weight) {
-		unpunished = unpunished.sub(weight);
-		nonCargo = Math.max(nonCargo - weight.getQuantityInAppropriateUnit(), 0);
-	}
+    public subUnpunished(weight: Weight): void {
+        this.unpunished = this.unpunished.sub(weight);
+        this.nonCargo = Math.max(this.nonCargo - weight.getQuantityInAppropriateUnit(), 0);
+    }
 
-	public void resetUnpunished() {
-		unpunished = Weight.ZERO_GRAMS;
-		nonCargo = 0;
-	}
+    public resetUnpunished(): void {
+        this.unpunished = Weight.ZERO_GRAMS;
+        this.nonCargo = 0;
+    }
 
-	public Weight getUnpunished() {
-		return unpunished;
-	}
+    public getUnpunished(): Weight {
+        return this.unpunished;
+    }
 
-	public int getNonCargo() {
-		return nonCargo;
-	}
+    public getNonCargo(): number {
+        return this.nonCargo;
+    }
 
-	public long getPrice() {
-		return totalBuyPrice;
-	}
+    public getPrice(): number {
+        return this.totalBuyPrice;
+    }
 
-	public Weight getWeight() {
-		return weight;
-	}
+    public getWeight(): Weight {
+        return this.weight;
+    }
 
-	public TradeGood getGood() {
-		return good;
-	}
+    public getGood(): TradeGood {
+        return this.good;
+    }
 
-	public JSONObject toJson(JSONObject inventory) throws JSONException {
-		return inventory
-			.put("weight", (int) weight.getWeightInGrams())
-			.put("price", totalBuyPrice)
-			.put("unpunishedWeight", unpunished.getWeightInGrams())
-			.put("nonCargoWeight", nonCargo);
-	}
+    public toJson(): any {
+        return {
+            weight: this.weight.getWeightInGrams(),
+            price: this.totalBuyPrice,
+            unpunishedWeight: this.unpunished.getWeightInGrams(),
+            nonCargoWeight: this.nonCargo,
+        };
+    }
 
-	public void fromJson(JSONObject inventory) throws JSONException {
-		set(Weight.grams(inventory.getLong("weight")), inventory.getLong("price"));
-		addUnpunished(Weight.grams(inventory.getLong("unpunishedWeight")), inventory.optInt("nonCargoWeight"));
-	}
-
+    public fromJson(inventory: any): void {
+        this.set(Weight.grams(inventory.weight), inventory.price);
+        this.addUnpunished(Weight.grams(inventory.unpunishedWeight), inventory.nonCargoWeight || 0);
+    }
 }

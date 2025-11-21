@@ -21,20 +21,18 @@
  * SOFTWARE.
  */
 
-package com.dd.plist;
-
 /**
  * A PropertyListFormatException is thrown by the various property list format parsers
  * when an error in the format of the given property list is encountered.
  * @author Daniel Dreibrodt
  */
-public class PropertyListFormatException extends Exception {
-
+export class PropertyListFormatException extends Error {
     /**
      * Creates a new exception with the given message.
      * @param message A message containing information about the nature of the exception.
      */
-    public PropertyListFormatException(String message) {
+    constructor(message: string) {
         super(message);
+        this.name = 'PropertyListFormatException';
     }
 }

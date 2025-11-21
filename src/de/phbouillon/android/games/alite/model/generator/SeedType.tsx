@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.generator;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,43 +16,42 @@ package de.phbouillon.android.games.alite.model.generator;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-class SeedType {
-	// Three words (16 bytes, ranging from 0-65535 each).
-	private char [] word = new char[3];
+export class SeedType {
+    private word: number[] = new Array(3);
 
-	SeedType(char w0, char w1, char w2) {
-		word[0] = w0;
-		word[1] = w1;
-		word[2] = w2;
-	}
+    constructor(w0: number, w1: number, w2: number) {
+        this.word[0] = w0;
+        this.word[1] = w1;
+        this.word[2] = w2;
+    }
 
-	char getLoByte(int index) {
-		return (char) (word[index] & 255);
-	}
+    getLoByte(index: number): number {
+        return this.word[index] & 255;
+    }
 
-	char getHiByte(int index) {
-		return (char) (word[index] >> 8);
-	}
+    getHiByte(index: number): number {
+        return this.word[index] >> 8;
+    }
 
-	char shiftRight(int index, int amount) {
-		return (char) (word[index] >> amount);
-	}
+    shiftRight(index: number, amount: number): number {
+        return this.word[index] >> amount;
+    }
 
-	public char shiftLeft(int index, int amount) {
-		return (char) (word[index] << amount);
-	}
+    public shiftLeft(index: number, amount: number): number {
+        return this.word[index] << amount;
+    }
 
-	char getWord(int index) {
-		return word[index];
-	}
+    getWord(index: number): number {
+        return this.word[index];
+    }
 
-	void setWord(int index, char value) {
-		word[index] = value;
-	}
+    setWord(index: number, value: number): void {
+        this.word[index] = value;
+    }
 
-	public String toString() {
-		return String.format("%02x %02x %02x %02x %02x %02x", word[0] >> 8, word[0] & 0xFF,
-														word[1] >> 8, word[1] & 0xFF,
-														word[2] >> 8, word[2] & 0xFF);
-	}
+    public toString(): string {
+        return `${(this.word[0] >> 8).toString(16).padStart(2, '0')} ${(this.word[0] & 0xFF).toString(16).padStart(2, '0')} ` +
+            `${(this.word[1] >> 8).toString(16).padStart(2, '0')} ${(this.word[1] & 0xFF).toString(16).padStart(2, '0')} ` +
+            `${(this.word[2] >> 8).toString(16).padStart(2, '0')} ${(this.word[2] & 0xFF).toString(16).padStart(2, '0')}`;
+    }
 }

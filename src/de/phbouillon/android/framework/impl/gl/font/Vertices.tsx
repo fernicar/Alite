@@ -1,8 +1,6 @@
-package de.phbouillon.android.framework.impl.gl.font;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License, or
@@ -18,361 +16,185 @@ package de.phbouillon.android.framework.impl.gl.font;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.IntBuffer;
-import java.nio.ShortBuffer;
+export class Vertices {
+    public static readonly POSITION_CNT_2D = 2;
+    public static readonly POSITION_CNT_3D = 3;
+    public static readonly COLOR_CNT = 4;
+    public static readonly TEXCOORD_CNT = 2;
+    public static readonly NORMAL_CNT = 3;
+    public static readonly INDEX_SIZE = 2; // short
 
-import android.opengl.GLES11;
+    public readonly hasColor: boolean;
+    public readonly hasTexCoords: boolean;
+    public readonly hasNormals: boolean;
+    public readonly positionCnt: number;
+    public readonly vertexStride: number;
+    public readonly vertexSize: number;
 
-public class Vertices {
+    private vertices: Float32Array;
+    private indices: Uint16Array;
+    private vertexBuffer: WebGLBuffer;
+    private indexBuffer: WebGLBuffer;
 
-	// --Constants--//
-	final static int POSITION_CNT_2D = 2; // Number of Components in Vertex
-											// Position for 2D
-	final static int POSITION_CNT_3D = 3; // Number of Components in Vertex
-											// Position for 3D
-	final static int COLOR_CNT = 4; // Number of Components in Vertex Color
-	final static int TEXCOORD_CNT = 2; // Number of Components in Vertex Texture
-										// Coords
-	final static int NORMAL_CNT = 3; // Number of Components in Vertex Normal
+    public numVertices: number;
+    public numIndices: number;
 
-	final static int INDEX_SIZE = Short.SIZE / 8; // Index Byte Size (Short.SIZE
-													// = bits)
+    private gl: WebGLRenderingContext;
+    private dirty = true;
 
-	// --Members--//
-	// NOTE: all members are constant, and initialized in constructor!
-	final boolean hasColor; // Use Color in Vertices
-	final boolean hasTexCoords; // Use Texture Coords in Vertices
-	final boolean hasNormals; // Use Normals in Vertices
-	public final int positionCnt; // Number of Position Components (2=2D, 3=3D)
-	public final int vertexStride; // Vertex Stride (Element Size of a Single
-									// Vertex)
-	public final int vertexSize; // Bytesize of a Single Vertex
-	final IntBuffer vertices; // Vertex Buffer
-	final ShortBuffer indices; // Index Buffer
-	public int numVertices; // Number of Vertices in Buffer
-	public int numIndices; // Number of Indices in Buffer
-	final int[] tmpBuffer; // Temp Buffer for Vertex Conversion
+    constructor(gl: WebGLRenderingContext, maxVertices: number, maxIndices: number, hasColor: boolean, hasTexCoords: boolean, hasNormals: boolean, use3D: boolean = false) {
+        this.gl = gl;
+        this.hasColor = hasColor;
+        this.hasTexCoords = hasTexCoords;
+        this.hasNormals = hasNormals;
+        this.positionCnt = use3D ? Vertices.POSITION_CNT_3D : Vertices.POSITION_CNT_2D;
+        this.vertexStride = this.positionCnt + (hasColor ? Vertices.COLOR_CNT : 0) + (hasTexCoords ? Vertices.TEXCOORD_CNT : 0) + (hasNormals ? Vertices.NORMAL_CNT : 0);
+        this.vertexSize = this.vertexStride * 4;
 
-	// --Constructor--//
-	// D: create the vertices/indices as specified (for 2d/3d)
-	// A: gl - the gl instance to use
-	// maxVertices - maximum vertices allowed in buffer
-	// maxIndices - maximum indices allowed in buffer
-	// hasColor - use color values in vertices
-	// hasTexCoords - use texture coordinates in vertices
-	// hasNormals - use normals in vertices
-	// use3D - (false, default) use 2d positions (ie. x/y only)
-	// (true) use 3d positions (ie. x/y/z)
-	public Vertices(int maxVertices, int maxIndices, boolean hasColor,
-			boolean hasTexCoords, boolean hasNormals) {
-		this(maxVertices, maxIndices, hasColor, hasTexCoords, hasNormals, false); // Call
-																					// Overloaded
-																					// Constructor
-	}
+        this.vertices = new Float32Array(maxVertices * this.vertexStride);
+        this.vertexBuffer = gl.createBuffer();
 
-	public Vertices(int maxVertices, int maxIndices, boolean hasColor,
-			boolean hasTexCoords, boolean hasNormals, boolean use3D) {
-		this.hasColor = hasColor; // Save Color Flag
-		this.hasTexCoords = hasTexCoords; // Save Texture Coords Flag
-		this.hasNormals = hasNormals; // Save Normals Flag
-		this.positionCnt = use3D ? POSITION_CNT_3D : POSITION_CNT_2D; // Set
-																		// Position
-																		// Component
-																		// Count
-		this.vertexStride = this.positionCnt + (hasColor ? COLOR_CNT : 0)
-				+ (hasTexCoords ? TEXCOORD_CNT : 0)
-				+ (hasNormals ? NORMAL_CNT : 0); // Calculate Vertex Stride
-		this.vertexSize = this.vertexStride * 4; // Calculate Vertex Byte Size
+        if (maxIndices > 0) {
+            this.indices = new Uint16Array(maxIndices);
+            this.indexBuffer = gl.createBuffer();
+        } else {
+            this.indices = null;
+            this.indexBuffer = null;
+        }
 
-		ByteBuffer buffer = ByteBuffer.allocateDirect(maxVertices * vertexSize); // Allocate
-																					// Buffer
-																					// for
-																					// Vertices
-																					// (Max)
-		buffer.order(ByteOrder.nativeOrder()); // Set Native Byte Order
-		this.vertices = buffer.asIntBuffer(); // Save Vertex Buffer
+        this.numVertices = 0;
+        this.numIndices = 0;
+    }
 
-		if (maxIndices > 0) { // IF Indices Required
-			buffer = ByteBuffer.allocateDirect(maxIndices * INDEX_SIZE); // Allocate
-																			// Buffer
-																			// for
-																			// Indices
-																			// (MAX)
-			buffer.order(ByteOrder.nativeOrder()); // Set Native Byte Order
-			this.indices = buffer.asShortBuffer(); // Save Index Buffer
-		} else
-			// ELSE Indices Not Required
-			indices = null; // No Index Buffer
+    public setVertices(vertices: number[], offset: number, length: number): void {
+        this.vertices.set(vertices.slice(offset, offset + length), 0);
+        this.numVertices = length / this.vertexStride;
+        this.dirty = true;
+    }
 
-		numVertices = 0; // Zero Vertices in Buffer
-		numIndices = 0; // Zero Indices in Buffer
+    public setIndices(indices: number[], offset: number, length: number): void {
+        this.indices.set(indices.slice(offset, offset + length), 0);
+        this.numIndices = length;
+        this.dirty = true;
+    }
 
-		this.tmpBuffer = new int[maxVertices * vertexSize / 4]; // Create Temp
-																// Buffer
-	}
+    public bind(shaderProgram: WebGLProgram): void {
+        const gl = this.gl;
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+        if (this.dirty) {
+            gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.DYNAMIC_DRAW);
+        }
 
-	// --Set Vertices--//
-	// D: set the specified vertices in the vertex buffer
-	// NOTE: optimized to use integer buffer!
-	// A: vertices - array of vertices (floats) to set
-	// offset - offset to first vertex in array
-	// length - number of floats in the vertex array (total)
-	// for easy setting use: vtx_cnt * (this.vertexSize / 4)
-	// R: [none]
-	public void setVertices(float[] vertices, int offset, int length) {
-		this.vertices.clear(); // Remove Existing Vertices
-		int last = offset + length; // Calculate Last Element
-		for (int i = offset, j = 0; i < last; i++, j++)
-			// FOR Each Specified Vertex
-			tmpBuffer[j] = Float.floatToRawIntBits(vertices[i]); // Set Vertex
-																	// as Raw
-																	// Integer
-																	// Bits in
-																	// Buffer
-		this.vertices.put(tmpBuffer, 0, length); // Set New Vertices
-		this.vertices.flip(); // Flip Vertex Buffer
-		this.numVertices = length / this.vertexStride; // Save Number of
-														// Vertices
-		// this.numVertices = length / ( this.vertexSize / 4 ); // Save Number
-		// of Vertices
-	}
+        const posLocation = gl.getAttribLocation(shaderProgram, "a_position");
+        gl.enableVertexAttribArray(posLocation);
+        gl.vertexAttribPointer(posLocation, this.positionCnt, gl.FLOAT, false, this.vertexSize, 0);
 
-	// --Set Indices--//
-	// D: set the specified indices in the index buffer
-	// A: indices - array of indices (shorts) to set
-	// offset - offset to first index in array
-	// length - number of indices in array (from offset)
-	// R: [none]
-	public void setIndices(short[] indices, int offset, int length) {
-		this.indices.clear(); // Clear Existing Indices
-		this.indices.put(indices, offset, length); // Set New Indices
-		this.indices.flip(); // Flip Index Buffer
-		this.numIndices = length; // Save Number of Indices
-	}
+        let offset = this.positionCnt * 4;
+        if (this.hasColor) {
+            const colorLocation = gl.getAttribLocation(shaderProgram, "a_color");
+            gl.enableVertexAttribArray(colorLocation);
+            gl.vertexAttribPointer(colorLocation, Vertices.COLOR_CNT, gl.FLOAT, false, this.vertexSize, offset);
+            offset += Vertices.COLOR_CNT * 4;
+        }
 
-	// --Bind--//
-	// D: perform all required binding/state changes before rendering batches.
-	// USAGE: call once before calling draw() multiple times for this buffer.
-	// A: [none]
-	// R: [none]
-	public void bind() {
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY); // Enable Position
-															// in Vertices
-		vertices.position(0); // Set Vertex Buffer to Position
-		GLES11.glVertexPointer(positionCnt, GLES11.GL_FLOAT, vertexSize,
-				vertices); // Set Vertex Pointer
+        if (this.hasTexCoords) {
+            const texCoordLocation = gl.getAttribLocation(shaderProgram, "a_texCoord");
+            gl.enableVertexAttribArray(texCoordLocation);
+            gl.vertexAttribPointer(texCoordLocation, Vertices.TEXCOORD_CNT, gl.FLOAT, false, this.vertexSize, offset);
+            offset += Vertices.TEXCOORD_CNT * 4;
+        }
 
-		if (hasColor) { // IF Vertices Have Color
-			GLES11.glEnableClientState(GLES11.GL_COLOR_ARRAY); // Enable Color
-																// in Vertices
-			vertices.position(positionCnt); // Set Vertex Buffer to Color
-			GLES11.glColorPointer(COLOR_CNT, GLES11.GL_FLOAT, vertexSize,
-					vertices); // Set Color Pointer
-		}
+        if (this.hasNormals) {
+            const normalLocation = gl.getAttribLocation(shaderProgram, "a_normal");
+            gl.enableVertexAttribArray(normalLocation);
+            gl.vertexAttribPointer(normalLocation, Vertices.NORMAL_CNT, gl.FLOAT, false, this.vertexSize, offset);
+        }
 
-		if (hasTexCoords) { // IF Vertices Have Texture Coords
-			GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY); // Enable
-																		// Texture
-																		// Coords
-																		// in
-																		// Vertices
-			vertices.position(positionCnt + (hasColor ? COLOR_CNT : 0)); // Set
-																			// Vertex
-																			// Buffer
-																			// to
-																			// Texture
-																			// Coords
-																			// (NOTE:
-																			// position
-																			// based
-																			// on
-																			// whether
-																			// color
-																			// is
-																			// also
-																			// specified)
-			GLES11.glTexCoordPointer(TEXCOORD_CNT, GLES11.GL_FLOAT, vertexSize,
-					vertices); // Set Texture Coords Pointer
-		}
+        if (this.indices) {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+            if (this.dirty) {
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indices, gl.STATIC_DRAW);
+            }
+        }
 
-		if (hasNormals) {
-			GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY); // Enable
-																// Normals in
-																// Vertices
-			vertices.position(positionCnt + (hasColor ? COLOR_CNT : 0)
-					+ (hasTexCoords ? TEXCOORD_CNT : 0)); // Set Vertex Buffer
-															// to Normals (NOTE:
-															// position based on
-															// whether
-															// color/texcoords
-															// is also
-															// specified)
-			GLES11.glNormalPointer(GLES11.GL_FLOAT, vertexSize, vertices); // Set
-																			// Normals
-																			// Pointer
-		}
-	}
+        this.dirty = false;
+    }
 
-	// --Draw--//
-	// D: draw the currently bound vertices in the vertex/index buffers
-	// USAGE: can only be called after calling bind() for this buffer.
-	// A: primitiveType - the type of primitive to draw
-	// offset - the offset in the vertex/index buffer to start at
-	// numVertices - the number of vertices (indices) to draw
-	// R: [none]
-	public void draw(int primitiveType, int offset, int numVertices) {
-		if (indices != null) { // IF Indices Exist
-			indices.position(offset); // Set Index Buffer to Specified Offset
-			GLES11.glDrawElements(primitiveType, numVertices,
-					GLES11.GL_UNSIGNED_SHORT, indices); // Draw Indexed
-		} else { // ELSE No Indices Exist
-			GLES11.glDrawArrays(primitiveType, offset, numVertices); // Draw
-																		// Direct
-																		// (Array)
-		}
-	}
+    public draw(primitiveType: number, offset: number, numVertices: number): void {
+        const gl = this.gl;
+        if (this.indices) {
+            gl.drawElements(primitiveType, numVertices, gl.UNSIGNED_SHORT, offset * Vertices.INDEX_SIZE);
+        } else {
+            gl.drawArrays(primitiveType, offset, numVertices);
+        }
+    }
 
-	// --Unbind--//
-	// D: clear binding states when done rendering batches.
-	// USAGE: call once before calling draw() multiple times for this buffer.
-	// A: [none]
-	// R: [none]
-	public void unbind() {
-	}
+    public unbind(shaderProgram: WebGLProgram): void {
+        const gl = this.gl;
 
-	// --Draw Full--//
-	// D: draw the vertices in the vertex/index buffers
-	// NOTE: unoptimized version! use bind()/draw()/unbind() for batches
-	// A: primitiveType - the type of primitive to draw
-	// offset - the offset in the vertex/index buffer to start at
-	// numVertices - the number of vertices (indices) to draw
-	// R: [none]
-	public void drawFull(int primitiveType, int offset, int numVertices) {
-		GLES11.glEnableClientState(GLES11.GL_VERTEX_ARRAY); // Enable Position
-															// in Vertices
-		vertices.position(0); // Set Vertex Buffer to Position
-		GLES11.glVertexPointer(positionCnt, GLES11.GL_FLOAT, vertexSize,
-				vertices); // Set Vertex Pointer
+        const posLocation = gl.getAttribLocation(shaderProgram, "a_position");
+        gl.disableVertexAttribArray(posLocation);
 
-		if (hasColor) { // IF Vertices Have Color
-			GLES11.glEnableClientState(GLES11.GL_COLOR_ARRAY); // Enable Color
-																// in Vertices
-			vertices.position(positionCnt); // Set Vertex Buffer to Color
-			GLES11.glColorPointer(COLOR_CNT, GLES11.GL_FLOAT, vertexSize,
-					vertices); // Set Color Pointer
-		}
+        if (this.hasColor) {
+            const colorLocation = gl.getAttribLocation(shaderProgram, "a_color");
+            gl.disableVertexAttribArray(colorLocation);
+        }
 
-		if (hasTexCoords) { // IF Vertices Have Texture Coords
-			GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY); // Enable
-																		// Texture
-																		// Coords
-																		// in
-																		// Vertices
-			vertices.position(positionCnt + (hasColor ? COLOR_CNT : 0)); // Set
-																			// Vertex
-																			// Buffer
-																			// to
-																			// Texture
-																			// Coords
-																			// (NOTE:
-																			// position
-																			// based
-																			// on
-																			// whether
-																			// color
-																			// is
-																			// also
-																			// specified)
-			GLES11.glTexCoordPointer(TEXCOORD_CNT, GLES11.GL_FLOAT, vertexSize,
-					vertices); // Set Texture Coords Pointer
-		}
+        if (this.hasTexCoords) {
+            const texCoordLocation = gl.getAttribLocation(shaderProgram, "a_texCoord");
+            gl.disableVertexAttribArray(texCoordLocation);
+        }
 
-		if (indices != null) { // IF Indices Exist
-			indices.position(offset); // Set Index Buffer to Specified Offset
-			GLES11.glDrawElements(primitiveType, numVertices,
-					GLES11.GL_UNSIGNED_SHORT, indices); // Draw Indexed
-		} else { // ELSE No Indices Exist
-			GLES11.glDrawArrays(primitiveType, offset, numVertices); // Draw
-																		// Direct
-																		// (Array)
-		}
+        if (this.hasNormals) {
+            const normalLocation = gl.getAttribLocation(shaderProgram, "a_normal");
+            gl.disableVertexAttribArray(normalLocation);
+        }
 
-		if (hasTexCoords) // IF Vertices Have Texture Coords
-			GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY); // Clear
-																		// Texture
-																		// Coords
-																		// State
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        if (this.indices) {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        }
+    }
 
-		if (hasColor) // IF Vertices Have Color
-			GLES11.glDisableClientState(GLES11.GL_COLOR_ARRAY); // Clear Color
-																// State
+    // -- Set Vertex Elements --
+    public setVtxPosition(vtxIdx: number, x: number, y: number, z?: number): void {
+        const index = vtxIdx * this.vertexStride;
+        this.vertices[index] = x;
+        this.vertices[index + 1] = y;
+        if (z !== undefined) {
+            this.vertices[index + 2] = z;
+        }
+        this.dirty = true;
+    }
 
-		GLES11.glDisableClientState(GLES11.GL_VERTEX_ARRAY); // Clear Vertex
-																// Array State
-	}
 
-	// --Set Vertex Elements--//
-	// D: use these methods to alter the values (position, color, textcoords,
-	// normals) for vertices
-	// WARNING: these do NOT validate any values, ensure that the index AND
-	// specified
-	// elements EXIST before using!!
-	// A: x, y, z - the x,y,z position to set in buffer
-	// r, g, b, a - the r,g,b,a color to set in buffer
-	// u, v - the u,v texture coords to set in buffer
-	// nx, ny, nz - the x,y,z normal to set in buffer
-	// R: [none]
-	void setVtxPosition(int vtxIdx, float x, float y) {
-		int index = vtxIdx * vertexStride; // Calculate Actual Index
-		vertices.put(index + 0, Float.floatToRawIntBits(x)); // Set X
-		vertices.put(index + 1, Float.floatToRawIntBits(y)); // Set Y
-	}
+    public setVtxColor(vtxIdx: number, r: number, g: number, b: number, a?: number): void {
+        const index = (vtxIdx * this.vertexStride) + this.positionCnt;
+        this.vertices[index] = r;
+        this.vertices[index + 1] = g;
+        this.vertices[index + 2] = b;
+        if (a !== undefined) {
+            this.vertices[index + 3] = a;
+        }
+        this.dirty = true;
+    }
 
-	void setVtxPosition(int vtxIdx, float x, float y, float z) {
-		int index = vtxIdx * vertexStride; // Calculate Actual Index
-		vertices.put(index + 0, Float.floatToRawIntBits(x)); // Set X
-		vertices.put(index + 1, Float.floatToRawIntBits(y)); // Set Y
-		vertices.put(index + 2, Float.floatToRawIntBits(z)); // Set Z
-	}
 
-	void setVtxColor(int vtxIdx, float r, float g, float b, float a) {
-		int index = (vtxIdx * vertexStride) + positionCnt; // Calculate Actual
-															// Index
-		vertices.put(index + 0, Float.floatToRawIntBits(r)); // Set Red
-		vertices.put(index + 1, Float.floatToRawIntBits(g)); // Set Green
-		vertices.put(index + 2, Float.floatToRawIntBits(b)); // Set Blue
-		vertices.put(index + 3, Float.floatToRawIntBits(a)); // Set Alpha
-	}
+    public setVtxTexCoords(vtxIdx: number, u: number, v: number): void {
+        let index = (vtxIdx * this.vertexStride) + this.positionCnt;
+        if (this.hasColor) index += Vertices.COLOR_CNT;
+        this.vertices[index] = u;
+        this.vertices[index + 1] = v;
+        this.dirty = true;
+    }
 
-	void setVtxColor(int vtxIdx, float r, float g, float b) {
-		int index = (vtxIdx * vertexStride) + positionCnt; // Calculate Actual
-															// Index
-		vertices.put(index + 0, Float.floatToRawIntBits(r)); // Set Red
-		vertices.put(index + 1, Float.floatToRawIntBits(g)); // Set Green
-		vertices.put(index + 2, Float.floatToRawIntBits(b)); // Set Blue
-	}
-
-	void setVtxColor(int vtxIdx, float a) {
-		int index = (vtxIdx * vertexStride) + positionCnt; // Calculate Actual
-															// Index
-		vertices.put(index + 3, Float.floatToRawIntBits(a)); // Set Alpha
-	}
-
-	void setVtxTexCoords(int vtxIdx, float u, float v) {
-		int index = (vtxIdx * vertexStride) + positionCnt
-				+ (hasColor ? COLOR_CNT : 0); // Calculate Actual Index
-		vertices.put(index + 0, Float.floatToRawIntBits(u)); // Set U
-		vertices.put(index + 1, Float.floatToRawIntBits(v)); // Set V
-	}
-
-	void setVtxNormal(int vtxIdx, float x, float y, float z) {
-		int index = (vtxIdx * vertexStride) + positionCnt
-				+ (hasColor ? COLOR_CNT : 0)
-				+ (hasTexCoords ? TEXCOORD_CNT : 0); // Calculate Actual Index
-		vertices.put(index + 0, Float.floatToRawIntBits(x)); // Set X
-		vertices.put(index + 1, Float.floatToRawIntBits(y)); // Set Y
-		vertices.put(index + 2, Float.floatToRawIntBits(z)); // Set Z
-	}
+    public setVtxNormal(vtxIdx: number, x: number, y: number, z: number): void {
+        let index = (vtxIdx * this.vertexStride) + this.positionCnt;
+        if (this.hasColor) index += Vertices.COLOR_CNT;
+        if (this.hasTexCoords) index += Vertices.TEXCOORD_CNT;
+        this.vertices[index] = x;
+        this.vertices[index + 1] = y;
+        this.vertices[index + 2] = z;
+        this.dirty = true;
+    }
 }

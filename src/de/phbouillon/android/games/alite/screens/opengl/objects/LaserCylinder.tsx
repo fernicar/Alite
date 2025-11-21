@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -11,367 +9,280 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * This program is distributed in the hope that it will be useful and
  * fun, but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
+ * GNU General Public License for a copy of the GNU General Public License
  * along with this program.  If not, see
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
-import java.nio.FloatBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import { AliteGame } from "../../../AliteGame";
+import { AliteLog } from "../../../AliteLog";
+import { AliteColor } from "../../../colors/AliteColor";
+import { Equipment } from "../../../model/Equipment";
+import { AliteObject } from "./AliteObject";
+import { MathHelper } from "./space/MathHelper";
+import { SpaceObject } from "./space/SpaceObject";
 
-import android.graphics.Color;
-import android.opengl.GLES11;
-import de.phbouillon.android.framework.impl.gl.GlUtils;
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.colors.AliteColor;
-import de.phbouillon.android.games.alite.model.Equipment;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.MathHelper;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
+export class LaserCylinder extends AliteObject {
+    private static readonly sqrt1_2: number = Math.sqrt(0.5);
+    private static readonly sin: number[] = [0, LaserCylinder.sqrt1_2, 1, LaserCylinder.sqrt1_2, 0, -LaserCylinder.sqrt1_2, -1, -LaserCylinder.sqrt1_2];
+    private static readonly cos: number[] = [1, LaserCylinder.sqrt1_2, 0, -LaserCylinder.sqrt1_2, -1, -LaserCylinder.sqrt1_2, 0, LaserCylinder.sqrt1_2];
+    private static readonly radius: number = 8.0;
 
-public class LaserCylinder extends AliteObject implements Serializable {
-	private static final long serialVersionUID = -3718230407488309449L;
+    private laser: Equipment;
+    private readonly twins: LaserCylinder[] = [];
+    private aiming: boolean = false;
+    private origin: SpaceObject;
+    private diskBuffer1: WebGLBuffer;
+    private diskBuffer2: WebGLBuffer;
+    private cylinderBuffer: WebGLBuffer;
+    private normalBuffer: WebGLBuffer[];
+    private texCoordBuffer: WebGLBuffer[];
+    private color: number;
+    private visible: boolean = true;
+    private readonly saveMatrix: Float32Array = new Float32Array(16);
+    private removeInNFrames: number = -1;
+    private textureFilename: string = null;
 
-	private static final float sqrt1_2 = (float) Math.sqrt(0.5);
-	private static final float [] sin = new float [] {0, sqrt1_2, 1, sqrt1_2, 0, -sqrt1_2, -1, -sqrt1_2};
-	private static final float [] cos = new float [] {1, sqrt1_2, 0, -sqrt1_2, -1, -sqrt1_2, 0, sqrt1_2};
-	private static final float radius = 8.0f;
+    private beamLength: number = 150;
+    private halfLength: number = this.beamLength >> 1;
 
-	private Equipment laser;
-	private final List<LaserCylinder> twins = new ArrayList<>();
-	private boolean aiming = false;
-	private SpaceObject origin;
-	private transient FloatBuffer diskBuffer1;
-	private transient FloatBuffer diskBuffer2;
-	private transient FloatBuffer cylinderBuffer;
-	private transient FloatBuffer [] normalBuffer;
-	private transient FloatBuffer [] texCoordBuffer;
-	private int color;
-	private boolean visible = true;
-	private final float [] saveMatrix = new float[16];
-	private int removeInNFrames = -1;
-	private String textureFilename = null;
+    public constructor() {
+        super("Laser");
+        this.initializeBuffers();
+        this.boundingSphereRadius = this.halfLength;
+        this.setSpeed(this.calcSpeed());
+    }
 
-	private int beamLength = 150;
-	private float halfLength = beamLength >> 1;
+    private initializeBuffers(): void {
+        const gl = AliteGame.get().getGraphics().getGL();
 
-	public LaserCylinder() {
-		super("Laser");
+        this.diskBuffer1 = gl.createBuffer();
+        this.cylinderBuffer = gl.createBuffer();
+        this.diskBuffer2 = gl.createBuffer();
+        this.normalBuffer = [gl.createBuffer(), gl.createBuffer(), gl.createBuffer()];
+        this.texCoordBuffer = [gl.createBuffer(), gl.createBuffer(), gl.createBuffer()];
 
-		diskBuffer1       = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-		cylinderBuffer    = GlUtils.allocateFloatBuffer(4 * 3 * 18);
-		diskBuffer2       = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-		normalBuffer      = new FloatBuffer[3];
-		normalBuffer[0]   = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-		normalBuffer[1]   = GlUtils.allocateFloatBuffer(4 * 3 * 18);
-		normalBuffer[2]   = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-		texCoordBuffer    = new FloatBuffer[3];
-		texCoordBuffer[0] = GlUtils.allocateFloatBuffer(4 * 2 * 10);
-		texCoordBuffer[1] = GlUtils.allocateFloatBuffer(4 * 2 * 18);
-		texCoordBuffer[2] = GlUtils.allocateFloatBuffer(4 * 2 * 10);
+        this.plotData();
+    }
 
-		plotDiskPoints(diskBuffer1, normalBuffer[0], texCoordBuffer[0], radius, radius, 0, 0, -halfLength);
-		plotCylinderPoints(radius, radius, radius, radius, halfLength * 2.0f, 0, 0, -halfLength);
-		plotDiskPoints(diskBuffer2, normalBuffer[2], texCoordBuffer[2], radius, radius, 0, 0, halfLength);
-		boundingSphereRadius = halfLength;
-		setZPositioningMode(ZPositioning.Front);
-		setSpeed(calcSpeed());
-	}
 
-	private void readObject(ObjectInputStream in) throws IOException {
-		try {
-			AliteLog.d("readObject", "LaserCylinder.readObject");
-			in.defaultReadObject();
-			AliteLog.d("readObject", "LaserCylinder.readObject I");
-			diskBuffer1    = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-			cylinderBuffer = GlUtils.allocateFloatBuffer(4 * 3 * 18);
-			diskBuffer2    = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-			normalBuffer    = new FloatBuffer[3];
-			normalBuffer[0] = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-			normalBuffer[1] = GlUtils.allocateFloatBuffer(4 * 3 * 18);
-			normalBuffer[2] = GlUtils.allocateFloatBuffer(4 * 3 * 10);
-			texCoordBuffer    = new FloatBuffer[3];
-			texCoordBuffer[0] = GlUtils.allocateFloatBuffer(4 * 2 * 10);
-			texCoordBuffer[1] = GlUtils.allocateFloatBuffer(4 * 2 * 18);
-			texCoordBuffer[2] = GlUtils.allocateFloatBuffer(4 * 2 * 10);
-			plotDiskPoints(diskBuffer1, normalBuffer[0], texCoordBuffer[0], radius, radius, 0, 0, -halfLength);
-			plotCylinderPoints(radius, radius, radius, radius, halfLength * 2, 0, 0, -halfLength);
-			plotDiskPoints(diskBuffer2, normalBuffer[2], texCoordBuffer[2], radius, radius, 0, 0, halfLength);
-			AliteLog.d("readObject", "LaserCylinder.readObject II");
-		} catch (ClassNotFoundException e) {
-			AliteLog.e("Class not found", e.getMessage(), e);
-		}
-	}
+    private plotData(): void {
+        const gl = AliteGame.get().getGraphics().getGL();
+        const disk1 = { pos: [], norm: [], tex: [] };
+        this.plotDiskPoints(disk1, LaserCylinder.radius, LaserCylinder.radius, 0, 0, -this.halfLength);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.diskBuffer1);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(disk1.pos), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer[0]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(disk1.norm), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer[0]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(disk1.tex), gl.STATIC_DRAW);
 
-	public void render() {
-		if (!visible) {
-			return;
-		}
-		GLES11.glDepthFunc(GLES11.GL_LEQUAL);
-		GLES11.glDepthMask(false);
-		GLES11.glDisable(GLES11.GL_CULL_FACE);
-		if (textureFilename != null) {
-			GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-			GLES11.glEnable(GLES11.GL_LIGHTING);
-			Alite.get().getTextureManager().setTexture(textureFilename);
-		} else {
-			GLES11.glDisableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-			GLES11.glDisable(GLES11.GL_LIGHTING);
-			Alite.get().getTextureManager().setTexture(null);
-		}
-		GLES11.glEnableClientState(GLES11.GL_NORMAL_ARRAY);
+        const cylinder = { pos: [], norm: [], tex: [] };
+        this.plotCylinderPoints(cylinder, LaserCylinder.radius, LaserCylinder.radius, LaserCylinder.radius, LaserCylinder.radius, this.halfLength * 2.0, 0, 0, -this.halfLength);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cylinderBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylinder.pos), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer[1]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylinder.norm), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer[1]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylinder.tex), gl.STATIC_DRAW);
 
-		GLES11.glEnable(GLES11.GL_BLEND);
-		GLES11.glBlendFunc(GLES11.GL_ONE, GLES11.GL_ONE);
-		Alite.get().getGraphics().setColor(color);
-		for (int i = 0; i < 2; i++) {
-			GLES11.glPushMatrix();
-			GLES11.glMultMatrixf(getMatrix(), 0);
+        const disk2 = { pos: [], norm: [], tex: [] };
+        this.plotDiskPoints(disk2, LaserCylinder.radius, LaserCylinder.radius, 0, 0, this.halfLength);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.diskBuffer2);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(disk2.pos), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer[2]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(disk2.norm), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer[2]);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(disk2.tex), gl.STATIC_DRAW);
+    }
 
-			GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, diskBuffer1);
-			GLES11.glNormalPointer(GLES11.GL_FLOAT, 0, normalBuffer[0]);
-			if (textureFilename != null) {
-				GLES11.glTexCoordPointer(2, GLES11.GL_FLOAT, 0, texCoordBuffer[0]);
-			}
-			GLES11.glDrawArrays(GLES11.GL_TRIANGLE_FAN, 0, 10);
 
-			GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, cylinderBuffer);
-			GLES11.glNormalPointer(GLES11.GL_FLOAT, 0, normalBuffer[1]);
-			if (textureFilename != null) {
-				GLES11.glTexCoordPointer(2, GLES11.GL_FLOAT, 0, texCoordBuffer[1]);
-			}
-			GLES11.glDrawArrays(GLES11.GL_TRIANGLE_STRIP, 0, 18);
+    public render(): void {
+        if (!this.visible) {
+            return;
+        }
+        const gl = AliteGame.get().getGraphics().getGL();
+        const shader = AliteGame.get().getGraphics().getShader(); // Assuming a shader program is available
 
-			GLES11.glVertexPointer(3, GLES11.GL_FLOAT, 0, diskBuffer2);
-			GLES11.glNormalPointer(GLES11.GL_FLOAT, 0, normalBuffer[2]);
-			if (textureFilename != null) {
-				GLES11.glTexCoordPointer(2, GLES11.GL_FLOAT, 0, texCoordBuffer[2]);
-			}
-			GLES11.glDrawArrays(GLES11.GL_TRIANGLE_FAN, 0, 10);
+        gl.depthFunc(gl.LEQUAL);
+        gl.depthMask(false);
+        gl.disable(gl.CULL_FACE);
 
-			GLES11.glPopMatrix();
-			MathHelper.copyMatrix(getMatrix(), saveMatrix);
-			scale(0.7f);
-			Alite.get().getGraphics().setColor(AliteColor.lighten(color, 0.2));
-		}
-		setMatrix(saveMatrix);
-		GLES11.glEnable(GLES11.GL_CULL_FACE);
-		GLES11.glEnable(GLES11.GL_LIGHTING);
-		GLES11.glEnableClientState(GLES11.GL_TEXTURE_COORD_ARRAY);
-		Alite.get().getTextureManager().setTexture(null);
-		GLES11.glDepthFunc(GLES11.GL_LESS);
-		GLES11.glDepthMask(true);
-		GLES11.glDisable(GLES11.GL_BLEND);
-	}
+        if (this.textureFilename) {
+            // Enable texture units and bind texture
+        } else {
+            // Disable texture units
+        }
 
-	public void setBeam(int beamLength) {
-		if (this.beamLength == beamLength) {
-			return;
-		}
-		this.beamLength = beamLength;
-		halfLength = beamLength >> 1;
-		setSpeed(calcSpeed());
-		diskBuffer1.clear();
-		cylinderBuffer.clear();
-		diskBuffer2.clear();
-		normalBuffer[0].clear();
-		normalBuffer[1].clear();
-		normalBuffer[2].clear();
-		texCoordBuffer[0].clear();
-		texCoordBuffer[1].clear();
-		texCoordBuffer[2].clear();
-		plotDiskPoints(diskBuffer1, normalBuffer[0], texCoordBuffer[0], radius, radius, 0, 0, -halfLength);
-		plotCylinderPoints(radius, radius, radius, radius, halfLength * 2, 0, 0, -halfLength);
-		plotDiskPoints(diskBuffer2, normalBuffer[2], texCoordBuffer[1], radius, radius, 0, 0, halfLength);
-		boundingSphereRadius = halfLength;
-	}
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        AliteGame.get().getGraphics().setColor(this.color);
 
-	// Exponential approximation based on the two original length - speed value pairs:
-	// 15000 - 124000 for beam lasers (beam and military) and 150 - 12400 for non beam lasers (pulse and mining)
-	private float calcSpeed() {
-		return (float) (-1012.5 * Math.sqrt(beamLength));
-	}
+        for (let i = 0; i < 2; i++) {
+            const matrix = this.getMatrix();
+            // Pass matrix to shader
+            // Draw disk 1
+            // Draw cylinder
+            // Draw disk 2
+            MathHelper.copyMatrix(this.getMatrix(), this.saveMatrix);
+            this.scale(0.7);
+            AliteGame.get().getGraphics().setColor(AliteColor.lighten(this.color, 0.2));
+        }
 
-	public void setVisible(boolean b) {
-		visible = b;
-	}
+        this.setMatrix(this.saveMatrix);
+        gl.enable(gl.CULL_FACE);
+        gl.depthFunc(gl.LESS);
+        gl.depthMask(true);
+        gl.disable(gl.BLEND);
+    }
 
-	public boolean isVisible() {
-		return visible;
-	}
+    public setBeam(beamLength: number): void {
+        if (this.beamLength === beamLength) {
+            return;
+        }
+        this.beamLength = beamLength;
+        this.halfLength = beamLength >> 1;
+        this.setSpeed(this.calcSpeed());
+        this.plotData();
+        this.boundingSphereRadius = this.halfLength;
+    }
 
-	public void setColor(int color) {
-		this.color = color;
-		textureFilename = getTextureColor(color);
-		if (textureFilename != null) {
-			textureFilename = "textures/laser_" + textureFilename + ".png";
-			Alite.get().getTextureManager().addTexture(textureFilename);
-		}
-	}
+    private calcSpeed(): number {
+        return (-1012.5 * Math.sqrt(this.beamLength));
+    }
 
-	private String getTextureColor(int color) {
-		if (isColor(color, Color.YELLOW)) return "yellow";
-		if (isColor(color, Color.RED)) return "red";
-		if (isColor(color, Color.GREEN)) return "green";
-		if (isColor(color, Color.BLUE)) return "blue";
-		if (isColor(color, Color.MAGENTA)) return "purple";
-		if (isColor(color, Color.CYAN)) return "cyan";
-		if (isColor(color, 0x00FFAA)) return "dark_cyan";
-		if (isColor(color, AliteColor.ORANGE)) return "orange";
-		return null;
-	}
+    public setVisible(b: boolean): void {
+        this.visible = b;
+    }
 
-	private boolean isColor(int color, int colorPattern) {
-		return Color.red(color) == Color.red(colorPattern) &&
-			Color.green(color) == Color.green(colorPattern) &&
-			Color.blue(color) == Color.blue(colorPattern);
-	}
+    public isVisible(): boolean {
+        return this.visible;
+    }
 
-	private void plotDiskPoints(FloatBuffer diskBuffer, FloatBuffer normalBuffer, FloatBuffer texCoordBuffer, float rx, float ry, float x, float y, float z) {
-		 diskBuffer.put(x);
-		 diskBuffer.put(y);
-		 diskBuffer.put(z);
-		 normalBuffer.put(0);
-		 normalBuffer.put(0);
-		 normalBuffer.put(1);
-		 texCoordBuffer.put(0.5f);
-		 texCoordBuffer.put(0.5f);
-		 for (int i = 0; i < 8; i++) {
-			 diskBuffer.put(x + sin[i] * rx);
-			 diskBuffer.put(y + cos[i] * ry);
-			 diskBuffer.put(z);
-			 normalBuffer.put(0);
-			 normalBuffer.put(0);
-			 normalBuffer.put(1);
-			 texCoordBuffer.put(0.5f);
-			 texCoordBuffer.put(0.5f + cos[i] * 0.125f);
-		 }
-		 diskBuffer.put(x);
-		 diskBuffer.put(y + ry);
-		 diskBuffer.put(z);
-		 normalBuffer.put(0);
-		 normalBuffer.put(0);
-		 normalBuffer.put(1);
-		 texCoordBuffer.put(0.5f);
-		 texCoordBuffer.put(0.625f);
-		 diskBuffer.position(0);
-		 normalBuffer.position(0);
-		 texCoordBuffer.position(0);
-	}
+    public setColor(color: number): void {
+        this.color = color;
+        this.textureFilename = this.getTextureColor(color);
+        if (this.textureFilename) {
+            this.textureFilename = `textures/laser_${this.textureFilename}.png`;
+            AliteGame.get().getTextureManager().addTexture(this.textureFilename);
+        }
+    }
 
-	private void plotCylinderPoints(float r1x, float r1y, float r2x, float r2y, float len, float x, float y, float z) {
-		for (int i = 0; i < 8; i++) {
-			cylinderBuffer.put(x + sin[i] * r1x);
-			cylinderBuffer.put(y + cos[i] * r1y);
-			cylinderBuffer.put(z);
-			normalBuffer[1].put(sin[i]);
-			normalBuffer[1].put(cos[i]);
-			normalBuffer[1].put(0);
-			texCoordBuffer[1].put(0);
-			texCoordBuffer[1].put(0.375f + i * 0.03125f);
-			cylinderBuffer.put(x + sin[i] * r2x);
-			cylinderBuffer.put(y + cos[i] * r2y);
-			cylinderBuffer.put(z + len);
-			normalBuffer[1].put(sin[i]);
-			normalBuffer[1].put(cos[i]);
-			normalBuffer[1].put(0);
-			texCoordBuffer[1].put(1);
-			texCoordBuffer[1].put(0.375f + i * 0.03125f);
+    private getTextureColor(color: number): string {
+        if (this.isColor(color, AliteColor.YELLOW)) return "yellow";
+        if (this.isColor(color, AliteColor.RED)) return "red";
+        if (this.isColor(color, AliteColor.GREEN)) return "green";
+        if (this.isColor(color, AliteColor.BLUE)) return "blue";
+        if (this.isColor(color, AliteColor.MAGENTA)) return "purple";
+        if (this.isColor(color, AliteColor.CYAN)) return "cyan";
+        if (this.isColor(color, 0x00FFAA)) return "dark_cyan";
+        if (this.isColor(color, AliteColor.ORANGE)) return "orange";
+        return null;
+    }
 
-		}
-		cylinderBuffer.put(x + sin[0] * r1x);
-		cylinderBuffer.put(y + cos[0] * r1y);
-		cylinderBuffer.put(z);
-		normalBuffer[1].put(sin[0]);
-		normalBuffer[1].put(cos[0]);
-		normalBuffer[1].put(0);
-		texCoordBuffer[1].put(0);
-		texCoordBuffer[1].put(0.625f);
-		cylinderBuffer.put(x + sin[0] * r2x);
-		cylinderBuffer.put(y + cos[0] * r2y);
-		cylinderBuffer.put(z + len);
-		normalBuffer[1].put(sin[0]);
-		normalBuffer[1].put(cos[0]);
-		normalBuffer[1].put(0);
-		texCoordBuffer[1].put(1);
-		texCoordBuffer[1].put(0.625f);
-		cylinderBuffer.position(0);
-		normalBuffer[1].position(0);
-		texCoordBuffer[1].position(0);
-	}
+    private isColor(color: number, colorPattern: number): boolean {
+        const r1 = (color >> 16) & 0xff, g1 = (color >> 8) & 0xff, b1 = color & 0xff;
+        const r2 = (colorPattern >> 16) & 0xff, g2 = (colorPattern >> 8) & 0xff, b2 = colorPattern & 0xff;
+        return r1 === r2 && g1 === g2 && b1 === b2;
+    }
 
-	public Equipment getLaser() {
-		return laser;
-	}
+    private plotDiskPoints(data, rx, ry, x, y, z) {
+        data.pos.push(x, y, z);
+        data.norm.push(0, 0, 1);
+        data.tex.push(0.5, 0.5);
+        for (let i = 0; i < 8; i++) {
+            data.pos.push(x + LaserCylinder.sin[i] * rx, y + LaserCylinder.cos[i] * ry, z);
+            data.norm.push(0, 0, 1);
+            data.tex.push(0.5, 0.5 + LaserCylinder.cos[i] * 0.125);
+        }
+        data.pos.push(x, y + ry, z);
+        data.norm.push(0, 0, 1);
+        data.tex.push(0.5, 0.625);
+    }
 
-	public void setLaser(Equipment laser) {
-		this.laser = laser;
-	}
+    private plotCylinderPoints(data, r1x, r1y, r2x, r2y, len, x, y, z) {
+        for (let i = 0; i < 8; i++) {
+            data.pos.push(x + LaserCylinder.sin[i] * r1x, y + LaserCylinder.cos[i] * r1y, z);
+            data.norm.push(LaserCylinder.sin[i], LaserCylinder.cos[i], 0);
+            data.tex.push(0, 0.375 + i * 0.03125);
+            data.pos.push(x + LaserCylinder.sin[i] * r2x, y + LaserCylinder.cos[i] * r2y, z + len);
+            data.norm.push(LaserCylinder.sin[i], LaserCylinder.cos[i], 0);
+            data.tex.push(1, 0.375 + i * 0.03125);
+        }
+        data.pos.push(x + LaserCylinder.sin[0] * r1x, y + LaserCylinder.cos[0] * r1y, z);
+        data.norm.push(LaserCylinder.sin[0], LaserCylinder.cos[0], 0);
+        data.tex.push(0, 0.625);
+        data.pos.push(x + LaserCylinder.sin[0] * r2x, y + LaserCylinder.cos[0] * r2y, z + len);
+        data.norm.push(LaserCylinder.sin[0], LaserCylinder.cos[0], 0);
+        data.tex.push(1, 0.625);
+    }
 
-	public List <LaserCylinder> getTwins() {
-		return twins;
-	}
 
-	public void setTwins(LaserCylinder twin1, LaserCylinder twin2) {
-		twins.clear();
-		twins.add(twin1);
-		twins.add(twin2);
-	}
+    public getLaser(): Equipment {
+        return this.laser;
+    }
 
-	public void addTwin(LaserCylinder twin) {
-		twins.add(twin);
-	}
+    public setLaser(laser: Equipment): void {
+        this.laser = laser;
+    }
 
-	public void clearTwins() {
-		twins.clear();
-	}
+    public getTwins(): LaserCylinder[] {
+        return this.twins;
+    }
 
-	public boolean isAiming() {
-		return aiming;
-	}
+    public setTwins(twin1: LaserCylinder, twin2: LaserCylinder): void {
+        this.twins.length = 0;
+        this.twins.push(twin1, twin2);
+    }
 
-	public void setAiming(boolean aiming) {
-		this.aiming = aiming;
-	}
+    public addTwin(twin: LaserCylinder): void {
+        this.twins.push(twin);
+    }
 
-	public void setOrigin(SpaceObject origin) {
-		this.origin = origin;
-	}
+    public clearTwins(): void {
+        this.twins.length = 0;
+    }
 
-	public SpaceObject getOrigin() {
-		return origin;
-	}
+    public isAiming(): boolean {
+        return this.aiming;
+    }
 
-	public void removeInNFrames(int n) {
-		removeInNFrames = n;
-	}
+    public setAiming(aiming: boolean): void {
+        this.aiming = aiming;
+    }
 
-	public void reset() {
-		removeInNFrames = -1;
-		textureFilename = null;
-	}
+    public setOrigin(origin: SpaceObject): void {
+        this.origin = origin;
+    }
 
-	public int getRemoveInNFrames() {
-		return removeInNFrames;
-	}
+    public getOrigin(): SpaceObject {
+        return this.origin;
+    }
 
-	public void postRender() {
-		if (removeInNFrames >= 0) {
-			removeInNFrames--;
-			if (removeInNFrames == -1) {
-				for (LaserCylinder lc: getTwins()) {
-					lc.setVisible(false);
-					lc.clearTwins();
-				}
-				setVisible(false);
-				clearTwins();
-			}
-		}
-	}
+    public removeInNFrames(n: number): void {
+        this.removeInNFrames = n;
+    }
+
+    public reset(): void {
+        this.removeInNFrames = -1;
+        this.textureFilename = null;
+    }
+
+    public getRemoveInNFrames(): number {
+        return this.removeInNFrames;
+    }
+
+    public postRender(): void {
+        if (this.removeInNFrames >= 0) {
+            this.removeInNFrames--;
+            if (this.removeInNFrames === -1) {
+                for (const lc of this.getTwins()) {
+                    lc.setVisible(false);
+                    lc.clearTwins();
+                }
+                this.setVisible(false);
+                this.clearTwins();
+            }
+        }
+    }
 }

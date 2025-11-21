@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl.gl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -11,439 +9,387 @@ package de.phbouillon.android.framework.impl.gl;
  * This program is distributed in the hope that it will be useful and
  * fun, but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
+ * GNU General Public License for a copy of the GNU General Public License
  * along with this program.  If not, see
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.util.Locale;
-import java.util.Objects;
+import { mat4, vec3 } from "gl-matrix";
+import { AliteLog } from "../../../games/alite/AliteLog";
+import { Vector3f } from "../../math/Vector3f";
+import { IMethodHook } from "../../IMethodHook";
 
-import android.opengl.Matrix;
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.AliteLog;
 
-public class GraphicObject implements Serializable {
-	private static final long serialVersionUID = -8039542554642450651L;
-	private static final float SPEED_CHANGE_PER_SECOND = 225.0f;
+export class GraphicObject {
+    private static readonly SPEED_CHANGE_PER_SECOND = 225.0;
 
-	protected Vector3f worldPosition;
-	protected Vector3f rightVector;
-	protected Vector3f upVector;
-	protected Vector3f forwardVector;
-	private final Vector3f initialDirection = new Vector3f(1.0f, 1.0f, 1.0f);
-	private final Vector3f temp = new Vector3f(1.0f, 1.0f, 1.0f);
-	private float speed;
-	private float targetSpeed;
+    protected worldPosition: Vector3f;
+    protected rightVector: Vector3f;
+    protected upVector: Vector3f;
+    protected forwardVector: Vector3f;
+    private readonly initialDirection: Vector3f = new Vector3f(1.0, 1.0, 1.0);
+    private readonly temp: Vector3f = new Vector3f(1.0, 1.0, 1.0);
+    private speed: number;
+    private targetSpeed: number;
 
-	private String id;
+    private id: string;
 
-	private final float[] currentMatrix = new float[16];
-	private final float[] tempMatrix = new float[16];
-	private final float[] tempMatrix2 = new float[16];
-	private boolean cached = false;
-	private IMethodHook updater = null;
+    private readonly currentMatrix: mat4 = mat4.create();
+    private readonly tempMatrix: mat4 = mat4.create();
+    private readonly tempMatrix2: mat4 = mat4.create();
+    private cached: boolean = false;
+    private updater: IMethodHook = null;
 
-	public GraphicObject() {
-		this("Unknown");
-	}
-
-	private String toDebugString() {
-		return "GO:            " + (id == null ? "<null>" : id) +
-			   "\nworldPosition: " + worldPosition +
-			   "\nforward:       " + forwardVector +
-			   "\nup:            " + upVector +
-			   "\nright:         " + rightVector +
-			   "\ninitial:       " + initialDirection +
-			   "\nspeed:         " + speed +
-			   "\ntargetSpeed:   " + targetSpeed +
-			   "\ncurrentMatrix: " + getMatrixString();
-	}
-
-	public void onUpdate(float deltaTime) {
-		if (updater == null) {
-			return;
-		}
-		updater.execute(deltaTime);
-	}
-
-	public void setUpdater(IMethodHook updater) {
-		this.updater = updater;
-	}
-
-	public IMethodHook getUpdater() {
-		return updater;
-	}
-
-	public GraphicObject(float[] matrix) {
-		this(matrix, "Unknown");
-	}
-
-	public void assertOrthoNormal() {
-		computeMatrix();
-		float det = currentMatrix[0] * (currentMatrix[5] * currentMatrix[10] - currentMatrix[6] * currentMatrix[9]) -
-				    currentMatrix[1] * (currentMatrix[4] * currentMatrix[10] - currentMatrix[6] * currentMatrix[8]) +
-				    currentMatrix[2] * (currentMatrix[4] * currentMatrix[ 9] - currentMatrix[5] * currentMatrix[8]);
-
-		if (Math.abs(det - 1.0) > 0.0001) {
-			AliteLog.e("ALERT!", "Determinant of matrix != 1: " + det);
-		}
-	}
-
-	public GraphicObject(String id) {
-		worldPosition = new Vector3f(0.0f, 0.0f, 0.0f);
-		rightVector   = new Vector3f(1.0f, 0.0f, 0.0f);
-		upVector      = new Vector3f(0.0f, 1.0f, 0.0f);
-		forwardVector = new Vector3f(0.0f, 0.0f, 1.0f);
-		speed         = 0.0f;
-		targetSpeed   = 0.0f;
-		this.id = id;
-	}
-
-	public GraphicObject(float[] matrix, String id) {
-		worldPosition = new Vector3f(matrix[12], matrix[13], matrix[14]);
-		rightVector   = new Vector3f(matrix[ 0], matrix[ 1], matrix[ 2]);
-		rightVector.normalize();
-		upVector      = new Vector3f(matrix[ 4], matrix[ 5], matrix[ 6]);
-		upVector.normalize();
-		forwardVector = new Vector3f(matrix[ 8], matrix[ 9], matrix[10]);
-		forwardVector.normalize();
-		speed         = 0.0f;
-		targetSpeed   = 0.0f;
-		this.id = id;
-	}
-
-	private void readObject(ObjectInputStream in) throws IOException {
-		try {
-			AliteLog.d("readObject", "GraphicObject.readObject");
-			in.defaultReadObject();
-			AliteLog.d("readObject", "GraphicObject.readObject I: " + toDebugString());
-		} catch (ClassNotFoundException e) {
-			AliteLog.e("Class not found", e.getMessage(), e);
-		}
-	}
-
-	private void writeObject(ObjectOutputStream out)
-            throws IOException {
-		try {
-			out.defaultWriteObject();
-		} catch(IOException e) {
-			AliteLog.e("PersistenceException", "Graphic Object " + getId(), e);
-			throw e;
-		}
+    constructor(idOrMatrix: string | mat4 = "Unknown", id?: string) {
+        if (typeof idOrMatrix === 'string') {
+            this.worldPosition = new Vector3f(0.0, 0.0, 0.0);
+            this.rightVector = new Vector3f(1.0, 0.0, 0.0);
+            this.upVector = new Vector3f(0.0, 1.0, 0.0);
+            this.forwardVector = new Vector3f(0.0, 0.0, 1.0);
+            this.speed = 0.0;
+            this.targetSpeed = 0.0;
+            this.id = idOrMatrix;
+        } else {
+            const matrix = idOrMatrix;
+            this.worldPosition = new Vector3f(matrix[12], matrix[13], matrix[14]);
+            this.rightVector = new Vector3f(matrix[0], matrix[1], matrix[2]);
+            this.rightVector.normalize();
+            this.upVector = new Vector3f(matrix[4], matrix[5], matrix[6]);
+            this.upVector.normalize();
+            this.forwardVector = new Vector3f(matrix[8], matrix[9], matrix[10]);
+            this.forwardVector.normalize();
+            this.speed = 0.0;
+            this.targetSpeed = 0.0;
+            this.id = id || "Unknown";
+        }
     }
 
-	public void setPosition(Vector3f position) {
-		worldPosition.x = position.x;
-		worldPosition.y = position.y;
-		worldPosition.z = position.z;
-		cached = false;
-	}
+    private toDebugString(): string {
+        return `GO:            ${this.id || "<null>"}
+                \nworldPosition: ${this.worldPosition}
+                \nforward:       ${this.forwardVector}
+                \nup:            ${this.upVector}
+                \nright:         ${this.rightVector}
+                \ninitial:       ${this.initialDirection}
+                \nspeed:         ${this.speed}
+                \ntargetSpeed:   ${this.targetSpeed}
+                \ncurrentMatrix: ${this.getMatrixString()}`;
+    }
 
-	public void setPosition(float x, float y, float z) {
-		worldPosition.x = x;
-		worldPosition.y = y;
-		worldPosition.z = z;
-		cached = false;
-	}
+    public onUpdate(deltaTime: number): void {
+        if (this.updater === null) {
+            return;
+        }
+        this.updater.execute(deltaTime);
+    }
 
-	public void setRightVector(Vector3f rightVector) {
-		this.rightVector.x = rightVector.x;
-		this.rightVector.y = rightVector.y;
-		this.rightVector.z = rightVector.z;
-		this.rightVector.normalize();
-		cached = false;
-	}
+    public setUpdater(updater: IMethodHook): void {
+        this.updater = updater;
+    }
 
-	public void setUpVector(Vector3f upVector) {
-		this.upVector.x = upVector.x;
-		this.upVector.y = upVector.y;
-		this.upVector.z = upVector.z;
-		this.upVector.normalize();
-		cached = false;
-	}
+    public getUpdater(): IMethodHook {
+        return this.updater;
+    }
 
-	public void setForwardVector(Vector3f forwardVector) {
-		this.forwardVector.x = forwardVector.x;
-		this.forwardVector.y = forwardVector.y;
-		this.forwardVector.z = forwardVector.z;
-		this.forwardVector.normalize();
-		cached = false;
-	}
+    public assertOrthoNormal(): void {
+        this.computeMatrix();
+        const det = mat4.determinant(this.currentMatrix);
 
-	public void setForwardVector(float x, float y, float z) {
-		forwardVector.x = x;
-		forwardVector.y = y;
-		forwardVector.z = z;
-		forwardVector.normalize();
-		cached = false;
-	}
+        if (Math.abs(det - 1.0) > 0.0001) {
+            AliteLog.e("ALERT!", `Determinant of matrix != 1: ${det}`);
+        }
+    }
 
-	public Vector3f getPosition() {
-		return worldPosition;
-	}
+    public setPosition(position: Vector3f): void;
+    public setPosition(x: number, y: number, z: number): void;
+    public setPosition(xOrVec: number | Vector3f, y?: number, z?: number): void {
+        if (xOrVec instanceof Vector3f) {
+            this.worldPosition.x = xOrVec.x;
+            this.worldPosition.y = xOrVec.y;
+            this.worldPosition.z = xOrVec.z;
+        } else {
+            this.worldPosition.x = xOrVec;
+            this.worldPosition.y = y;
+            this.worldPosition.z = z;
+        }
+        this.cached = false;
+    }
 
-	public Vector3f getRightVector() {
-		return rightVector;
-	}
 
-	public Vector3f getUpVector() {
-		return upVector;
-	}
+    public setRightVector(rightVector: Vector3f): void {
+        this.rightVector.x = rightVector.x;
+        this.rightVector.y = rightVector.y;
+        this.rightVector.z = rightVector.z;
+        this.rightVector.normalize();
+        this.cached = false;
+    }
 
-	public Vector3f getForwardVector() {
-		return forwardVector;
-	}
+    public setUpVector(upVector: Vector3f): void {
+        this.upVector.x = upVector.x;
+        this.upVector.y = upVector.y;
+        this.upVector.z = upVector.z;
+        this.upVector.normalize();
+        this.cached = false;
+    }
 
-	public String getId() {
-		return id;
-	}
+    public setForwardVector(forwardVector: Vector3f): void;
+    public setForwardVector(x: number, y: number, z: number): void;
+    public setForwardVector(xOrVec: number | Vector3f, y?: number, z?: number): void {
+        if (xOrVec instanceof Vector3f) {
+            this.forwardVector.x = xOrVec.x;
+            this.forwardVector.y = xOrVec.y;
+            this.forwardVector.z = xOrVec.z;
+        } else {
+            this.forwardVector.x = xOrVec;
+            this.forwardVector.y = y;
+            this.forwardVector.z = z;
+        }
+        this.forwardVector.normalize();
+        this.cached = false;
+    }
 
-	public void setId(String id) {
-		this.id = id;
-	}
 
-	public String getName() {
-		return id;
-	}
+    public getPosition(): Vector3f {
+        return this.worldPosition;
+    }
 
-	public float getSpeed() {
-		return speed;
-	}
+    public getRightVector(): Vector3f {
+        return this.rightVector;
+    }
 
-	public void setSpeed(float speed) {
-		this.speed       = speed;
-		this.targetSpeed = speed;
-	}
+    public getUpVector(): Vector3f {
+        return this.upVector;
+    }
 
-	public void adjustSpeed(float speed) {
-		targetSpeed = speed;
-	}
+    public getForwardVector(): Vector3f {
+        return this.forwardVector;
+    }
 
-	public void updateSpeed(float deltaTime) {
-		if (Math.abs(targetSpeed - speed) < 0.0001) {
-			return;
-		}
-		if (speed < targetSpeed) {
-			speed += deltaTime * SPEED_CHANGE_PER_SECOND;
-			if (speed > targetSpeed) {
-				speed = targetSpeed;
-			}
-		} else {
-			speed -= deltaTime * SPEED_CHANGE_PER_SECOND;
-			if (speed < targetSpeed) {
-				speed = targetSpeed;
-			}
-		}
-	}
+    public getId(): string {
+        return this.id;
+    }
 
-	public float getTargetSpeed() {
-		return targetSpeed;
-	}
+    public setId(id: string): void {
+        this.id = id;
+    }
 
-	public final void computeMatrix() {
-		if (cached) {
-			return;
-		}
-		Vector3f rn = rightVector;
-		rn.normalize();
-		currentMatrix[ 0] = rn.x;
-		currentMatrix[ 1] = rn.y;
-		currentMatrix[ 2] = rn.z;
-		currentMatrix[ 3] = 0.0f;
+    public getName(): string {
+        return this.id;
+    }
 
-		Vector3f un = upVector;
-		un.normalize();
-		currentMatrix[ 4] = un.x;
-		currentMatrix[ 5] = un.y;
-		currentMatrix[ 6] = un.z;
-		currentMatrix[ 7] = 0.0f;
+    public getSpeed(): number {
+        return this.speed;
+    }
 
-		Vector3f fn = forwardVector;
-		fn.normalize();
-		currentMatrix[ 8] = fn.x;
-		currentMatrix[ 9] = fn.y;
-		currentMatrix[10] = fn.z;
-		currentMatrix[11] = 0.0f;
+    public setSpeed(speed: number): void {
+        this.speed = speed;
+        this.targetSpeed = speed;
+    }
 
-		currentMatrix[12] = worldPosition.x;
-		currentMatrix[13] = worldPosition.y;
-		currentMatrix[14] = worldPosition.z;
-		currentMatrix[15] = 1.0f;
+    public adjustSpeed(speed: number): void {
+        this.targetSpeed = speed;
+    }
 
-		cached = true;
-	}
+    public updateSpeed(deltaTime: number): void {
+        if (Math.abs(this.targetSpeed - this.speed) < 0.0001) {
+            return;
+        }
+        if (this.speed < this.targetSpeed) {
+            this.speed += deltaTime * GraphicObject.SPEED_CHANGE_PER_SECOND;
+            if (this.speed > this.targetSpeed) {
+                this.speed = this.targetSpeed;
+            }
+        } else {
+            this.speed -= deltaTime * GraphicObject.SPEED_CHANGE_PER_SECOND;
+            if (this.speed < this.targetSpeed) {
+                this.speed = this.targetSpeed;
+            }
+        }
+    }
 
-	public float[] getMatrix() {
-		computeMatrix();
-		return currentMatrix;
-	}
+    public getTargetSpeed(): number {
+        return this.targetSpeed;
+    }
 
-	private String getMatrixString() {
-		computeMatrix();
-		return String.format(Locale.getDefault(), "[%4.2f, %4.2f, %4.2f, %4.2f\n" +
-			 " %4.2f, %4.2f, %4.2f, %4.2f\n" +
-			 " %4.2f, %4.2f, %4.2f, %4.2f\n" +
-			 " %4.2f, %4.2f, %4.2f, %4.2f]\n",
-			   currentMatrix[ 0], currentMatrix[ 4], currentMatrix[ 8], currentMatrix[12],
-			   currentMatrix[ 1], currentMatrix[ 5], currentMatrix[ 9], currentMatrix[13],
-			   currentMatrix[ 2], currentMatrix[ 6], currentMatrix[10], currentMatrix[14],
-			   currentMatrix[ 3], currentMatrix[ 7], currentMatrix[11], currentMatrix[15]);
-	}
+    public final_computeMatrix(): void {
+        if (this.cached) {
+            return;
+        }
 
-	public void translateForward(float deltaTime) {
-		if (Math.abs(speed) < 0.00001) {
-			return;
-		}
-		computeMatrix();
-		temp.x = forwardVector.x * speed * deltaTime;
-		temp.y = forwardVector.y * speed * deltaTime;
-		temp.z = forwardVector.z * speed * deltaTime;
+        const rn = this.rightVector.normalize();
+        const un = this.upVector.normalize();
+        const fn = this.forwardVector.normalize();
 
-		Matrix.setIdentityM(tempMatrix, 0);
-		Matrix.translateM(tempMatrix, 0, temp.x, temp.y, temp.z);
-		Matrix.multiplyMM(tempMatrix2, 0, currentMatrix, 0, tempMatrix, 0);
-		System.arraycopy(tempMatrix2, 0, currentMatrix, 0, 16);
-		extractVectors();
-	}
+        mat4.set(
+            this.currentMatrix,
+            rn.x, rn.y, rn.z, 0,
+            un.x, un.y, un.z, 0,
+            fn.x, fn.y, fn.z, 0,
+            this.worldPosition.x, this.worldPosition.y, this.worldPosition.z, 1
+        );
 
-	public void moveForward(float deltaTime) {
-		if (Math.abs(speed) < 0.00001) {
-			return;
-		}
-		temp.x = forwardVector.x * speed * deltaTime;
-		temp.y = forwardVector.y * speed * deltaTime;
-		temp.z = forwardVector.z * speed * deltaTime;
-		worldPosition.add(temp);
-		cached = false;
-	}
+        this.cached = true;
+    }
 
-	public void setInitialDirection(float x, float y, float z) {
-		initialDirection.x = x;
-		initialDirection.y = y;
-		initialDirection.z = z;
-		initialDirection.normalize();
-	}
+    public getMatrix(): mat4 {
+        this.final_computeMatrix();
+        return this.currentMatrix;
+    }
 
-	public Vector3f getInitialDirection() {
-		return initialDirection;
-	}
+    private getMatrixString(): string {
+        this.final_computeMatrix();
+        const m = this.currentMatrix;
+        return `[${m[0].toFixed(2)}, ${m[4].toFixed(2)}, ${m[8].toFixed(2)}, ${m[12].toFixed(2)}
+                 \n ${m[1].toFixed(2)}, ${m[5].toFixed(2)}, ${m[9].toFixed(2)}, ${m[13].toFixed(2)}
+                 \n ${m[2].toFixed(2)}, ${m[6].toFixed(2)}, ${m[10].toFixed(2)}, ${m[14].toFixed(2)}
+                 \n ${m[3].toFixed(2)}, ${m[7].toFixed(2)}, ${m[11].toFixed(2)}, ${m[15].toFixed(2)}]`;
+    }
 
-	public void moveForward(float deltaTime, Vector3f dir) {
-		if (Math.abs(speed) < 0.00001) {
-			return;
-		}
-		temp.x = dir.x * speed * deltaTime;
-		temp.y = dir.y * speed * deltaTime;
-		temp.z = dir.z * speed * deltaTime;
-		worldPosition.add(temp);
+    public translateForward(deltaTime: number): void {
+        if (Math.abs(this.speed) < 0.00001) {
+            return;
+        }
+        this.final_computeMatrix();
+        this.temp.x = this.forwardVector.x * this.speed * deltaTime;
+        this.temp.y = this.forwardVector.y * this.speed * deltaTime;
+        this.temp.z = this.forwardVector.z * this.speed * deltaTime;
 
-		cached = false;
-	}
+        mat4.identity(this.tempMatrix);
+        mat4.translate(this.tempMatrix, this.tempMatrix, this.temp.asVec());
+        mat4.multiply(this.tempMatrix2, this.currentMatrix, this.tempMatrix);
+        mat4.copy(this.currentMatrix, this.tempMatrix2);
+        this.extractVectors();
+    }
 
-	public float[] getScaledMatrix(float scale) {
-		computeMatrix();
-		Matrix.scaleM(tempMatrix, 0, currentMatrix, 0, scale, scale, scale);
-		return tempMatrix;
-	}
+    public moveForward(deltaTime: number, dir?: Vector3f): void {
+        if (Math.abs(this.speed) < 0.00001) {
+            return;
+        }
+        const direction = dir || this.forwardVector;
+        this.temp.x = direction.x * this.speed * deltaTime;
+        this.temp.y = direction.y * this.speed * deltaTime;
+        this.temp.z = direction.z * this.speed * deltaTime;
+        this.worldPosition.add(this.temp);
+        this.cached = false;
+    }
 
-	public void scale(float scale) {
-		computeMatrix();
-		Matrix.scaleM(currentMatrix, 0, scale, scale, scale);
-		extractVectors();
-	}
 
-	protected void scale(float scaleX, float scaleY, float scaleZ) {
-		computeMatrix();
-		Matrix.scaleM(currentMatrix, 0, scaleX, scaleY, scaleZ);
-		extractVectors();
-	}
+    public setInitialDirection(x: number, y: number, z: number): void {
+        this.initialDirection.x = x;
+        this.initialDirection.y = y;
+        this.initialDirection.z = z;
+        this.initialDirection.normalize();
+    }
 
-	public final void extractVectors() {
-		rightVector.x   = currentMatrix[ 0];
-		rightVector.y   = currentMatrix[ 1];
-		rightVector.z   = currentMatrix[ 2];
+    public getInitialDirection(): Vector3f {
+        return this.initialDirection;
+    }
 
-		upVector.x      = currentMatrix[ 4];
-		upVector.y      = currentMatrix[ 5];
-		upVector.z      = currentMatrix[ 6];
+    public getScaledMatrix(scale: number): mat4 {
+        this.final_computeMatrix();
+        mat4.scale(this.tempMatrix, this.currentMatrix, [scale, scale, scale]);
+        return this.tempMatrix;
+    }
 
-		forwardVector.x = currentMatrix[ 8];
-		forwardVector.y = currentMatrix[ 9];
-		forwardVector.z = currentMatrix[10];
+    public scale(scale: number): void;
+    public scale(scaleX: number, scaleY: number, scaleZ: number): void;
+    public scale(scaleX: number, scaleY?: number, scaleZ?: number): void {
+        this.final_computeMatrix();
+        const y = scaleY === undefined ? scaleX : scaleY;
+        const z = scaleZ === undefined ? scaleX : scaleZ;
+        mat4.scale(this.currentMatrix, this.currentMatrix, [scaleX, y, z]);
+        this.extractVectors();
+    }
 
-		worldPosition.x = currentMatrix[12];
-		worldPosition.y = currentMatrix[13];
-		worldPosition.z = currentMatrix[14];
-	}
+    public final_extractVectors(): void {
+        const m = this.currentMatrix;
+        this.rightVector.x = m[0];
+        this.rightVector.y = m[1];
+        this.rightVector.z = m[2];
 
-	public float[] applyDeltaRotation(float x, float y, float z) {
-		computeMatrix();
-		Matrix.rotateM(currentMatrix, 0, z, 0, 0, 1);
-		Matrix.rotateM(currentMatrix, 0, x, 1, 0, 0);
-		Matrix.rotateM(currentMatrix, 0, y, 0, 1, 0);
-		extractVectors();
-		return currentMatrix;
-	}
+        this.upVector.x = m[4];
+        this.upVector.y = m[5];
+        this.upVector.z = m[6];
 
-	public void orthoNormalize() {
-		computeMatrix();
-		forwardVector.normalize();
-		upVector.cross(forwardVector, temp);
-		temp.normalize();
-		forwardVector.cross(temp, upVector);
-		cached = false;
-	}
+        this.forwardVector.x = m[8];
+        this.forwardVector.y = m[9];
+        this.forwardVector.z = m[10];
 
-	private void lookAt(float x, float y, float z, float ux, float uy, float uz) {
-		forwardVector.x = x - worldPosition.x;
-		forwardVector.y = y - worldPosition.y;
-		forwardVector.z = z - worldPosition.z;
-		forwardVector.normalize();
-		upVector.x = ux;
-		upVector.y = uy;
-		upVector.z = uz;
-		upVector.normalize();
-		forwardVector.cross(upVector, rightVector);
-		cached = false;
-		assertOrthoNormal();
-		computeMatrix();
-	}
+        this.worldPosition.x = m[12];
+        this.worldPosition.y = m[13];
+        this.worldPosition.z = m[14];
+    }
 
-	public void lookAt(Vector3f v, Vector3f up) {
-		lookAt(v.x, v.y, v.z, up.x, up.y, up.z);
-	}
+    public applyDeltaRotation(x: number, y: number, z: number): mat4 {
+        this.final_computeMatrix();
+        mat4.rotateZ(this.currentMatrix, this.currentMatrix, z);
+        mat4.rotateX(this.currentMatrix, this.currentMatrix, x);
+        mat4.rotateY(this.currentMatrix, this.currentMatrix, y);
+        this.extractVectors();
+        return this.currentMatrix;
+    }
 
-	public void setMatrix(float[] matrix) {
-		System.arraycopy(matrix, 0, currentMatrix, 0, matrix.length);
-		cached = true;
-		extractVectors();
-	}
+    public orthoNormalize(): void {
+        this.final_computeMatrix();
+        this.forwardVector.normalize();
+        this.upVector.cross(this.forwardVector, this.temp);
+        this.temp.normalize();
+        this.forwardVector.cross(this.temp, this.upVector);
+        this.cached = false;
+    }
 
-	protected void calculateVertex(float[] resultVector4, int resultVectorOffset, float[] matrix4x4, float[] vector3, int vectorOffset, float scale) {
-		resultVector4[resultVectorOffset] = vector3[vectorOffset] * scale;
-		resultVector4[resultVectorOffset + 1] = vector3[vectorOffset + 1] * scale;
-		resultVector4[resultVectorOffset + 2] = vector3[vectorOffset + 2] * scale;
-		resultVector4[resultVectorOffset + 3] = 1;
-		Matrix.multiplyMV(resultVector4, resultVectorOffset, matrix4x4, 0, resultVector4, resultVectorOffset);
-	}
+    private lookAt(x: number, y: number, z: number, ux: number, uy: number, uz: number): void {
+        this.forwardVector.x = x - this.worldPosition.x;
+        this.forwardVector.y = y - this.worldPosition.y;
+        this.forwardVector.z = z - this.worldPosition.z;
+        this.forwardVector.normalize();
+        this.upVector.x = ux;
+        this.upVector.y = uy;
+        this.upVector.z = uz;
+        this.upVector.normalize();
+        this.forwardVector.cross(this.upVector, this.rightVector);
+        this.cached = false;
+        this.assertOrthoNormal();
+        this.final_computeMatrix();
+    }
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		return id.equals(((GraphicObject) o).id);
-	}
+    public setMatrix(matrix: mat4): void {
+        mat4.copy(this.currentMatrix, matrix);
+        this.cached = true;
+        this.extractVectors();
+    }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(id);
-	}
+    protected calculateVertex(resultVector4: number[], resultVectorOffset: number, matrix4x4: mat4, vector3: number[], vectorOffset: number, scale: number): void {
+        const tempVec4: [number, number, number, number] = [
+            vector3[vectorOffset] * scale,
+            vector3[vectorOffset + 1] * scale,
+            vector3[vectorOffset + 2] * scale,
+            1
+        ];
+
+        vec3.transformMat4(tempVec4 as any, tempVec4 as any, matrix4x4);
+
+        resultVector4[resultVectorOffset] = tempVec4[0];
+        resultVector4[resultVectorOffset + 1] = tempVec4[1];
+        resultVector4[resultVectorOffset + 2] = tempVec4[2];
+        resultVector4[resultVectorOffset + 3] = tempVec4[3];
+    }
+
+
+    public equals(o: any): boolean {
+        if (this === o) return true;
+        if (o == null || !(o instanceof GraphicObject)) return false;
+        return this.id === (o as GraphicObject).id;
+    }
+
+    public hashCode(): number {
+        // Simple hash function for string, can be improved
+        let hash = 0;
+        for (let i = 0; i < this.id.length; i++) {
+            const char = this.id.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash;
+    }
 }

@@ -21,287 +21,191 @@
  * SOFTWARE.
  */
 
-package com.dd.plist;
-
-import java.io.IOException;
+import { NSObject } from "./NSObject";
+import { BinaryPropertyListParser } from "./BinaryPropertyListParser";
+import { BinaryPropertyListWriter } from "./BinaryPropertyListWriter";
+import { StringBuilder } from "./StringBuilder";
 
 /**
  * A number whose value is either an integer, a real number or boolean.
  *
  * @author Daniel Dreibrodt
  */
-public class NSNumber extends NSObject implements Comparable<Object> {
+export class NSNumber extends NSObject implements Pick<Number, "valueOf"> {
 
     /**
      * Indicates that the number's value is an integer.
-     * The number is stored as a Java <code>long</code>.
+     * The number is stored as a JavaScript `number`.
      * Its original value could have been char, short, int, long or even long long.
      */
-    public static final int INTEGER = 0;
+    public static readonly INTEGER = 0;
 
     /**
      * Indicates that the number's value is a real number.
-     * The number is stored as a Java <code>double</code>.
+     * The number is stored as a JavaScript `number`.
      * Its original value could have been float or double.
      */
-    public static final int REAL = 1;
+    public static readonly REAL = 1;
 
     /**
      * Indicates that the number's value is boolean.
      */
-    public static final int BOOLEAN = 2;
+    public static readonly BOOLEAN = 2;
 
-    //Holds the current type of this number
-    private int type;
+    private type: number;
+    private longValue: number;
+    private doubleValue: number;
+    private boolValue: boolean;
 
-    private long longValue;
-    private double doubleValue;
-    private boolean boolValue;
+    constructor(bytes: Buffer, type: number);
+    constructor(bytes: Buffer, startIndex: number, endIndex: number, type: number);
+    constructor(text: string);
+    constructor(i: number);
+    constructor(l: number);
+    constructor(d: number);
+    constructor(b: boolean);
+    constructor(...args: any[]) {
+        super();
+        if (args.length === 2 && Buffer.isBuffer(args[0]) && typeof args[1] === 'number') {
+            const [bytes, type] = args;
+            this.init(bytes, 0, bytes.length, type);
+        } else if (args.length === 4 && Buffer.isBuffer(args[0]) && typeof args[1] === 'number' && typeof args[2] === 'number' && typeof args[3] === 'number') {
+            const [bytes, startIndex, endIndex, type] = args;
+            this.init(bytes, startIndex, endIndex, type);
+        } else if (typeof args[0] === 'string') {
+            const text = args[0];
+            if (!text) throw new Error("The given string is null and cannot be parsed as number.");
 
-    /**
-     * Parses integers and real numbers from their binary representation.
-     * <i>Note: real numbers are not yet supported.</i>
-     *
-     * @param bytes The binary representation of only this number
-     * @param type  The type of number
-     * @see #INTEGER
-     * @see #REAL
-     */
-    public NSNumber(byte[] bytes, int type){
-        this(bytes, 0, bytes.length, type);
+            try {
+                this.longValue = parseInt(text, 10);
+                if (text.includes('.')) throw new Error('Not an integer');
+                this.doubleValue = this.longValue;
+                this.type = NSNumber.INTEGER;
+            } catch (ex) {
+                try {
+                    this.doubleValue = parseFloat(text);
+                    if (isNaN(this.doubleValue)) throw new Error('Not a number');
+                    this.longValue = Math.round(this.doubleValue);
+                    this.type = NSNumber.REAL;
+                } catch (ex2) {
+                    const lowerText = text.toLowerCase();
+                    if (lowerText === 'true' || lowerText === 'yes') {
+                        this.boolValue = true;
+                    } else if (lowerText === 'false' || lowerText === 'no') {
+                        this.boolValue = false;
+                    } else {
+                        throw new Error("The given string neither represents a double, an int nor a boolean value.");
+                    }
+                    this.type = NSNumber.BOOLEAN;
+                    this.doubleValue = this.longValue = this.boolValue ? 1 : 0;
+                }
+            }
+        } else if (typeof args[0] === 'number') {
+            if (Number.isInteger(args[0])) {
+                this.doubleValue = this.longValue = args[0];
+                this.type = NSNumber.INTEGER;
+            } else {
+                this.longValue = Math.round(args[0]);
+                this.doubleValue = args[0];
+                this.type = NSNumber.REAL;
+            }
+        } else if (typeof args[0] === 'boolean') {
+            this.boolValue = args[0];
+            this.doubleValue = this.longValue = this.boolValue ? 1 : 0;
+            this.type = NSNumber.BOOLEAN;
+        }
     }
 
-    /**
-     * Parses integers and real numbers from their binary representation.
-     * <i>Note: real numbers are not yet supported.</i>
-     *
-     * @param bytes array of bytes that contains this number's binary representation
-     * @param startIndex int with the position where to start reading from the byte array
-     * @param endIndex int with the position where to end reading from the byte array
-     * @param type  The type of number
-     * @see #INTEGER
-     * @see #REAL
-     */
-    public NSNumber(byte[] bytes, final int startIndex, final int endIndex, final int type){
+
+    private init(bytes: Buffer, startIndex: number, endIndex: number, type: number): void {
         switch (type) {
-            case INTEGER: {
-                doubleValue = longValue = BinaryPropertyListParser.parseLong(bytes, startIndex, endIndex);
+            case NSNumber.INTEGER: {
+                this.doubleValue = this.longValue = BinaryPropertyListParser.parseLong(bytes, startIndex, endIndex);
                 break;
             }
-            case REAL: {
-                doubleValue = BinaryPropertyListParser.parseDouble(bytes, startIndex, endIndex);
-                longValue = Math.round(doubleValue);
+            case NSNumber.REAL: {
+                this.doubleValue = BinaryPropertyListParser.parseDouble(bytes, startIndex, endIndex);
+                this.longValue = Math.round(this.doubleValue);
                 break;
             }
             default: {
-                throw new IllegalArgumentException("Type argument is not valid.");
+                throw new Error("Type argument is not valid.");
             }
         }
         this.type = type;
     }
 
-    /**
-     * Creates a number from its textual representation.
-     *
-     * @param text The textual representation of the number.
-     * @throws IllegalArgumentException If the text does not represent an integer, real number or boolean value.
-     * @see Boolean#parseBoolean(java.lang.String)
-     * @see Long#parseLong(java.lang.String)
-     * @see Double#parseDouble(java.lang.String)
-     */
-    public NSNumber(String text) {
-        if (text == null)
-            throw new IllegalArgumentException("The given string is null and cannot be parsed as number.");
-        try {
-            long l = Long.parseLong(text);
-            doubleValue = longValue = l;
-            type = INTEGER;
-        } catch (Exception ex) {
-            try {
-                doubleValue = Double.parseDouble(text);
-                longValue = Math.round(doubleValue);
-                type = REAL;
-            } catch (Exception ex2) {
-                try {
-                    boolValue = text.toLowerCase().equals("true") || text.toLowerCase().equals("yes");
-                    if(!boolValue && !(text.toLowerCase().equals("false") || text.toLowerCase().equals("no"))) {
-                        throw new Exception("not a boolean");
-                    }
-                    type = BOOLEAN;
-                    doubleValue = longValue = boolValue ? 1 : 0;
-                } catch (Exception ex3) {
-                    throw new IllegalArgumentException("The given string neither represents a double, an int nor a boolean value.");
-                }
-            }
-        }
+
+    public typeOf(): number {
+        return this.type;
     }
 
-    /**
-     * Creates an integer number.
-     *
-     * @param i The integer value.
-     */
-    public NSNumber(int i) {
-        doubleValue = longValue = i;
-        type = INTEGER;
+    public isBoolean(): boolean {
+        return this.type === NSNumber.BOOLEAN;
     }
 
-    /**
-     * Creates an integer number.
-     *
-     * @param l The long integer value.
-     */
-    public NSNumber(long l) {
-        doubleValue = longValue = l;
-        type = INTEGER;
+    public isInteger(): boolean {
+        return this.type === NSNumber.INTEGER;
     }
 
-    /**
-     * Creates a real number.
-     *
-     * @param d The real value.
-     */
-    public NSNumber(double d) {
-        longValue = (long) (doubleValue = d);
-        type = REAL;
+    public isReal(): boolean {
+        return this.type === NSNumber.REAL;
     }
 
-    /**
-     * Creates a boolean number.
-     *
-     * @param b The boolean value.
-     */
-    public NSNumber(boolean b) {
-        boolValue = b;
-        doubleValue = longValue = b ? 1 : 0;
-        type = BOOLEAN;
-    }
-
-    /**
-     * Gets the type of this number's value.
-     *
-     * @return The type flag.
-     * @see #BOOLEAN
-     * @see #INTEGER
-     * @see #REAL
-     */
-    public int type() {
-        return type;
-    }
-
-    /**
-     * Checks whether the value of this NSNumber is a boolean.
-     *
-     * @return Whether the number's value is a boolean.
-     */
-    public boolean isBoolean() {
-        return type == BOOLEAN;
-    }
-
-    /**
-     * Checks whether the value of this NSNumber is an integer.
-     *
-     * @return Whether the number's value is an integer.
-     */
-    public boolean isInteger() {
-        return type == INTEGER;
-    }
-
-    /**
-     * Checks whether the value of this NSNumber is a real number.
-     *
-     * @return Whether the number's value is a real number.
-     */
-    public boolean isReal() {
-        return type == REAL;
-    }
-
-    /**
-     * The number's boolean value.
-     *
-     * @return <code>true</code> if the value is true or non-zero, <code>false</code> otherwise.
-     */
-    public boolean boolValue() {
-        if (type == BOOLEAN)
-            return boolValue;
+    public boolValue_(): boolean {
+        if (this.type === NSNumber.BOOLEAN)
+            return this.boolValue;
         else
-            return longValue != 0;
+            return this.longValue !== 0;
     }
 
-    /**
-     * The number's long value.
-     *
-     * @return The value of the number as long
-     */
-    public long longValue() {
-        return longValue;
+
+    public longValue_(): number {
+        return this.longValue;
     }
 
-    /**
-     * The number's int value.
-     * <i>Note: Even though the number's type might be INTEGER it can be larger than a Java int.
-     * Use intValue() only if you are certain that it contains a number from the int range.
-     * Otherwise the value might be innaccurate.</i>
-     *
-     * @return The value of the number as int
-     */
-    public int intValue() {
-        return (int) longValue;
+
+    public intValue(): number {
+        return this.longValue;
     }
 
-    /**
-     * The number's double value.
-     *
-     * @return The value of the number as double.
-     */
-    public double doubleValue() {
-        return doubleValue;
+
+    public doubleValue_(): number {
+        return this.doubleValue;
     }
 
-    /**
-     * The number's float value.
-     * WARNING: Possible loss of precision if the value is outside the float range.
-     *
-     * @return The value of the number as float.
-     */
-    public float floatValue() {
-        return (float) doubleValue;
+
+    public floatValue(): number {
+        return this.doubleValue;
     }
 
-    /**
-     * Checks whether the other object is a NSNumber of the same value.
-     *
-     * @param obj The object to compare to.
-     * @return Whether the objects are equal in terms of numeric value and type.
-     */
-    @Override
-    public boolean equals(Object obj) {
+    public equals(obj: any): boolean {
         if (!(obj instanceof NSNumber)) return false;
-        NSNumber n = (NSNumber) obj;
-        return type == n.type && longValue == n.longValue && doubleValue == n.doubleValue && boolValue == n.boolValue;
+        const n = obj as NSNumber;
+        return this.type === n.type && this.longValue === n.longValue && this.doubleValue === n.doubleValue && this.boolValue === n.boolValue;
     }
 
-    @Override
-    public int hashCode() {
-        int hash = type;
-        hash = 37 * hash + (int) (this.longValue ^ (this.longValue >>> 32));
-        hash = 37 * hash + (int) (Double.doubleToLongBits(this.doubleValue) ^ (Double.doubleToLongBits(this.doubleValue) >>> 32));
-        hash = 37 * hash + (boolValue() ? 1 : 0);
+    public hashCode(): number {
+        let hash = this.type;
+        hash = 37 * hash + this.longValue;
+        // A simple way to hash a float in JS
+        const doubleBits = Buffer.alloc(8);
+        doubleBits.writeDoubleBE(this.doubleValue, 0);
+        hash = 37 * hash + doubleBits.readInt32BE(0) ^ doubleBits.readInt32BE(4);
+        hash = 37 * hash + (this.boolValue_() ? 1 : 0);
         return hash;
     }
 
-
-    @Override
-    public String toString() {
-        switch (type) {
-            case INTEGER: {
-                return String.valueOf(longValue());
+    public toString(): string {
+        switch (this.type) {
+            case NSNumber.INTEGER: {
+                return String(this.longValue_());
             }
-            case REAL: {
-                return String.valueOf(doubleValue());
+            case NSNumber.REAL: {
+                return String(this.doubleValue_());
             }
-            case BOOLEAN: {
-                return String.valueOf(boolValue());
+            case NSNumber.BOOLEAN: {
+                return String(this.boolValue_());
             }
             default: {
                 return super.toString();
@@ -309,24 +213,23 @@ public class NSNumber extends NSObject implements Comparable<Object> {
         }
     }
 
-    @Override
-    void toXML(StringBuilder xml, int level) {
-        indent(xml, level);
-        switch (type) {
-            case INTEGER: {
+    public toXML(xml: StringBuilder, level: number): void {
+        this.indent(xml, level);
+        switch (this.type) {
+            case NSNumber.INTEGER: {
                 xml.append("<integer>");
-                xml.append(longValue());
+                xml.append(this.longValue_());
                 xml.append("</integer>");
                 break;
             }
-            case REAL: {
+            case NSNumber.REAL: {
                 xml.append("<real>");
-                xml.append(doubleValue());
+                xml.append(this.doubleValue_());
                 xml.append("</real>");
                 break;
             }
-            case BOOLEAN: {
-                if (boolValue())
+            case NSNumber.BOOLEAN: {
+                if (this.boolValue)
                     xml.append("<true/>");
                 else
                     xml.append("<false/>");
@@ -335,68 +238,65 @@ public class NSNumber extends NSObject implements Comparable<Object> {
         }
     }
 
-    @Override
-    void toBinary(BinaryPropertyListWriter out) throws IOException {
-        switch (type()) {
-            case INTEGER: {
-                if (longValue() < 0) {
+    public toBinary(out: BinaryPropertyListWriter): void {
+        switch (this.typeOf()) {
+            case NSNumber.INTEGER: {
+                if (this.longValue_() < 0) {
                     out.write(0x13);
-                    out.writeBytes(longValue(), 8);
-                } else if (longValue() <= 0xff) {
+                    out.writeBytes(this.longValue_(), 8);
+                } else if (this.longValue_() <= 0xff) {
                     out.write(0x10);
-                    out.writeBytes(longValue(), 1);
-                } else if (longValue() <= 0xffff) {
+                    out.writeBytes(this.longValue_(), 1);
+                } else if (this.longValue_() <= 0xffff) {
                     out.write(0x11);
-                    out.writeBytes(longValue(), 2);
-                } else if (longValue() <= 0xffffffffL) {
+                    out.writeBytes(this.longValue_(), 2);
+                } else if (this.longValue_() <= 0xffffffff) {
                     out.write(0x12);
-                    out.writeBytes(longValue(), 4);
+                    out.writeBytes(this.longValue_(), 4);
                 } else {
                     out.write(0x13);
-                    out.writeBytes(longValue(), 8);
+                    out.writeBytes(this.longValue_(), 8);
                 }
                 break;
             }
-            case REAL: {
+            case NSNumber.REAL: {
                 out.write(0x23);
-                out.writeDouble(doubleValue());
+                out.writeDouble(this.doubleValue_());
                 break;
             }
-            case BOOLEAN: {
-                out.write(boolValue() ? 0x09 : 0x08);
+            case NSNumber.BOOLEAN: {
+                out.write(this.boolValue_() ? 0x09 : 0x08);
                 break;
             }
         }
     }
 
-    @Override
-    protected void toASCII(StringBuilder ascii, int level) {
-        indent(ascii, level);
-        if (type == BOOLEAN) {
-            ascii.append(boolValue ? "YES" : "NO");
+    protected toASCII(ascii: StringBuilder, level: number): void {
+        this.indent(ascii, level);
+        if (this.type === NSNumber.BOOLEAN) {
+            ascii.append(this.boolValue ? "YES" : "NO");
         } else {
-            ascii.append(toString());
+            ascii.append(this.toString());
         }
     }
 
-    @Override
-    protected void toASCIIGnuStep(StringBuilder ascii, int level) {
-        indent(ascii, level);
-        switch (type) {
-            case INTEGER: {
+    protected toASCIIGnuStep(ascii: StringBuilder, level: number): void {
+        this.indent(ascii, level);
+        switch (this.type) {
+            case NSNumber.INTEGER: {
                 ascii.append("<*I");
-                ascii.append(toString());
+                ascii.append(this.toString());
                 ascii.append(">");
                 break;
             }
-            case REAL: {
+            case NSNumber.REAL: {
                 ascii.append("<*R");
-                ascii.append(toString());
+                ascii.append(this.toString());
                 ascii.append(">");
                 break;
             }
-            case BOOLEAN: {
-                if (boolValue) {
+            case NSNumber.BOOLEAN: {
+                if (this.boolValue) {
                     ascii.append("<*BY>");
                 } else {
                     ascii.append("<*BN>");
@@ -405,18 +305,21 @@ public class NSNumber extends NSObject implements Comparable<Object> {
         }
     }
 
-    public int compareTo(Object o) {
-        double x = doubleValue();
-        double y;
+    public compareTo(o: any): number {
+        const x = this.doubleValue_();
+        let y: number;
         if (o instanceof NSNumber) {
-            NSNumber num = (NSNumber) o;
-            y = num.doubleValue();
-            return (x < y) ? -1 : ((x == y) ? 0 : 1);
-        } else if (o instanceof Number) {
-            y = ((Number) o).doubleValue();
-            return (x < y) ? -1 : ((x == y) ? 0 : 1);
+            y = o.doubleValue_();
+            return (x < y) ? -1 : ((x === y) ? 0 : 1);
+        } else if (typeof o === 'number') {
+            y = o;
+            return (x < y) ? -1 : ((x === y) ? 0 : 1);
         } else {
             return -1;
         }
+    }
+
+    valueOf(): number {
+        return this.doubleValue_();
     }
 }

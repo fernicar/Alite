@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,42 +16,42 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.games.alite.Assets;
-import de.phbouillon.android.games.alite.SoundManager;
-import de.phbouillon.android.games.alite.model.generator.StringUtil;
+import { IMethodHook } from "../../../../../../../../framework/IMethodHook";
+import { Assets } from "../../../../Assets";
+import { SoundManager } from "../../../../SoundManager";
+import { StringUtil } from "../../../../model/generator/StringUtil";
+import { InGameManager } from "./InGameManager";
+import { TimedEvent } from "./TimedEvent";
 
-public class HyperspaceTimer extends TimedEvent {
-	private static final long serialVersionUID = -855725511472476223L;
+export class HyperspaceTimer extends TimedEvent {
+    private static readonly serialVersionUID = -855725511472476223L;
 
-	private int countDown;
-	private final int galacticNumber;
+    private countDown: number;
+    private readonly galacticNumber: number;
 
-	HyperspaceTimer(InGameManager inGame, int galacticNumber) {
-		super(1000000000L);
-		this.galacticNumber = galacticNumber;
-		countDown = galacticNumber == 0 ? 10 : 30;
-		inGame.getMessage().setText(StringUtil.format("%d", countDown));
-		addAlarmEvent(new IMethodHook() {
-			private static final long serialVersionUID = 8631878861995197334L;
-			@Override
-			public void execute(float deltaTime) {
-				countDown--;
-				SoundManager.play(Assets.click);
-				if (countDown == 0) {
-					SoundManager.stopAll();
-					if (inGame.getHyperspaceHook() != null) {
-						inGame.getHyperspaceHook().execute(0);
-					} else {
-						inGame.performHyperspaceJump(galacticNumber);
-					}
-				}
-				inGame.getMessage().setText(StringUtil.format("%d", countDown));
-			}
-		});
-	}
+    constructor(inGame: InGameManager, galacticNumber: number) {
+        super(1000000000);
+        this.galacticNumber = galacticNumber;
+        this.countDown = galacticNumber === 0 ? 10 : 30;
+        inGame.getMessage().setText(StringUtil.format("%d", this.countDown));
+        this.addAlarmEvent({
+            execute: (deltaTime: number) => {
+                this.countDown--;
+                SoundManager.play(Assets.click);
+                if (this.countDown === 0) {
+                    SoundManager.stopAll();
+                    if (inGame.getHyperspaceHook() != null) {
+                        inGame.getHyperspaceHook().execute(0);
+                    } else {
+                        inGame.performHyperspaceJump(galacticNumber);
+                    }
+                }
+                inGame.getMessage().setText(StringUtil.format("%d", this.countDown));
+            }
+        });
+    }
 
-	public boolean isIntergalactic() {
-		return galacticNumber != 0;
-	}
+    public isIntergalactic(): boolean {
+        return this.galacticNumber !== 0;
+    }
 }

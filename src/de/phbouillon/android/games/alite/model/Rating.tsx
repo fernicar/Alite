@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,43 +16,49 @@ package de.phbouillon.android.games.alite.model;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
+import { L } from "../L";
 
-public enum Rating {
-	HARMLESS       (2048),
-	MOSTLY_HARMLESS(4096),
-	POOR           (8192),
-	AVERAGE        (16384),
-	ABOVE_AVERAGE  (32768),
-	COMPETENT      (65536),
-	DANGEROUS      (262144),
-	DEADLY         (655360),
-	ELITE          (-1);
+export enum Rating {
+    HARMLESS,
+    MOSTLY_HARMLESS,
+    POOR,
+    AVERAGE,
+    ABOVE_AVERAGE,
+    COMPETENT,
+    DANGEROUS,
+    DEADLY,
+    ELITE
+}
 
-	private int upToScore;
+export namespace Rating {
+    const scoreThresholds = {
+        [Rating.HARMLESS]: 2048,
+        [Rating.MOSTLY_HARMLESS]: 4096,
+        [Rating.POOR]: 8192,
+        [Rating.AVERAGE]: 16384,
+        [Rating.ABOVE_AVERAGE]: 32768,
+        [Rating.COMPETENT]: 65536,
+        [Rating.DANGEROUS]: 262144,
+        [Rating.DEADLY]: 655360,
+        [Rating.ELITE]: -1
+    };
 
-	Rating(int upToScore) {
-		this.upToScore = upToScore;
-	}
+    export function getName(rating: Rating): string {
+        switch (rating) {
+            case Rating.HARMLESS: return L.string("rating_harmless");
+            case Rating.MOSTLY_HARMLESS: return L.string("rating_mostly_harmless");
+            case Rating.POOR: return L.string("rating_poor");
+            case Rating.AVERAGE: return L.string("rating_average");
+            case Rating.ABOVE_AVERAGE: return L.string("rating_above_average");
+            case Rating.COMPETENT: return L.string("rating_competent");
+            case Rating.DANGEROUS: return L.string("rating_dangerous");
+            case Rating.DEADLY: return L.string("rating_deadly");
+            case Rating.ELITE: return L.string("rating_elite");
+        }
+        return "";
+    }
 
-	public String getName() {
-		switch (this) {
-			case HARMLESS: return L.string(R.string.rating_harmless);
-			case MOSTLY_HARMLESS: return L.string(R.string.rating_mostly_harmless);
-			case POOR: return L.string(R.string.rating_poor);
-			case AVERAGE: return L.string(R.string.rating_average);
-			case ABOVE_AVERAGE: return L.string(R.string.rating_above_average);
-			case COMPETENT: return L.string(R.string.rating_competent);
-			case DANGEROUS: return L.string(R.string.rating_dangerous);
-			case DEADLY: return L.string(R.string.rating_deadly);
-			case ELITE: return L.string(R.string.rating_elite);
-		}
-		return "";
-	}
-
-	public int getScoreThreshold() {
-		return upToScore;
-	}
-
+    export function getScoreThreshold(rating: Rating): number {
+        return scoreThresholds[rating];
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,74 +16,66 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Screen } from "./Screen";
 
-public abstract class GlScreen extends Screen implements Serializable {
-	private static final long serialVersionUID = 2776881193369718139L;
+export abstract class GlScreen extends Screen {
+    private static readonly serialVersionUID = 2776881193369718139;
 
-	private boolean isActive;
+    private isActive: boolean;
 
-	protected GlScreen() {
-		isActive = false;
-	}
+    protected constructor() {
+        super();
+        this.isActive = false;
+    }
 
-	public abstract void onActivation();
-	public abstract void performUpdate(float deltaTime);
-	public abstract void performPresent(float deltaTime);
+    public abstract onActivation(): void;
+    public abstract performUpdate(deltaTime: number): void;
+    public abstract performPresent(deltaTime: number): void;
 
-	@Override
-	public void activate() {
-		try {
-			onActivation();
-		} finally {
-			isActive = true;
-		}
-	}
+    public activate(): void {
+        try {
+            this.onActivation();
+        } finally {
+            this.isActive = true;
+        }
+    }
 
-	public final boolean isActive() {
-		return isActive;
-	}
+    public isActive(): boolean {
+        return this.isActive;
+    }
 
-	@Override
-	public final void update(float deltaTime) {
-		if (!isActive || isDisposed()) {
-			return;
-		}
-		performUpdate(deltaTime);
-	}
+    public update(deltaTime: number): void {
+        if (!this.isActive || this.isDisposed()) {
+            return;
+        }
+        this.performUpdate(deltaTime);
+    }
 
-	@Override
-	public final void present(float deltaTime) {
-		if (!isActive) {
-			return;
-		}
-		performPresent(deltaTime);
-	}
+    public present(deltaTime: number): void {
+        if (!this.isActive) {
+            return;
+        }
+        this.performPresent(deltaTime);
+    }
 
-	@Override
-	public void pause() {
-		isActive = false;
-	}
+    public pause(): void {
+        this.isActive = false;
+    }
 
-	@Override
-	public void resume() {
-	}
+    public resume(): void {
+    }
 
-	@Override
-	public void postScreenChange() {
-	}
+    public postScreenChange(): void {
+    }
 
-	@Override
-	public void postNavigationRender(float deltaTime) {
-	}
+    public postNavigationRender(deltaTime: number): void {
+    }
 
-	@Override
-	public void renderNavigationBar() {
-	}
+    public renderNavigationBar(): void {
+    }
 
-	@Override
-	public void dispose() {
-		pause();
-		super.dispose();
-	}
+    public dispose(): void {
+        this.pause();
+        super.dispose();
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,125 +16,120 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import { Timer } from "../../../../../framework/Timer";
+import { Alite } from "../../../Alite";
+import { Assets } from "../../../Assets";
+import { ColorScheme } from "../../../colors/ColorScheme";
 
-import de.phbouillon.android.framework.Timer;
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.Assets;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
+class DelayedText {
+    private static readonly serialVersionUID = -936827160142919485;
 
-class OnScreenMessage implements Serializable {
-	private static final long serialVersionUID = 1948958480746165833L;
+    text: string;
+    private timer: Timer;
+    private delayInSec: number;
+    durationInSec: number;
 
-	class DelayedText implements Serializable {
-		private static final long serialVersionUID = -936827160142919485L;
+    constructor(text: string, delayInSec: number) {
+        this.text = text;
+        this.delayInSec = delayInSec;
+        this.timer = new Timer();
+        this.durationInSec = 5;
+    }
 
-		String text;
-		private Timer timer;
-		private int delayInSec;
-		long durationInSec;
+    passed(): boolean {
+        return this.timer.hasPassedSeconds(this.delayInSec);
+    }
+}
 
-		DelayedText(String text, int delayInSec) {
-			this.text = text;
-			this.delayInSec = delayInSec;
-			timer = new Timer();
-			durationInSec = 5;
-		}
+export class OnScreenMessage {
+    private static readonly serialVersionUID = 1948958480746165833;
 
-		boolean passed() {
-			return timer.hasPassedSeconds(delayInSec);
-		}
-	}
+    private text = "";
+    private readonly activationTime = new Timer();
+    private durationInSec: number;
+    private repetitionIntervalInSec: number;
+    private readonly lastRepetitionInactive = new Timer();
+    private repetitionTimes = -1;
+    private repetitionDurationInSec: number;
+    private repetitionText: string;
+    private scale = 1.0;
+    private readonly delayedTexts: DelayedText[] = [];
 
-	private String text = "";
-	private final Timer activationTime = new Timer();
-	private long durationInSec;
-	private long repetitionIntervalInSec;
-	private final Timer lastRepetitionInactive = new Timer();
-	private int repetitionTimes = -1;
-	private long repetitionDurationInSec;
-	private String repetitionText;
-	private float scale = 1.0f;
-	private final List <DelayedText> delayedTexts = new ArrayList<>();
+    setText(text: string): void {
+        this.text = text;
+        this.scale = 1.0;
+        this.activate(5);
+    }
 
-	void setText(String text) {
-		this.text = text;
-		scale = 1.0f;
-		activate(5);
-	}
+    setDelayedText(text: string): void {
+        this.delayedTexts.push(new DelayedText(text, 10));
+    }
 
-	void setDelayedText(String text) {
-		delayedTexts.add(new DelayedText(text, 10));
-	}
+    setScaledTextForDuration(text: string, durationInSec: number, scale: number): void {
+        this.text = text;
+        this.scale = scale;
+        this.activate(durationInSec);
+    }
 
-	void setScaledTextForDuration(String text, long durationInSec, float scale) {
-		this.text = text;
-		this.scale = scale;
-		activate(durationInSec);
-	}
+    repeatText(text: string, intervalInSec: number, times: number = -1, durationInSec: number = 1): void {
+        if (this.repetitionText != null && this.repetitionText === text) {
+            return;
+        }
+        this.scale = 1.0;
+        this.text = text;
+        this.activate(durationInSec);
+        this.repetitionDurationInSec = durationInSec;
+        this.repetitionIntervalInSec = intervalInSec;
+        this.repetitionText = text;
+        this.repetitionTimes = times;
+    }
 
-	void repeatText(String text, long intervalInSec) {
-		repeatText(text, intervalInSec, -1, 1);
-	}
+    clearRepetition(): void {
+        this.repetitionText = null;
+    }
 
-	void repeatText(String text, long intervalInSec, int times, long durationInSec) {
-		if (repetitionText != null && repetitionText.equals(text)) {
-			return;
-		}
-		scale = 1.0f;
-		this.text = text;
-		activate(durationInSec);
-		repetitionDurationInSec = durationInSec;
-		repetitionIntervalInSec = intervalInSec;
-		repetitionText = text;
-		repetitionTimes = times;
-	}
+    private activate(durationInSec: number): void {
+        this.activationTime.reset();
+        this.durationInSec = durationInSec;
+    }
 
-	void clearRepetition() {
-		repetitionText = null;
-	}
+    isActive(): boolean {
+        return !this.activationTime.hasPassedSeconds(this.durationInSec);
+    }
 
-	private void activate(long durationInSec) {
-		activationTime.reset();
-		this.durationInSec = durationInSec;
-	}
-
-	boolean isActive() {
-		return !activationTime.hasPassedSeconds(durationInSec);
-	}
-
-	void render() {
-		DelayedText toBeRemoved = null;
-		for (DelayedText dt: delayedTexts) {
-			if (dt.passed()) {
-				text = dt.text;
-				scale = 1.0f;
-				activate(dt.durationInSec);
-				toBeRemoved = dt;
-			}
-		}
-		if (toBeRemoved != null) {
-			delayedTexts.remove(toBeRemoved);
-		}
-		if (isActive()) {
-			lastRepetitionInactive.reset();
-			Alite.get().getGraphics().drawCenteredText(text, 960, 650, ColorScheme.get(ColorScheme.COLOR_HUD_MESSAGE),
-				Assets.regularFont, scale);
-			return;
-		}
-		if (repetitionText == null || !lastRepetitionInactive.hasPassedSeconds(repetitionIntervalInSec)) {
-			return;
-		}
-		if (repetitionTimes > 0) {
-			repetitionTimes--;
-		} else if (repetitionTimes == 0) {
-			clearRepetition();
-			repetitionTimes = -1;
-			return;
-		}
-		text = repetitionText;
-		activate(repetitionDurationInSec);
-	}
+    render(): void {
+        let toBeRemoved: DelayedText = null;
+        for (const dt of this.delayedTexts) {
+            if (dt.passed()) {
+                this.text = dt.text;
+                this.scale = 1.0;
+                this.activate(dt.durationInSec);
+                toBeRemoved = dt;
+            }
+        }
+        if (toBeRemoved != null) {
+            const index = this.delayedTexts.indexOf(toBeRemoved);
+            if (index > -1) {
+                this.delayedTexts.splice(index, 1);
+            }
+        }
+        if (this.isActive()) {
+            this.lastRepetitionInactive.reset();
+            Alite.getInstance().getGraphics().drawCenteredText(this.text, 960, 650, ColorScheme.get(ColorScheme.COLOR_HUD_MESSAGE),
+                Assets.regularFont, this.scale);
+            return;
+        }
+        if (this.repetitionText == null || !this.lastRepetitionInactive.hasPassedSeconds(this.repetitionIntervalInSec)) {
+            return;
+        }
+        if (this.repetitionTimes > 0) {
+            this.repetitionTimes--;
+        } else if (this.repetitionTimes === 0) {
+            this.clearRepetition();
+            this.repetitionTimes = -1;
+            return;
+        }
+        this.text = this.repetitionText;
+        this.activate(this.repetitionDurationInSec);
+    }
 }

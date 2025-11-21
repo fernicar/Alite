@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,113 +16,112 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.Pixmap;
-import de.phbouillon.android.framework.Rect;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
+import { Graphics } from "../../../framework/Graphics";
+import { TouchEvent } from "../../../framework/Input";
+import { Pixmap } from "../../../framework/Pixmap";
+import { Rect } from "../../../framework/Rect";
+import { Assets } from "../../Assets";
+import { Button } from "../../Button";
+import { L } from "../../L";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { AliteScreen } from "./AliteScreen";
+import { EquipmentScreen } from "./EquipmentScreen";
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class LaserPositionSelectionScreen extends AliteScreen {
-	private final int index;
-	private final Button[] pads = new Button[4];
-	private final int front;
-	private final int right;
-	private final int rear;
-	private final int left;
-	private final EquipmentScreen equipmentScreen;
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class LaserPositionSelectionScreen extends AliteScreen {
+    private readonly index: number;
+    private readonly pads: Button[] = new Array(4);
+    private readonly front: number;
+    private readonly right: number;
+    private readonly rear: number;
+    private readonly left: number;
+    private readonly equipmentScreen: EquipmentScreen;
 
-	LaserPositionSelectionScreen(EquipmentScreen equipmentScreen, int front, int right, int rear, int left, int index) {
-		this.index = index;
-		this.front = front;
-		this.right = right;
-		this.rear = rear;
-		this.left = left;
-		this.equipmentScreen = equipmentScreen;
-	}
+    constructor(equipmentScreen: EquipmentScreen, front: number, right: number, rear: number, left: number, index: number) {
+        super();
+        this.index = index;
+        this.front = front;
+        this.right = right;
+        this.rear = rear;
+        this.left = left;
+        this.equipmentScreen = equipmentScreen;
+    }
 
-	@Override
-	public void activate() {
-		initializeButtons();
-	}
+    public activate(): void {
+        this.initializeButtons();
+    }
 
-	private Pixmap getIcon(int currentEquip) {
-		return currentEquip == 0 ? Assets.yesIcon : currentEquip < 0 ? Assets.noIcon : pics.get("change_icon");
-	}
+    private getIcon(currentEquip: number): Pixmap {
+        return currentEquip === 0 ? Assets.yesIcon : currentEquip < 0 ? Assets.noIcon : this.pics.get("change_icon");
+    }
 
-	private void initializeButtons() {
-		pads[0] = Button.createGradientRegularButton(710, 210, 300, 100, L.string(R.string.laser_pos_front))
-			.setPixmap(getIcon(front))
-			.setTextPosition(Button.TextPosition.RIGHT);
-		pads[1] = Button.createGradientRegularButton(1340, 480, 200, 200, L.string(R.string.laser_pos_right))
-			.setPixmap(getIcon(right))
-			.setPixmapOffset(50, 0)
-			.setTextPosition(Button.TextPosition.BELOW);
-		pads[2] = Button.createGradientRegularButton(710, 855, 300, 100, L.string(R.string.laser_pos_rear))
-			.setPixmap(getIcon(rear))
-			.setTextPosition(Button.TextPosition.RIGHT);
-		pads[3] = Button.createGradientRegularButton(180, 480, 200, 200, L.string(R.string.laser_pos_left))
-			.setPixmap(getIcon(left))
-			.setPixmapOffset(50, 0)
-			.setTextPosition(Button.TextPosition.BELOW);
-		for (Button b: pads) {
-			b.setTextColor(ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT));
-		}
-	}
+    private initializeButtons(): void {
+        this.pads[0] = Button.createGradientRegularButton(710, 210, 300, 100, L.string("laser_pos_front"))
+            .setPixmap(this.getIcon(this.front))
+            .setTextPosition(Button.TextPosition.RIGHT);
+        this.pads[1] = Button.createGradientRegularButton(1340, 480, 200, 200, L.string("laser_pos_right"))
+            .setPixmap(this.getIcon(this.right))
+            .setPixmapOffset(50, 0)
+            .setTextPosition(Button.TextPosition.BELOW);
+        this.pads[2] = Button.createGradientRegularButton(710, 855, 300, 100, L.string("laser_pos_rear"))
+            .setPixmap(this.getIcon(this.rear))
+            .setTextPosition(Button.TextPosition.RIGHT);
+        this.pads[3] = Button.createGradientRegularButton(180, 480, 200, 200, L.string("laser_pos_left"))
+            .setPixmap(this.getIcon(this.left))
+            .setPixmapOffset(50, 0)
+            .setTextPosition(Button.TextPosition.BELOW);
+        for (const b of this.pads) {
+            b.setTextColor(ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT));
+        }
+    }
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
+    public present(deltaTime: number): void {
+        const g = this.game.getGraphics();
 
-		equipmentScreen.present(deltaTime);
-		g.verticalGradientRect(160, 160, 1400, 800,
-			ColorScheme.get(ColorScheme.COLOR_BACKGROUND_LIGHT), ColorScheme.get(ColorScheme.COLOR_BACKGROUND_DARK));
-		g.rec3d(160, 160, 1400, 800, 10,
-			ColorScheme.get(ColorScheme.COLOR_BACKGROUND_LIGHT), ColorScheme.get(ColorScheme.COLOR_BACKGROUND_DARK));
-		int halfWidth = g.getTextWidth(L.string(R.string.laser_pos_select), Assets.regularFont) >> 1;
-		g.drawText(L.string(R.string.laser_pos_select), 860 - halfWidth, 195, ColorScheme.get(ColorScheme.COLOR_MESSAGE), Assets.regularFont);
-		g.drawPixmap(pics.get("cobra_small"), 380, 310);
+        this.equipmentScreen.present(deltaTime);
+        g.verticalGradientRect(160, 160, 1400, 800,
+            ColorScheme.get(ColorScheme.COLOR_BACKGROUND_LIGHT), ColorScheme.get(ColorScheme.COLOR_BACKGROUND_DARK));
+        g.rec3d(160, 160, 1400, 800, 10,
+            ColorScheme.get(ColorScheme.COLOR_BACKGROUND_LIGHT), ColorScheme.get(ColorScheme.COLOR_BACKGROUND_DARK));
+        const halfWidth = g.getTextWidth(L.string("laser_pos_select"), Assets.regularFont) >> 1;
+        g.drawText(L.string("laser_pos_select"), 860 - halfWidth, 195, ColorScheme.get(ColorScheme.COLOR_MESSAGE), Assets.regularFont);
+        g.drawPixmap(this.pics.get("cobra_small"), 380, 310);
 
-		for (Button b: pads) {
-			b.render(g);
-		}
-	}
+        for (const b of this.pads) {
+            b.render(g);
+        }
+    }
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		for (int i = 0; i < pads.length; i++) {
-			if (pads[i].isPressed(touch)) {
-				equipmentScreen.setLaserPosition(i);
-				newScreen = equipmentScreen;
-				return;
-			}
-		}
-		if (touch.type != TouchEvent.TOUCH_UP) {
-			return;
-		}
-		if (!Rect.inside(touch.x, touch.y, 160, 160, 1560, 960)) {
-			equipmentScreen.setLaserPosition(-2);
-			newScreen = equipmentScreen;
-		}
-	}
+    protected processTouch(touch: TouchEvent): void {
+        for (let i = 0; i < this.pads.length; i++) {
+            if (this.pads[i].isPressed(touch)) {
+                this.equipmentScreen.setLaserPosition(i);
+                this.newScreen = this.equipmentScreen;
+                return;
+            }
+        }
+        if (touch.type !== TouchEvent.TOUCH_UP) {
+            return;
+        }
+        if (!Rect.inside(touch.x, touch.y, 160, 160, 1560, 960)) {
+            this.equipmentScreen.setLaserPosition(-2);
+            this.newScreen = this.equipmentScreen;
+        }
+    }
 
-	@Override
-	protected void performScreenChange() {
-		dispose();
-		game.setScreen(equipmentScreen);
-		equipmentScreen.performTrade(index);
-		game.getNavigationBar().performScreenChange();
-	}
+    protected performScreenChange(): void {
+        this.dispose();
+        this.game.setScreen(this.equipmentScreen);
+        this.equipmentScreen.performTrade(this.index);
+        this.game.getNavigationBar().performScreenChange();
+    }
 
-	@Override
-	public void loadAssets() {
-		addPictures("cobra_small", "change_icon");
-		super.loadAssets();
-	}
+    public loadAssets(): void {
+        this.addPictures("cobra_small", "change_icon");
+        super.loadAssets();
+    }
 
-	@Override
-	public int getScreenCode() {
-		return -1;
-	}
+    public getScreenCode(): number {
+        return -1;
+    }
 }
