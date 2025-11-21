@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,34 +16,34 @@ package de.phbouillon.android.games.alite.model;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
+import { L } from "../L";
+import { ColorScheme } from "../colors/ColorScheme";
 
-public enum Condition {
-	DOCKED(ColorScheme.COLOR_CONDITION_GREEN),
-	GREEN(ColorScheme.COLOR_CONDITION_GREEN),
-	YELLOW(ColorScheme.COLOR_CONDITION_YELLOW),
-	RED(ColorScheme.COLOR_CONDITION_RED);
+export enum Condition {
+    DOCKED,
+    GREEN,
+    YELLOW,
+    RED
+}
 
-	private int colorIndex;
+export namespace Condition {
+    export function getName(condition: Condition): string {
+        switch (condition) {
+            case Condition.DOCKED: return L.string("condition_docked");
+            case Condition.GREEN: return L.string("condition_green");
+            case Condition.YELLOW: return L.string("condition_yellow");
+            case Condition.RED: return L.string("condition_red");
+        }
+        return "";
+    }
 
-	Condition(int colorIndex) {
-		this.colorIndex = colorIndex;
-	}
-
-	public String getName() {
-		switch (this) {
-			case DOCKED: return L.string(R.string.condition_docked);
-			case GREEN: return L.string(R.string.condition_green);
-			case YELLOW: return L.string(R.string.condition_yellow);
-			case RED: return L.string(R.string.condition_red);
-		}
-		return "";
-	}
-
-	public int getColor() {
-		return ColorScheme.get(colorIndex);
-	}
-
+    export function getColor(condition: Condition): number {
+        switch (condition) {
+            case Condition.DOCKED: return ColorScheme.get(ColorScheme.COLOR_CONDITION_GREEN);
+            case Condition.GREEN: return ColorScheme.get(ColorScheme.COLOR_CONDITION_GREEN);
+            case Condition.YELLOW: return ColorScheme.get(ColorScheme.COLOR_CONDITION_YELLOW);
+            case Condition.RED: return ColorScheme.get(ColorScheme.COLOR_CONDITION_RED);
+        }
+        return 0;
+    }
 }

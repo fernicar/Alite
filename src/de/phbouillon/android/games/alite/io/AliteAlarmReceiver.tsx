@@ -1,8 +1,6 @@
-package de.phbouillon.android.games.alite.io;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License, or
@@ -18,20 +16,8 @@ package de.phbouillon.android.games.alite.io;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager.NameNotFoundException;
-
-import com.google.android.vending.expansion.downloader.DownloaderClientMarshaller;
-
-public class AliteAlarmReceiver extends BroadcastReceiver {
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        try {
-            DownloaderClientMarshaller.startDownloadServiceIfRequired(context, intent, AliteDownloaderService.class);
-        } catch (NameNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
+// This class was an Android-specific BroadcastReceiver for handling alarms related to
+// the Google Play expansion file downloader. This functionality is not applicable to the PC port.
+export class AliteAlarmReceiver {
+    // This class is a stub and does not contain any functionality.
 }

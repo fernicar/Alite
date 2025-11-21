@@ -21,373 +21,166 @@
  * SOFTWARE.
  */
 
-package com.dd.plist;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import { NSObject } from "./NSObject";
+import { NSArray } from "./NSArray";
+import { NSData } from "./NSData";
+import { NSDate } from "./NSDate";
+import { NSNumber } from "./NSNumber";
+import { NSString } from "./NSString";
+import { BinaryPropertyListWriter } from "./BinaryPropertyListWriter";
+import { ASCIIPropertyListParser } from "./ASCIIPropertyListParser";
+import { StringBuilder } from "./StringBuilder";
 
 /**
- * A NSDictionary is a collection of keys and values, essentially a Hashtable.
+ * A NSDictionary is a collection of keys and values, essentially a Map.
  * The keys are simple Strings whereas the values can be any kind of NSObject.
  *
- * You can access the keys through the function <code>allKeys()</code>. Access
- * to the objects stored for each key is given through the function
- * <code>objectoForKey(String key)</code>.
- *
  * @author Daniel Dreibrodt
- * @see java.util.Hashtable
- * @see com.dd.plist.NSObject
+ * @see Map
+ * @see NSObject
  */
-public class NSDictionary extends NSObject  implements Map<String, NSObject> {
+export class NSDictionary extends NSObject implements Map<string, NSObject> {
 
-    private HashMap<String, NSObject> dict;
+    private dict: Map<string, NSObject>;
 
     /**
      * Creates a new empty NSDictionary.
      */
-    public NSDictionary() {
-        //With a linked HashMap the order of elements in the dictionary is kept.
-        dict = new LinkedHashMap<String, NSObject>();
+    constructor() {
+        super();
+        this.dict = new Map<string, NSObject>();
     }
 
     /**
-     * Gets the hashmap which stores the keys and values of this dictionary.
-     * Changes to the hashmap's contents are directly reflected in this
+     * Gets the map which stores the keys and values of this dictionary.
+     * Changes to the map's contents are directly reflected in this
      * dictionary.
      *
-     * @return The hashmap which is used by this dictionary to store its contents.
+     * @returns The map which is used by this dictionary to store its contents.
      */
-    public HashMap<String, NSObject> getHashMap() {
-        return dict;
+    public getHashMap(): Map<string, NSObject> {
+        return this.dict;
     }
 
     /**
      * Gets the NSObject stored for the given key.
      *
      * @param key The key.
-     * @return The object.
+     * @returns The object.
      */
-    public NSObject objectForKey(String key) {
-        return dict.get(key);
+    public objectForKey(key: string): NSObject {
+        return this.dict.get(key);
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#size()
-	 */
-    public int size() {
-        return dict.size();
+    public get size(): number {
+        return this.dict.size;
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#isEmpty()
-	 */
-    public boolean isEmpty() {
-        return dict.isEmpty();
+    public clear(): void {
+        this.dict.clear();
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#containsKey(java.lang.Object)
-	 */
-    public boolean containsKey(Object key) {
-        return dict.containsKey(key);
+    public has(key: string): boolean {
+        return this.dict.has(key);
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#containsValue(java.lang.Object)
-	 */
-    public boolean containsValue(Object value) {
-        if(value == null)
-            return false;
-        NSObject wrap = NSObject.wrap(value);
-        return dict.containsValue(wrap);
+    public get(key: string): NSObject | undefined {
+        return this.dict.get(key);
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#get(java.lang.Object)
-	 */
-    public NSObject get(Object key) {
-        return dict.get(key);
+    public set(key: string, value: NSObject): this {
+        this.dict.set(key, value);
+        return this;
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#putAll(java.util.Map)
-	 */
-    public void putAll(Map<? extends String, ? extends NSObject> values) {
-        for (Object object : values.entrySet()) {
-            @SuppressWarnings("unchecked")
-            Map.Entry<String, NSObject> entry = (Map.Entry<String, NSObject>) object;
-            put(entry.getKey(), entry.getValue());
-        }
+    public delete(key: string): boolean {
+        return this.dict.delete(key);
     }
 
-    /**
-     * Puts a new key-value pair into this dictionary.
-     * If the value is null, no operation will be performed on the dictionary.
-     *
-     * @param key The key.
-     * @param obj The value.
-     * @return The value previously associated to the given key,
-     *         or null, if no value was associated to it.
-     */
-    public NSObject put(String key, NSObject obj) {
-        if(key == null)
-            return null;
-        if(obj == null)
-            return dict.get(key);
-        return dict.put(key, obj);
+    public put(key: string, obj: any): NSObject {
+        if (key === null) return null;
+        const value = NSObject.wrap(obj);
+        if (value === null) return this.dict.get(key);
+        return this.dict.set(key, value).get(key);
     }
 
-    /**
-     * Puts a new key-value pair into this dictionary.
-     * If key or value are null, no operation will be performed on the dictionary.
-     *
-     * @param key The key.
-     * @param obj The value. Supported object types are numbers, byte-arrays, dates, strings and arrays or sets of those.
-     * @return The value previously associated to the given key,
-     *         or null, if no value was associated to it.
-     */
-    public NSObject put(String key, Object obj) {
-        return put(key, NSObject.wrap(obj));
+    public remove(key: string): NSObject {
+        const value = this.dict.get(key);
+        this.dict.delete(key);
+        return value;
     }
 
-    /**
-     * Removes a key-value pair from this dictionary.
-     *
-     * @param key The key
-     * @return the value previously associated to the given key.
-     */
-    public NSObject remove(String key) {
-        return dict.remove(key);
+    public keySet(): Set<string> {
+        return new Set(this.dict.keys());
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#remove(java.lang.Object)
-	 */
-    public NSObject remove(Object key) {
-        return dict.remove(key);
+    public values(): IterableIterator<NSObject> {
+        return this.dict.values();
     }
 
-    /**
-     * Removes all key-value pairs from this dictionary.
-     * @see java.util.Map#clear()
-     */
-    public void clear() {
-        dict.clear();
+    public entrySet(): [string, NSObject][] {
+        return Array.from(this.dict.entries());
     }
 
-    /*
-	 * (non-Javadoc)
-	 *
-	 * @see java.util.Map#keySet()
-	 */
-    public Set<String> keySet() {
-        return dict.keySet();
+    public forEach(callbackfn: (value: NSObject, key: string, map: Map<string, NSObject>) => void, thisArg?: any): void {
+        this.dict.forEach(callbackfn, thisArg);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see java.util.Map#values()
-     */
-    public Collection<NSObject> values() {
-        return dict.values();
+    public [Symbol.iterator](): IterableIterator<[string, NSObject]> {
+        return this.dict.entries();
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see java.util.Map#entrySet()
-     */
-    public Set<Entry<String, NSObject>> entrySet() {
-        return dict.entrySet();
-    }
-
-    /**
-     * Checks whether a given key is contained in this dictionary.
-     *
-     * @param key The key that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsKey(String key) {
-        return dict.containsKey(key);
-    }
-
-    /**
-     * Checks whether a given value is contained in this dictionary.
-     *
-     * @param val The value that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsValue(NSObject val) {
-        return val != null && dict.containsValue(val);
-    }
-
-    /**
-     * Checks whether a given value is contained in this dictionary.
-     *
-     * @param val The value that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsValue(String val) {
-        for (NSObject o : dict.values()) {
-            if (o.getClass().equals(NSString.class)) {
-                NSString str = (NSString) o;
-                if (str.getContent().equals(val))
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks whether a given value is contained in this dictionary.
-     *
-     * @param val The value that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsValue(long val) {
-        for (NSObject o : dict.values()) {
-            if (o.getClass().equals(NSNumber.class)) {
-                NSNumber num = (NSNumber) o;
-                if (num.isInteger() && num.intValue() == val)
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks whether a given value is contained in this dictionary.
-     *
-     * @param val The value that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsValue(double val) {
-        for (NSObject o : dict.values()) {
-            if (o.getClass().equals(NSNumber.class)) {
-                NSNumber num = (NSNumber) o;
-                if (num.isReal() && num.doubleValue() == val)
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks whether a given value is contained in this dictionary.
-     *
-     * @param val The value that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsValue(boolean val) {
-        for (NSObject o : dict.values()) {
-            if (o.getClass().equals(NSNumber.class)) {
-                NSNumber num = (NSNumber) o;
-                if (num.isBoolean() && num.boolValue() == val)
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks whether a given value is contained in this dictionary.
-     *
-     * @param val The value that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsValue(Date val) {
-        for (NSObject o : dict.values()) {
-            if (o.getClass().equals(NSDate.class)) {
-                NSDate dat = (NSDate) o;
-                if (dat.getDate().equals(val))
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks whether a given value is contained in this dictionary.
-     *
-     * @param val The value that will be searched for.
-     * @return Whether the key is contained in this dictionary.
-     */
-    public boolean containsValue(byte[] val) {
-        for (NSObject o : dict.values()) {
-            if (o.getClass().equals(NSData.class)) {
-                NSData dat = (NSData) o;
-                if (Arrays.equals(dat.bytes(), val))
-                    return true;
-            }
-        }
-        return false;
-    }
+    public [Symbol.toStringTag]: string = "Map";
 
     /**
      * Counts the number of contained key-value pairs.
      *
-     * @return The size of this NSDictionary.
+     * @returns The size of this NSDictionary.
      */
-    public int count() {
-        return dict.size();
+    public count(): number {
+        return this.dict.size;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        return (obj.getClass().equals(this.getClass()) && ((NSDictionary) obj).dict.equals(dict));
+    public equals(obj: any): boolean {
+        if (!(obj instanceof NSDictionary)) return false;
+        if (obj.count() !== this.count()) return false;
+
+        for (const [key, value] of this.dict.entries()) {
+            const otherValue = obj.get(key);
+            if (otherValue === null || !value.equals(otherValue)) {
+                return false;
+            }
+        }
+        return true;
     }
+
 
     /**
      * Gets a list of all keys used in this NSDictionary.
      *
-     * @return The list of all keys used in this NSDictionary.
+     * @returns The list of all keys used in this NSDictionary.
      */
-    public String[] allKeys() {
-        return dict.keySet().toArray(new String[count()]);
+    public allKeys(): string[] {
+        return Array.from(this.dict.keys());
     }
 
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 83 * hash + (this.dict != null ? this.dict.hashCode() : 0);
+    public hashCode(): number {
+        let hash = 7;
+        hash = 83 * hash + (this.dict != null ? Array.from(this.dict.entries()).reduce((acc, [key, val]) => acc + (key.hashCode() ^ val.hashCode()), 0) : 0);
         return hash;
     }
 
-    @Override
-    void toXML(StringBuilder xml, int level) {
-        indent(xml, level);
+    public toXML(xml: StringBuilder, level: number): void {
+        this.indent(xml, level);
         xml.append("<dict>");
         xml.append(NSObject.NEWLINE);
-        for (String key : dict.keySet()) {
-            NSObject val = objectForKey(key);
-            indent(xml, level + 1);
+        for (const key of this.dict.keys()) {
+            const val = this.objectForKey(key);
+            this.indent(xml, level + 1);
             xml.append("<key>");
-            //According to http://www.w3.org/TR/REC-xml/#syntax node values must not
-            //contain the characters < or &. Also the > character should be escaped.
-            if (key.contains("&") || key.contains("<") || key.contains(">")) {
+            if (key.includes("&") || key.includes("<") || key.includes(">")) {
                 xml.append("<![CDATA[");
-                xml.append(key.replaceAll("]]>", "]]]]><![CDATA[>"));
+                xml.append(key.replace(/]]>/g, "]]]]><![CDATA[>"));
                 xml.append("]]>");
             } else {
                 xml.append(key);
@@ -397,113 +190,102 @@ public class NSDictionary extends NSObject  implements Map<String, NSObject> {
             val.toXML(xml, level + 1);
             xml.append(NSObject.NEWLINE);
         }
-        indent(xml, level);
+        this.indent(xml, level);
         xml.append("</dict>");
     }
 
-    @Override
-    void assignIDs(BinaryPropertyListWriter out) {
+
+    public assignIDs(out: BinaryPropertyListWriter): void {
         super.assignIDs(out);
-        for (Map.Entry<String, NSObject> entry : dict.entrySet()) {
-            new NSString(entry.getKey()).assignIDs(out);
-            entry.getValue().assignIDs(out);
+        for (const [key, value] of this.dict.entries()) {
+            new NSString(key).assignIDs(out);
+            value.assignIDs(out);
         }
     }
 
-    @Override
-    void toBinary(BinaryPropertyListWriter out) throws IOException {
-        out.writeIntHeader(0xD, dict.size());
-        Set<Map.Entry<String, NSObject>> entries = dict.entrySet();
-        for (Map.Entry<String, NSObject> entry : entries) {
-            out.writeID(out.getID(new NSString(entry.getKey())));
+
+    public toBinary(out: BinaryPropertyListWriter): void {
+        out.writeIntHeader(0xD, this.dict.size);
+        const entries = Array.from(this.dict.entries());
+        for (const [key] of entries) {
+            out.writeID(out.getID(new NSString(key)));
         }
-        for (Map.Entry<String, NSObject> entry : entries) {
-            out.writeID(out.getID(entry.getValue()));
+        for (const [, value] of entries) {
+            out.writeID(out.getID(value));
         }
     }
 
-    /**
-     * Generates a valid ASCII property list which has this NSDictionary as its
-     * root object. The generated property list complies with the format as
-     * described in <a href="https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/PropertyLists/OldStylePlists/OldStylePLists.html">
-     * Property List Programming Guide - Old-Style ASCII Property Lists</a>.
-     *
-     * @return ASCII representation of this object.
-     */
-    public String toASCIIPropertyList() {
-        StringBuilder ascii = new StringBuilder();
-        toASCII(ascii, 0);
-        ascii.append(NEWLINE);
+    public toASCIIPropertyList(): string {
+        const ascii = new StringBuilder();
+        this.toASCII(ascii, 0);
+        ascii.append(NSObject.NEWLINE);
         return ascii.toString();
     }
 
-    /**
-     * Generates a valid ASCII property list in GnuStep format which has this
-     * NSDictionary as its root object. The generated property list complies with
-     * the format as described in <a href="http://www.gnustep.org/resources/documentation/Developer/Base/Reference/NSPropertyList.html">
-     * GnuStep - NSPropertyListSerialization class documentation
-     * </a>
-     *
-     * @return GnuStep ASCII representation of this object.
-     */
-    public String toGnuStepASCIIPropertyList() {
-        StringBuilder ascii = new StringBuilder();
-        toASCIIGnuStep(ascii, 0);
-        ascii.append(NEWLINE);
+
+    public toGnuStepASCIIPropertyList(): string {
+        const ascii = new StringBuilder();
+        this.toASCIIGnuStep(ascii, 0);
+        ascii.append(NSObject.NEWLINE);
         return ascii.toString();
     }
 
-    @Override
-    protected void toASCII(StringBuilder ascii, int level) {
-        indent(ascii, level);
+    protected toASCII(ascii: StringBuilder, level: number): void {
+        this.indent(ascii, level);
         ascii.append(ASCIIPropertyListParser.DICTIONARY_BEGIN_TOKEN);
-        ascii.append(NEWLINE);
-        String[] keys = allKeys();
-        for (String key : keys) {
-            NSObject val = objectForKey(key);
-            indent(ascii, level + 1);
+        ascii.append(NSObject.NEWLINE);
+        const keys = this.allKeys();
+        for (const key of keys) {
+            const val = this.objectForKey(key);
+            this.indent(ascii, level + 1);
             ascii.append("\"");
             ascii.append(NSString.escapeStringForASCII(key));
             ascii.append("\" =");
-            Class<?> objClass = val.getClass();
-            if (objClass.equals(NSDictionary.class) || objClass.equals(NSArray.class) || objClass.equals(NSData.class)) {
-                ascii.append(NEWLINE);
+            if (val instanceof NSDictionary || val instanceof NSArray || val instanceof NSData) {
+                ascii.append(NSObject.NEWLINE);
                 val.toASCII(ascii, level + 2);
             } else {
                 ascii.append(" ");
                 val.toASCII(ascii, 0);
             }
             ascii.append(ASCIIPropertyListParser.DICTIONARY_ITEM_DELIMITER_TOKEN);
-            ascii.append(NEWLINE);
+            ascii.append(NSObject.NEWLINE);
         }
-        indent(ascii, level);
+        this.indent(ascii, level);
         ascii.append(ASCIIPropertyListParser.DICTIONARY_END_TOKEN);
     }
 
-    @Override
-    protected void toASCIIGnuStep(StringBuilder ascii, int level) {
-        indent(ascii, level);
+    protected toASCIIGnuStep(ascii: StringBuilder, level: number): void {
+        this.indent(ascii, level);
         ascii.append(ASCIIPropertyListParser.DICTIONARY_BEGIN_TOKEN);
-        ascii.append(NEWLINE);
-        String[] keys = dict.keySet().toArray(new String[dict.size()]);
-        for (String key : keys) {
-            NSObject val = objectForKey(key);
-            indent(ascii, level + 1);
+        ascii.append(NSObject.NEWLINE);
+        const keys = Array.from(this.dict.keys());
+        for (const key of keys) {
+            const val = this.objectForKey(key);
+            this.indent(ascii, level + 1);
             ascii.append("\"");
             ascii.append(NSString.escapeStringForASCII(key));
             ascii.append("\" =");
-            Class<?> objClass = val.getClass();
-            if (objClass.equals(NSDictionary.class) || objClass.equals(NSArray.class) || objClass.equals(NSData.class)) {
-                ascii.append(NEWLINE);
+            if (val instanceof NSDictionary || val instanceof NSArray || val instanceof NSData) {
+                ascii.append(NSObject.NEWLINE);
                 val.toASCIIGnuStep(ascii, level + 2);
             } else {
                 ascii.append(" ");
                 val.toASCIIGnuStep(ascii, 0);
             }
             ascii.append(ASCIIPropertyListParser.DICTIONARY_ITEM_DELIMITER_TOKEN);
-            ascii.append(NEWLINE);
+            ascii.append(NSObject.NEWLINE);
         }
-        indent(ascii, level);
+        this.indent(ascii, level);
         ascii.append(ASCIIPropertyListParser.DICTIONARY_END_TOKEN);
+    }
+
+    public containsValue(value: any): boolean {
+        const wrap = NSObject.wrap(value);
+        if (wrap === null) return false;
+        for (const val of this.dict.values()) {
+            if (val.equals(wrap)) return true;
+        }
+        return false;
     }
 }

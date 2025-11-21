@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,456 +16,398 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import { AliteGame } from "../../AliteGame";
+import { AliteConfig } from "../../AliteConfig";
+import { Assets } from "../../Assets";
+import { Button } from "../../Button";
+import { L } from "../../L";
+import { R } from "../../R";
+import { ScreenCodes } from "../../ScreenCodes";
+import { ScrollPane } from "../../ScrollPane";
+import { SoundManager } from "../../SoundManager";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { Player } from "../../model/Player";
+import { SystemData } from "../../model/generator/SystemData";
+import { AliteScreen } from "./AliteScreen";
+import { Graphics } from "../../../../framework/Graphics";
+import { TouchEvent } from "../../../../framework/Input";
+import { Point } from "../../../../framework/Point";
+import { Rect } from "../../../../framework/Rect";
 
-import android.graphics.Point;
-import android.util.SparseIntArray;
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.Rect;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.Button.TextPosition;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.model.Player;
-import de.phbouillon.android.games.alite.model.generator.SystemData;
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class GalaxyScreen extends AliteScreen {
-	private static final int HALF_WIDTH = 760;
-	private static final int HALF_HEIGHT = 460;
-	private static final int CROSS_SIZE = 40;
-	private static final int CROSS_DISTANCE = 2;
-	private static final float SCALE_CONST = AliteConfig.DESKTOP_WIDTH / 256.0f;
+class MappedSystemData {
+    system: SystemData;
+    xDiff: number = 0;
 
-	private float zoomFactor = 1;
-	private float zoomFactorForFind = 1;
-	private String title;
-	private MappedSystemData[] systemData;
-	private final Set<Integer> doubleLocations = new HashSet<>();
-	private Button findButton;
-	private Button homeButton;
-	private int targetX = 0;
-	private int targetY = 0;
-	private final ScrollPane scrollPane = new ScrollPane(0, 80, AliteConfig.DESKTOP_WIDTH, 1000,
-		() -> new Point((int) (AliteConfig.DESKTOP_WIDTH * zoomFactor), (int) (920 * zoomFactor)));
-	private boolean zoom = false;
-	private int scalingReferenceX = -1;
-	private int scalingReferenceY;
-	private boolean wasHomeButtonPressed;
+    constructor(system: SystemData) {
+        this.system = system;
+    }
 
-	class MappedSystemData {
-		SystemData system;
-		int xDiff;
+    public getLocationId(): number {
+        return (this.system.getX() << 8) + this.system.getY();
+    }
+}
 
-		MappedSystemData(SystemData system) {
-			this.system = system;
-		}
 
-		int getLocationId() {
-			return (system.getX() << 8) + system.getY();
-		}
+export class GalaxyScreen extends AliteScreen {
+    private static readonly HALF_WIDTH = 760;
+    private static readonly HALF_HEIGHT = 460;
+    private static readonly CROSS_SIZE = 40;
+    private static readonly CROSS_DISTANCE = 2;
+    private static readonly SCALE_CONST = AliteConfig.DESKTOP_WIDTH / 256.0;
 
-		public int x() {
-			return transformX(system.getX());
-		}
+    private zoomFactor = 1;
+    private zoomFactorForFind = 1;
+    private title: string;
+    private systemData: MappedSystemData[];
+    private readonly doubleLocations: Set<number> = new Set();
+    private findButton: Button;
+    private homeButton: Button;
+    private targetX = 0;
+    private targetY = 0;
+    private readonly scrollPane: ScrollPane;
+    private zoom = false;
+    private scalingReferenceX = -1;
+    private scalingReferenceY: number;
+    private wasHomeButtonPressed: boolean;
 
-		public int y() {
-			return transformY(system.getY());
-		}
-	}
+    constructor(zoomFactor: number = 1, centerX: number = 0, centerY: number = 0) {
+        super();
+        this.zoomFactor = zoomFactor;
+        this.scrollPane = new ScrollPane(0, 80, AliteConfig.DESKTOP_WIDTH, 1000,
+            () => new Point(AliteConfig.DESKTOP_WIDTH * this.zoomFactor, 920 * this.zoomFactor));
+        this.scrollPane.position.x = centerX;
+        this.scrollPane.position.y = centerY;
+    }
 
-	// default public constructor is required for navigation bar
-	public GalaxyScreen() {
-	}
 
-	public GalaxyScreen(float zoomFactor, int centerX, int centerY) {
-		this.zoomFactor = zoomFactor;
-		scrollPane.position.x = centerX;
-		scrollPane.position.y = centerY;
-	}
+    public saveScreenState(dos: any): void {
+        dos.writeFloat(this.zoomFactor);
+        dos.writeInt(this.scrollPane.position.x);
+        dos.writeInt(this.scrollPane.position.y);
+    }
 
-	@Override
-	public void saveScreenState(DataOutputStream dos) throws IOException {
-		dos.writeFloat(zoomFactor);
-		dos.writeInt(scrollPane.position.x);
-		dos.writeInt(scrollPane.position.y);
-	}
+    private findClosestSystem(x: number, y: number): MappedSystemData {
+        let minDist = -1;
+        const player: Player = this.game.getPlayer();
+        let closestSystem: MappedSystemData = null;
+        for (const system of this.systemData) {
+            const sx = this.transformX(system.system.getX());
+            const sy = this.transformY(system.system.getY());
+            const dist = (sx - x) * (sx - x) + (sy - y) * (sy - y);
+            if (dist < minDist || closestSystem === null) {
+                if (this.doubleLocations.has(system.getLocationId()) && player.getHyperspaceSystem() === system.system) {
+                    continue;
+                }
+                minDist = dist;
+                closestSystem = system;
+            }
+        }
+        return closestSystem;
+    }
 
-	private MappedSystemData findClosestSystem(int x, int y) {
-		int minDist = -1;
-		Player player = game.getPlayer();
-		MappedSystemData closestSystem = null;
-		for (MappedSystemData system: systemData) {
-			int dist = (system.x() - x) * (system.x() - x) + (system.y() - y) * (system.y() - y);
-			if (dist < minDist || closestSystem == null) {
-				if (doubleLocations.contains(system.getLocationId()) && player.getHyperspaceSystem() == system.system) {
-					continue;
-				}
-				minDist = dist;
-				closestSystem = system;
-			}
-		}
-		return closestSystem;
-	}
 
-	private String capitalize(String t) {
-		return t == null || t.length() < 1 ? "" : t.length() < 2 ? t :
-			Character.toUpperCase(t.charAt(0)) + t.substring(1).toLowerCase(L.getInstance().getCurrentLocale());
-	}
+    private capitalize(t: string): string {
+        if (!t || t.length < 1) return "";
+        return t.length < 2 ? t : t.charAt(0).toUpperCase() + t.substring(1).toLowerCase();
+    }
 
-	private void findSystem(String text) {
-		if (text.trim().isEmpty()) {
-			return;
-		}
-		for (MappedSystemData system: systemData) {
-			if (system.system.getName().equalsIgnoreCase(text)) {
-				game.getPlayer().setHyperspaceSystem(system.system);
-				moveToCenter(system.system.getX(), system.system.getY());
-				return;
-			}
-		}
-		int galaxy = game.getGenerator().findGalaxyOfPlanet(text);
-		if (galaxy == -1) {
-			showMessageDialog(L.string(R.string.galaxy_unknown_planet, capitalize(text)));
-			SoundManager.play(Assets.error);
-		} else {
-			showMessageDialog(L.string(R.string.galaxy_unknown_planet_in_galaxy, capitalize(text), galaxy,
-				game.getGenerator().getCurrentGalaxy()));
-			SoundManager.play(Assets.alert);
-		}
+    private findSystem(text: string): void {
+        if (text.trim().length === 0) {
+            return;
+        }
+        for (const system of this.systemData) {
+            if (system.system.getName().toLowerCase() === text.toLowerCase()) {
+                this.game.getPlayer().setHyperspaceSystem(system.system);
+                this.moveToCenter(system.system.getX(), system.system.getY());
+                return;
+            }
+        }
+        const galaxy: number = this.game.getGenerator().findGalaxyOfPlanet(text);
+        if (galaxy === -1) {
+            this.showMessageDialog(L.string(R.string.galaxy_unknown_planet, this.capitalize(text)));
+            SoundManager.play(Assets.error);
+        } else {
+            this.showMessageDialog(L.string(R.string.galaxy_unknown_planet_in_galaxy, this.capitalize(text), galaxy,
+                this.game.getGenerator().getCurrentGalaxy()));
+            SoundManager.play(Assets.alert);
+        }
+    }
 
-	}
 
-	@Override
-	public void processTouch(TouchEvent touch) {
-		if (touch.type == TouchEvent.TOUCH_SCALE) {
-			if (scalingReferenceX == -1) {
-				scalingReferenceX = (int) ((touch.x2 + scrollPane.position.x) / SCALE_CONST / zoomFactor);
-				scalingReferenceY = (int) ((touch.y2 + scrollPane.position.y - 100) / SCALE_CONST / zoomFactor);
-			}
-			zoomFactor = touch.zoomFactor;
-			scrollPane.changePosition(transformX(scalingReferenceX), transformY(scalingReferenceY), touch.x2, touch.y2);
-			zoom = true;
-			targetX = 0;
-			targetY = 0;
-		}
+    public processTouch(touch: TouchEvent): void {
+        if (touch.type === TouchEvent.TOUCH_SCALE) {
+            if (this.scalingReferenceX === -1) {
+                this.scalingReferenceX = (touch.x2 + this.scrollPane.position.x) / GalaxyScreen.SCALE_CONST / this.zoomFactor;
+                this.scalingReferenceY = (touch.y2 + this.scrollPane.position.y - 100) / GalaxyScreen.SCALE_CONST / this.zoomFactor;
+            }
+            this.zoomFactor = touch.zoomFactor;
+            this.scrollPane.changePosition(this.transformX(this.scalingReferenceX), this.transformY(this.scalingReferenceY), touch.x2, touch.y2);
+            this.zoom = true;
+            this.targetX = 0;
+            this.targetY = 0;
+        }
 
-		if (game.getInput().getTouchCount() > 1 ||
-				touch.type == TouchEvent.TOUCH_DRAGGED && touch.pointer == 0 && zoom) {
-			return;
-		}
-		scrollPane.handleEvent(touch);
-		targetX = 0;
-		targetY = 0;
+        if (this.game.getInput().getTouchCount() > 1 ||
+            (touch.type === TouchEvent.TOUCH_DRAGGED && touch.pointer === 0 && this.zoom)) {
+            return;
+        }
+        this.scrollPane.handleEvent(touch);
+        this.targetX = 0;
+        this.targetY = 0;
 
-		if (homeButton.isPressed(touch)) {
-			SystemData homeSystem = game.getPlayer().getCurrentSystem();
-			game.getPlayer().setHyperspaceSystem(homeSystem);
-			if (homeSystem == null) {
-				moveToCenter(game.getPlayer().getPosition().x, game.getPlayer().getPosition().y);
-			} else {
-				moveToCenter(homeSystem.getX(), homeSystem.getY());
-			}
-			wasHomeButtonPressed = true;
-			return;
-		}
+        if (this.homeButton.isPressed(touch)) {
+            const homeSystem: SystemData = this.game.getPlayer().getCurrentSystem();
+            this.game.getPlayer().setHyperspaceSystem(homeSystem);
+            if (homeSystem === null) {
+                this.moveToCenter(this.game.getPlayer().getPosition().x, this.game.getPlayer().getPosition().y);
+            } else {
+                this.moveToCenter(homeSystem.getX(), homeSystem.getY());
+            }
+            this.wasHomeButtonPressed = true;
+            return;
+        }
 
-		if (findButton.isPressed(touch)) {
-			popupTextInput(L.string(R.string.galaxy_find_planet_name), "", 8);
-			return;
-		}
+        if (this.findButton.isPressed(touch)) {
+            this.popupTextInput(L.string(R.string.galaxy_find_planet_name), "", 8);
+            return;
+        }
 
-		if (touch.type == TouchEvent.TOUCH_UP && touch.pointer == 0 && zoom) {
-			zoom = false;
-			scalingReferenceX = -1;
-			return;
-		}
+        if (touch.type === TouchEvent.TOUCH_UP && touch.pointer === 0 && this.zoom) {
+            this.zoom = false;
+            this.scalingReferenceX = -1;
+            return;
+        }
 
-		if (touch.type != TouchEvent.TOUCH_UP || scrollPane.isSweepingGesture(touch)) {
-			return;
-		}
+        if (touch.type !== TouchEvent.TOUCH_UP || this.scrollPane.isSweepingGesture(touch)) {
+            return;
+        }
 
-		MappedSystemData closestSystem = findClosestSystem(touch.x, touch.y);
-		if (!Rect.inside(closestSystem.x(), closestSystem.y(), 0, 20,
-				AliteConfig.DESKTOP_WIDTH, AliteConfig.SCREEN_HEIGHT)) {
-			return;
-		}
-		game.getPlayer().setHyperspaceSystem(closestSystem.system);
-		SoundManager.play(Assets.click);
-	}
+        const closestSystem = this.findClosestSystem(touch.x, touch.y);
+        const sx = this.transformX(closestSystem.system.getX());
+        const sy = this.transformY(closestSystem.system.getY());
+        if (!Rect.inside(sx, sy, 0, 20, AliteConfig.DESKTOP_WIDTH, AliteConfig.SCREEN_HEIGHT)) {
+            return;
+        }
+        this.game.getPlayer().setHyperspaceSystem(closestSystem.system);
+        SoundManager.play(Assets.click);
+    }
 
-	private int transformX(int x) {
-		return (int) (x * SCALE_CONST * zoomFactor) - scrollPane.position.x;
-	}
 
-	private int transformY(int y) {
-		return 100 + (int) (y * SCALE_CONST * zoomFactor) - scrollPane.position.y;
-	}
+    private transformX(x: number): number {
+        return x * GalaxyScreen.SCALE_CONST * this.zoomFactor - this.scrollPane.position.x;
+    }
 
-	void moveToCenter(int x, int y) {
-		if (zoomFactor > zoomFactorForFind) {
-			float zoomRatio = (zoomFactorForFind - 1) / (zoomFactor - 1);
-			scrollPane.position.x *= zoomRatio;
-			scrollPane.position.y *= zoomRatio;
-		}
-		zoomFactor = zoomFactorForFind;
-		game.getInput().setZoomFactor(zoomFactor);
-		targetX = (AliteConfig.DESKTOP_WIDTH >> 1) - transformX(x);
-		targetY = 80 + (AliteConfig.SCREEN_HEIGHT >> 1) - transformY(y);
-	}
+    private transformY(y: number): number {
+        return 100 + y * GalaxyScreen.SCALE_CONST * this.zoomFactor - this.scrollPane.position.y;
+    }
 
-	private void renderName(MappedSystemData system) {
-		Graphics g = game.getGraphics();
-		int nameWidth = g.getTextWidth(system.system.getName(), Assets.regularFont);
-		int positionX = (int) (3 * zoomFactor) + 2;
-		int positionY = 40;
-		if (system.x() + nameWidth > HALF_WIDTH << 1) {
-			positionX = -positionX - nameWidth;
-		}
-		if (system.y() + 40 > HALF_HEIGHT << 1) {
-			positionY = -40;
-		}
-		g.drawText(system.system.getName(), system.x() + positionX, system.y() + positionY,
-			system.system.getEconomy().getColor(), Assets.regularFont);
-		if (game.getPlayer().isPlanetVisited(system.system.getId())) {
-			g.drawUnderlinedText(system.system.getName(), system.x() + positionX, system.y() + positionY,
-				system.system.getEconomy().getColor(), Assets.regularFont);
-		} else {
-			g.drawText(system.system.getName(), system.x() + positionX, system.y() + positionY,
-				system.system.getEconomy().getColor(), Assets.regularFont);
-		}
-	}
+    private moveToCenter(x: number, y: number): void {
+        if (this.zoomFactor > this.zoomFactorForFind) {
+            const zoomRatio: number = (this.zoomFactorForFind - 1) / (this.zoomFactor - 1);
+            this.scrollPane.position.x *= zoomRatio;
+            this.scrollPane.position.y *= zoomRatio;
+        }
+        this.zoomFactor = this.zoomFactorForFind;
+        this.game.getInput().setZoomFactor(this.zoomFactor);
+        this.targetX = (AliteConfig.DESKTOP_WIDTH >> 1) - this.transformX(x);
+        this.targetY = 80 + (AliteConfig.SCREEN_HEIGHT >> 1) - this.transformY(y);
+    }
 
-	public void updateMap() {
-		if (targetX != 0 || targetY != 0) {
-			int deltaX = targetX >> 4;
-			int deltaY = targetY >> 3;
-			if (deltaX == 0 && targetX != 0) {
-				deltaX = targetX < 0 ? -1 : 1;
-			}
-			if (deltaY == 0 && targetY != 0) {
-				deltaY = targetY < 0 ? -1 : 1;
-			}
-			scrollPane.setScrollingTarget(deltaX, deltaY);
-			targetX -= deltaX;
-			targetY -= deltaY;
-		}
-		scrollPane.scrollingFree();
-	}
+    private renderName(system: MappedSystemData): void {
+        const g: Graphics = this.game.getGraphics();
+        const sx = this.transformX(system.system.getX());
+        const sy = this.transformY(system.system.getY());
+        const nameWidth: number = g.getTextWidth(system.system.getName(), Assets.regularFont);
+        let positionX: number = 3 * this.zoomFactor + 2;
+        let positionY: number = 40;
+        if (sx + nameWidth > GalaxyScreen.HALF_WIDTH << 1) {
+            positionX = -positionX - nameWidth;
+        }
+        if (sy + 40 > GalaxyScreen.HALF_HEIGHT << 1) {
+            positionY = -40;
+        }
+        if (this.game.getPlayer().isPlanetVisited(system.system.getId())) {
+            g.drawUnderlinedText(system.system.getName(), sx + positionX, sy + positionY,
+                system.system.getEconomy().getColor(), Assets.regularFont);
+        } else {
+            g.drawText(system.system.getName(), sx + positionX, sy + positionY,
+                system.system.getEconomy().getColor(), Assets.regularFont);
+        }
+    }
 
-	@Override
-	public void update(float deltaTime) {
-		super.update(deltaTime);
-		if (messageResult == RESULT_YES) {
-			findSystem(inputText);
-		}
-		messageResult = RESULT_NONE;
-		updateMap();
-	}
 
-	private void renderCurrentPositionCross() {
-		Graphics g = game.getGraphics();
-		Player player = game.getPlayer();
-		SystemData hyperspaceSystem = player.getHyperspaceSystem();
+    public updateMap(): void {
+        if (this.targetX !== 0 || this.targetY !== 0) {
+            let deltaX: number = this.targetX >> 4;
+            let deltaY: number = this.targetY >> 3;
+            if (deltaX === 0 && this.targetX !== 0) {
+                deltaX = this.targetX < 0 ? -1 : 1;
+            }
+            if (deltaY === 0 && this.targetY !== 0) {
+                deltaY = this.targetY < 0 ? -1 : 1;
+            }
+            this.scrollPane.setScrollingTarget(deltaX, deltaY);
+            this.targetX -= deltaX;
+            this.targetY -= deltaY;
+        }
+        this.scrollPane.scrollingFree();
+    }
 
-		int px = transformX(hyperspaceSystem == null ? player.getPosition().x : hyperspaceSystem.getX());
-		int py = transformY(hyperspaceSystem == null ? player.getPosition().y : hyperspaceSystem.getY());
-		g.drawLine(px, py - CROSS_SIZE - CROSS_DISTANCE, px, py - CROSS_DISTANCE, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-		g.drawLine(px, py + CROSS_SIZE + CROSS_DISTANCE, px, py + CROSS_DISTANCE, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-		g.drawLine(px - CROSS_SIZE - CROSS_DISTANCE, py, px - CROSS_DISTANCE, py, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-		g.drawLine(px + CROSS_SIZE + CROSS_DISTANCE, py, px + CROSS_DISTANCE, py, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-	}
 
-	private void renderCurrentFuelCircle() {
-		Graphics g = game.getGraphics();
-		Player player = game.getPlayer();
+    public update(deltaTime: number): void {
+        super.update(deltaTime);
+        if (this.messageResult === AliteScreen.RESULT_YES) {
+            this.findSystem(this.inputText);
+        }
+        this.messageResult = AliteScreen.RESULT_NONE;
+        this.updateMap();
+    }
 
-		// 36 is half of 7.2 light years distance, instead of half of 7.0.
-		// The real distance of planets could be bigger than the calculated one.
-		// See also SystemData.computeDistance
-		int r = (int) (36 * SCALE_CONST * zoomFactor) >> 1;
-		SystemData hyperspaceSystem = player.getHyperspaceSystem();
-		if (hyperspaceSystem != null) {
-			int px = transformX(hyperspaceSystem.getX());
-			int py = transformY(hyperspaceSystem.getY());
-			g.drawDashedCircle(px, py, r, ColorScheme.get(ColorScheme.COLOR_DASHED_FUEL_CIRCLE));
-		}
+    private renderCurrentPositionCross(): void {
+        const g: Graphics = this.game.getGraphics();
+        const player: Player = this.game.getPlayer();
+        const hyperspaceSystem: SystemData = player.getHyperspaceSystem();
 
-		SystemData currentSystem = player.getCurrentSystem();
-		int px = transformX(currentSystem == null ? player.getPosition().x : player.getCurrentSystem().getX());
-		int py = transformY(currentSystem == null ? player.getPosition().y : player.getCurrentSystem().getY());
-		g.drawCircle(px, py, r * player.getCobra().getFuel() / player.getCobra().getMaxFuel(),
-			ColorScheme.get(ColorScheme.COLOR_FUEL_CIRCLE));
-	}
+        const px = this.transformX(hyperspaceSystem === null ? player.getPosition().x : hyperspaceSystem.getX());
+        const py = this.transformY(hyperspaceSystem === null ? player.getPosition().y : hyperspaceSystem.getY());
+        g.drawLine(px, py - GalaxyScreen.CROSS_SIZE - GalaxyScreen.CROSS_DISTANCE, px, py - GalaxyScreen.CROSS_DISTANCE, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
+        g.drawLine(px, py + GalaxyScreen.CROSS_SIZE + GalaxyScreen.CROSS_DISTANCE, px, py + GalaxyScreen.CROSS_DISTANCE, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
+        g.drawLine(px - GalaxyScreen.CROSS_SIZE - GalaxyScreen.CROSS_DISTANCE, py, px - GalaxyScreen.CROSS_DISTANCE, py, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
+        g.drawLine(px + GalaxyScreen.CROSS_SIZE + GalaxyScreen.CROSS_DISTANCE, py, px + GalaxyScreen.CROSS_DISTANCE, py, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
+    }
 
-	private void renderDistance() {
-		Player player = game.getPlayer();
-		Graphics g = game.getGraphics();
 
-		if (player.getHyperspaceSystem() != null) {
-			int distance = player.computeDistance();
-			g.drawText(L.string(R.string.galaxy_distance_info,
-				player.getHyperspaceSystem().getName(), distance / 10, distance % 10),
-				100, 1060, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION), Assets.regularFont);
-		}
-	}
+    private renderCurrentFuelCircle(): void {
+        const g: Graphics = this.game.getGraphics();
+        const player: Player = this.game.getPlayer();
+        const r: number = 36 * GalaxyScreen.SCALE_CONST * this.zoomFactor >> 1;
+        const hyperspaceSystem: SystemData = player.getHyperspaceSystem();
+        if (hyperspaceSystem !== null) {
+            const px = this.transformX(hyperspaceSystem.getX());
+            const py = this.transformY(hyperspaceSystem.getY());
+            g.drawDashedCircle(px, py, r, ColorScheme.get(ColorScheme.COLOR_DASHED_FUEL_CIRCLE));
+        }
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
+        const currentSystem: SystemData = player.getCurrentSystem();
+        const px = this.transformX(currentSystem === null ? player.getPosition().x : player.getCurrentSystem().getX());
+        const py = this.transformY(currentSystem === null ? player.getPosition().y : player.getCurrentSystem().getY());
+        g.drawCircle(px, py, r * player.getCobra().getFuel() / player.getCobra().getMaxFuel(),
+            ColorScheme.get(ColorScheme.COLOR_FUEL_CIRCLE));
+    }
 
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayTitle(title);
+    private renderDistance(): void {
+        const player: Player = this.game.getPlayer();
+        const g: Graphics = this.game.getGraphics();
 
-		g.setClip(0, -1, -1, 1000);
-		int r = (int) (3 * zoomFactor);
-		for (MappedSystemData system: systemData) {
-			g.fillCircle(system.x() + system.xDiff, system.y(), r, system.system.getEconomy().getColor());
-			if (namesVisible() && Rect.inside(system.x(), system.y(), 0, 0,
-					AliteConfig.SCREEN_WIDTH, AliteConfig.SCREEN_HEIGHT)) {
-				renderName(system);
-			} else if (game.getPlayer().isPlanetVisited(system.system.getId())) {
-				g.drawLine(system.x() + system.xDiff - r, system.y() + r + 2,
-					system.x() + system.xDiff + r, system.y() + r + 2, system.system.getEconomy().getColor());
-			}
-		}
+        if (player.getHyperspaceSystem() !== null) {
+            const distance: number = player.computeDistance();
+            g.drawText(L.string(R.string.galaxy_distance_info,
+                player.getHyperspaceSystem().getName(), Math.floor(distance / 10), distance % 10),
+                100, 1060, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION), Assets.regularFont);
+        }
+    }
 
-		renderCurrentPositionCross();
-		renderCurrentFuelCircle();
-		renderDistance();
 
-		g.setClip(-1, -1, -1, -1);
+    public present(deltaTime: number): void {
+        const g: Graphics = this.game.getGraphics();
 
-		homeButton.render(g);
-		findButton.render(g);
-	}
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayTitle(this.title);
 
-	void setupUi() {
-		initializeSystems();
+        g.setClip(0, -1, -1, 1000);
+        const r: number = 3 * this.zoomFactor;
+        for (const system of this.systemData) {
+            const sx = this.transformX(system.system.getX()) + system.xDiff;
+            const sy = this.transformY(system.system.getY());
+            g.fillCircle(sx, sy, r, system.system.getEconomy().getColor());
+            if (this.namesVisible() && Rect.inside(sx, sy, 0, 0, AliteConfig.SCREEN_WIDTH, AliteConfig.SCREEN_HEIGHT)) {
+                this.renderName(system);
+            } else if (this.game.getPlayer().isPlanetVisited(system.system.getId())) {
+                g.drawLine(sx - r, sy + r + 2, sx + r, sy + r + 2, system.system.getEconomy().getColor());
+            }
+        }
 
-		findButton = Button.createGradientRegularButton(1375, 980, 320, 100, L.string(R.string.galaxy_btn_find))
-			.setPixmap(pics.get("search_icon"))
-			.setTextPosition(TextPosition.RIGHT);
+        this.renderCurrentPositionCross();
+        this.renderCurrentFuelCircle();
+        this.renderDistance();
 
-		homeButton = Button.createGradientRegularButton(1020, 980, 320, 100, L.string(R.string.galaxy_btn_home))
-			.setPixmap(pics.get("home_icon"))
-			.setTextPosition(TextPosition.RIGHT);
-	}
+        g.setClip(-1, -1, -1, -1);
 
-	@Override
-	public void activate() {
-		activateScreen(L.string(R.string.title_galaxy, game.getGenerator().getCurrentGalaxy()));
-	}
+        this.homeButton.render(g);
+        this.findButton.render(g);
+    }
 
-	void initPosition(int centerX, int centerY, float zoomFactor) {
-		this.zoomFactor = zoomFactor;
-		zoomFactorForFind = zoomFactor;
-		scrollPane.changePosition(transformX(centerX), transformY(centerY), AliteConfig.DESKTOP_WIDTH >> 1,
-			80 + AliteConfig.SCREEN_HEIGHT >> 1);
-	}
+    private setupUi(): void {
+        this.initializeSystems();
 
-	void activateScreen(String title) {
-		this.title = title;
-		game.getInput().setZoomFactor(zoomFactor);
-		setupUi();
-	}
+        this.findButton = Button.createGradientRegularButton(1375, 980, 320, 100, L.string(R.string.galaxy_btn_find))
+            .setPixmap(this.pics.get("search_icon"))
+            .setTextPosition(Button.TextPosition.RIGHT);
 
-	private void initializeSystems() {
-		int raxlaa = game.isRaxxlaVisible() ? 1 : 0;
+        this.homeButton = Button.createGradientRegularButton(1020, 980, 320, 100, L.string(R.string.galaxy_btn_home))
+            .setPixmap(this.pics.get("home_icon"))
+            .setTextPosition(Button.TextPosition.RIGHT);
+    }
 
-		SystemData[] system = game.getGenerator().getSystems();
-		systemData = new MappedSystemData[system.length + raxlaa];
-		SparseIntArray doubleCounts = new SparseIntArray(system.length);
-		for (int i = 0; i < system.length; i++) {
-			systemData[i] = new MappedSystemData(system[i]);
-			int key = systemData[i].getLocationId();
-			int count = doubleCounts.get(key);
-			doubleCounts.put(key, count + 1);
-			if (count > 0) {
-				doubleLocations.add(key);
-				systemData[i].xDiff = count << 3;
-			}
-		}
-		if (raxlaa == 1) {
-			systemData[system.length] = new MappedSystemData(SystemData.RAXXLA_SYSTEM);
-		}
-	}
+    public activate(): void {
+        this.activateScreen(L.string(R.string.title_galaxy, this.game.getGenerator().getCurrentGalaxy()));
+    }
 
-	public boolean namesVisible() {
-		return zoomFactor >= 4.0f;
-	}
+    private initPosition(centerX: number, centerY: number, zoomFactor: number): void {
+        this.zoomFactor = zoomFactor;
+        this.zoomFactorForFind = zoomFactor;
+        this.scrollPane.changePosition(this.transformX(centerX), this.transformY(centerY), AliteConfig.DESKTOP_WIDTH >> 1,
+            80 + (AliteConfig.SCREEN_HEIGHT >> 1));
+    }
 
-	public boolean wasHomeButtonPressed() {
-		return wasHomeButtonPressed;
-	}
+    private activateScreen(title: string): void {
+        this.title = title;
+        this.game.getInput().setZoomFactor(this.zoomFactor);
+        this.setupUi();
+    }
 
-	public float getZoomFactor() {
-		return zoomFactor;
-	}
+    private initializeSystems(): void {
+        const raxlaa = this.game.isRaxxlaVisible() ? 1 : 0;
 
-	@Override
-	public void loadAssets() {
-		addPictures("search_icon", "home_icon");
-		super.loadAssets();
-	}
+        const systems = this.game.getGenerator().getSystems();
+        this.systemData = new Array(systems.length + raxlaa);
+        const doubleCounts: Map<number, number> = new Map();
 
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.GALAXY_SCREEN;
-	}
+        for (let i = 0; i < systems.length; i++) {
+            this.systemData[i] = new MappedSystemData(systems[i]);
+            const key = this.systemData[i].getLocationId();
+            const count = doubleCounts.get(key) || 0;
+            doubleCounts.set(key, count + 1);
+            if (count > 0) {
+                this.doubleLocations.add(key);
+                this.systemData[i].xDiff = count << 3;
+            }
+        }
+        if (raxlaa === 1) {
+            this.systemData[systems.length] = new MappedSystemData(SystemData.RAXXLA_SYSTEM);
+        }
+    }
 
-	private static Point toScreen(SystemData systemData, int centerX, int centerY, float zoomFactor) {
-		int offsetX = (int) (centerX * zoomFactor * SCALE_CONST) - 400;
-		int offsetY = (int) (centerY * zoomFactor * SCALE_CONST) - 550;
-		Point p = new Point((int) (systemData.getX() * zoomFactor * SCALE_CONST + 900 - offsetX),
-			(int) (systemData.getY() * zoomFactor * SCALE_CONST + 100 - offsetY));
-		return Rect.inside(p.x, p.y, 900, 100,  1700, 1000) ? p : null;
-	}
 
-	private static void drawSystem(SystemData system, Point p, float zoomFactor, boolean targetSystem) {
-		Graphics g = Alite.get().getGraphics();
-		g.fillCircle(p.x, p.y, (int) (3 * zoomFactor), system.getEconomy().getColor());
-		int nameWidth = g.getTextWidth(system.getName(), targetSystem ? Assets.regularFont : Assets.smallFont);
-		int nameHeight = g.getTextHeight(system.getName(), targetSystem ? Assets.regularFont : Assets.smallFont);
-		int positionX = (int) (3 * zoomFactor) + 2;
-		int positionY = 40;
-		if (p.x + nameWidth > HALF_WIDTH << 1) {
-			positionX = -positionX - nameWidth;
-		}
-		if (p.y + 40 > HALF_HEIGHT << 1) {
-			positionY = -40;
-		}
-		if (targetSystem) {
-			g.fillRect(p.x + positionX, p.y + positionY - nameHeight, nameWidth, nameHeight,
-				ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		}
-		g.drawText(system.getName(), p.x + positionX, p.y + positionY, system.getEconomy().getColor(),
-			targetSystem ? Assets.regularFont : Assets.smallFont);
-	}
+    public namesVisible(): boolean {
+        return this.zoomFactor >= 4.0;
+    }
 
-	public static void displayStarMap(SystemData targetSystem) {
-		int centerX = targetSystem.getX();
-		int centerY = targetSystem.getY();
+    public wasHomeButtonPressed_(): boolean {
+        return this.wasHomeButtonPressed;
+    }
 
-		for (SystemData system:  Alite.get().getGenerator().getSystems()) {
-			Point p = toScreen(system, centerX, centerY, 3.0f);
-			if (p != null) {
-				drawSystem(system, p, 3.0f, false);
-			}
-		}
-		// Make sure the target system is rendered on top...
-		Graphics g = Alite.get().getGraphics();
-		Point p = toScreen(targetSystem, centerX, centerY, 3.0f);
-		if (p != null) {
-			drawSystem(targetSystem, p, 3.0f, true);
-			g.drawLine(p.x, p.y - CROSS_SIZE - CROSS_DISTANCE, p.x, p.y - CROSS_DISTANCE, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-			g.drawLine(p.x, p.y + CROSS_SIZE + CROSS_DISTANCE, p.x, p.y + CROSS_DISTANCE, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-			g.drawLine(p.x - CROSS_SIZE - CROSS_DISTANCE, p.y, p.x - CROSS_DISTANCE, p.y, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-			g.drawLine(p.x + CROSS_SIZE + CROSS_DISTANCE, p.y, p.x + CROSS_DISTANCE, p.y, ColorScheme.get(ColorScheme.COLOR_BASE_INFORMATION));
-		}
-	}
+    public getZoomFactor(): number {
+        return this.zoomFactor;
+    }
 
+    public loadAssets(): void {
+        this.addPictures("search_icon", "home_icon");
+        super.loadAssets();
+    }
+
+    public getScreenCode(): number {
+        return ScreenCodes.GALAXY_SCREEN;
+    }
 }

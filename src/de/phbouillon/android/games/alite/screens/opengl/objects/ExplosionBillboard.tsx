@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,47 +16,46 @@ package de.phbouillon.android.games.alite.screens.opengl.objects;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Alite } from "../../../Alite";
+import { Billboard, ZPositioning } from "./Billboard";
+import { Explosion } from "./Explosion";
 
-import de.phbouillon.android.games.alite.Alite;
+export class ExplosionBillboard extends Billboard {
+    private static readonly serialVersionUID = -7178776348821798250;
 
-public class ExplosionBillboard extends Billboard implements Serializable {
-	private static final long serialVersionUID = -7178776348821798250L;
+    private static readonly EXPLOSION_FRAMES = 48;
 
-	private static final int EXPLOSION_FRAMES = 48;
+    private currentFrame: number;
+    private explosion: Explosion;
 
-	private int currentFrame;
-	private Explosion explosion;
+    constructor(ex: Explosion, frame: number) {
+        super("Explosion", 0.0, 0.0, 0.0, 130.0, 130.0, "textures/explosion2.png",
+            Alite.getInstance().getTextureManager().getSprite("textures/explosion2.png", "frame" + frame));
+        this.explosion = ex;
+        this.currentFrame = frame;
+        this.setZPositioningMode(ZPositioning.Front);
+        this.boundingSphereRadius = 150.0;
+    }
 
-	ExplosionBillboard(Explosion ex, int frame) {
-		super("Explosion", 0.0f, 0.0f, 0.0f, 130.0f, 130.0f, "textures/explosion2.png",
-			Alite.get().getTextureManager().getSprite("textures/explosion2.png", "frame" + frame));
-		explosion = ex;
-		currentFrame = frame;
-		setZPositioningMode(ZPositioning.Front);
-		boundingSphereRadius = 150.0f;
-	}
+    setFrame(frame: number): void {
+        this.currentFrame = frame;
+        if (this.currentFrame >= ExplosionBillboard.EXPLOSION_FRAMES || this.currentFrame < 0) {
+            this.setRemove(true);
+            return;
+        }
+        this.updateTextureCoordinates(Alite.getInstance().getTextureManager().getSprite("textures/explosion2.png", "frame" + frame));
+    }
 
-	void setFrame(int frame) {
-		currentFrame = frame;
-		if (currentFrame >= EXPLOSION_FRAMES || currentFrame < 0) {
-			setRemove(true);
-			return;
-		}
-		updateTextureCoordinates(Alite.get().getTextureManager().getSprite("textures/explosion2.png", "frame" + frame));
-	}
+    public resize(newWidth: number, newHeight: number): void {
+        super.resize(newWidth, newHeight);
+        this.boundingSphereRadius = (newWidth + newHeight) / 2.0;
+    }
 
-	@Override
-	public void resize(float newWidth, float newHeight) {
-		super.resize(newWidth, newHeight);
-		boundingSphereRadius = (newWidth + newHeight) / 2.0f;
-	}
+    getFrame(): number {
+        return this.currentFrame;
+    }
 
-	int getFrame() {
-		return currentFrame;
-	}
-
-	public Explosion getExplosion() {
-		return explosion;
-	}
+    public getExplosion(): Explosion {
+        return this.explosion;
+    }
 }

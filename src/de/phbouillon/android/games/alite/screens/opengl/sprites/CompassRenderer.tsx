@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.sprites;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,80 +16,64 @@ package de.phbouillon.android.games.alite.screens.opengl.sprites;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.impl.gl.Sprite;
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.AliteLog;
+import { Sprite } from "../../../../../framework/impl/gl/Sprite";
+import { Alite } from "../../../Alite";
+import { AliteLog } from "../../../AliteLog";
+import { AliteHud } from "./AliteHud";
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
+export class CompassRenderer {
+    private static readonly serialVersionUID = -4526005581209851369;
+    private static readonly COMPASS_CENTER_X = 1348;
+    private static readonly COMPASS_CENTER_Y = 704;
 
-public class CompassRenderer implements Serializable {
-	private static final long serialVersionUID = -4526005581209851369L;
-	private static final int COMPASS_CENTER_X = 1348;
-	private static final int COMPASS_CENTER_Y = 704;
+    private readonly compass: Sprite;
+    private readonly compassDot: Sprite;
+    private redDotActive = true;
+    private planet: number[] = [0, 0, 0];
 
-	private final Sprite compass;
-	private final Sprite compassDot;
-	private boolean redDotActive = true;
-	private float [] planet = new float[3];
+    constructor(hud: AliteHud) {
+        this.compass = hud.genSprite("target", 1284, 640);
+        this.compassDot = hud.genSprite("red", 1284 + 55, 640 + 55);
+    }
 
-	CompassRenderer(final AliteHud hud) {
-		compass    = hud.genSprite("target", 1284, 640);
-		compassDot = hud.genSprite("red", 1284 + 55, 640 + 55);
-	}
+    // Omitted readObject as it's Java-specific serialization
 
-	private void readObject(ObjectInputStream in) throws IOException {
-		try {
-			AliteLog.d("readObject", "CompassRenderer.readObject");
-			in.defaultReadObject();
-			AliteLog.d("readObject", "CompassRenderer.readObject I");
-			redDotActive = true; // Hack to ensure that the correct sprite is loaded:
-			// If redDotActive was actually false, now setting it to true will result
-			// in the texture sprite (green) being loaded on the next rendering
-			// cycle. Ugly, but works :)
-			AliteLog.d("readObject", "CompassRenderer.readObject II");
-		} catch (ClassNotFoundException e) {
-			AliteLog.e("Class not found", e.getMessage(), e);
-		}
-	}
+    setPlanet(x: number, y: number, z: number): void {
+        this.planet[0] = x;
+        this.planet[1] = y;
+        this.planet[2] = z;
+    }
 
-	void setPlanet(float x, float y, float z) {
-		planet[0] = x;
-		planet[1] = y;
-		planet[2] = z;
-	}
+    public render(): void {
+        let l = Math.sqrt(this.planet[0] * this.planet[0] + this.planet[1] * this.planet[1] + this.planet[2] * this.planet[2]);
+        if (Math.abs(l) < 0.001) {
+            l = 1.0;
+        }
+        const x = Math.floor(CompassRenderer.COMPASS_CENTER_X + this.planet[0] * 64.0 / l);
+        const y = Math.floor(CompassRenderer.COMPASS_CENTER_Y + this.planet[1] * -64.0 / l);
 
-	public void render() {
-		float l = (float) Math.sqrt(planet[0] * planet[0] + planet[1] * planet[1] + planet[2] * planet[2]);
-		if (Math.abs(l) < 0.001f) {
-			l = 1.0f;
-		}
-		int x = (int) (COMPASS_CENTER_X + planet[0] * 64.0f / l);
-		int y = (int) (COMPASS_CENTER_Y + planet[1] * -64.0f / l);
+        if (this.planet[2] < 0 && !this.redDotActive) {
+            this.compassDot.setTextureCoords(Alite.getInstance().getTextureManager().getSprite(AliteHud.TEXTURE_FILE, "red"));
+            this.redDotActive = true;
+        } else if (this.planet[2] > 0 && this.redDotActive) {
+            this.compassDot.setTextureCoords(Alite.getInstance().getTextureManager().getSprite(AliteHud.TEXTURE_FILE, "green"));
+            this.redDotActive = false;
+        }
 
-		if (planet[2] < 0 && !redDotActive) {
-			compassDot.setTextureCoords(Alite.get().getTextureManager().getSprite(AliteHud.TEXTURE_FILE, "red"));
-			redDotActive = true;
-		} else if (planet[2] > 0 && redDotActive) {
-			compassDot.setTextureCoords(Alite.get().getTextureManager().getSprite(AliteHud.TEXTURE_FILE, "green"));
-			redDotActive = false;
-		}
+        this.compassDot.setPosition(x - 8, y - 8, x + 7, y + 7);
 
-		compassDot.setPosition(x - 8, y - 8, x + 7, y + 7);
+        this.compass.justRender();
+        this.compassDot.simpleRender();
+    }
 
-		compass.justRender();
-		compassDot.simpleRender();
-	}
+    isTargetInCenter(): boolean {
+        let l = Math.sqrt(this.planet[0] * this.planet[0] + this.planet[1] * this.planet[1] + this.planet[2] * this.planet[2]);
+        if (Math.abs(l) < 0.001) {
+            l = 1.0;
+        }
+        const x = Math.floor(CompassRenderer.COMPASS_CENTER_X + this.planet[0] * 64.0 / l);
+        const y = Math.floor(CompassRenderer.COMPASS_CENTER_Y + this.planet[1] * -64.0 / l);
 
-	boolean isTargetInCenter() {
-		float l = (float) Math.sqrt(planet[0] * planet[0] + planet[1] * planet[1] + planet[2] * planet[2]);
-		if (Math.abs(l) < 0.001f) {
-			l = 1.0f;
-		}
-		int x = (int) (COMPASS_CENTER_X + planet[0] * 64.0f / l);
-		int y = (int) (COMPASS_CENTER_Y + planet[1] * -64.0f / l);
-
-		return redDotActive && Math.abs(x - COMPASS_CENTER_X) < 4 && Math.abs(y - COMPASS_CENTER_Y) < 4;
-	}
+        return this.redDotActive && Math.abs(x - CompassRenderer.COMPASS_CENTER_X) < 4 && Math.abs(y - CompassRenderer.COMPASS_CENTER_Y) < 4;
+    }
 }

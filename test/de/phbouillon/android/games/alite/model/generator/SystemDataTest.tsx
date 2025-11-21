@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.generator;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,82 +16,74 @@ package de.phbouillon.android.games.alite.model.generator;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.AliteLog;
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.Settings;
-import de.phbouillon.android.games.alite.TestLogger;
-import org.junit.Assert;
-import org.junit.Test;
+import { GalaxyGenerator } from "../../../../../../../src/de/phbouillon/android/games/alite/model/generator/GalaxyGenerator";
+import { SystemData } from "../../../../../../../src/de/phbouillon/android/games/alite/model/generator/SystemData";
+import { AliteLog } from "../../../../../../../src/de/phbouillon/android/games/alite/AliteLog";
+import { L } from "../../../../../../../src/de/phbouillon/android/games/alite/L";
+import { Settings } from "../../../../../../../src/de/phbouillon/android/games/alite/Settings";
+import { TestLogger } from "../../TestLogger";
+import * as fs from 'fs';
+import * as path from 'path';
 
-import java.io.*;
-import java.util.Locale;
+// Assuming a testing framework like Jest or Vitest is in use
+describe('SystemData', () => {
+    const generator = new GalaxyGenerator();
 
-public class SystemDataTest {
-	private final GalaxyGenerator generator = new GalaxyGenerator();
+    // The main method is for command-line execution, which would be a separate script in a TS project.
+    // For now, we'll keep the logic here but note it's not a standard test.
+    async function main(args: string[]): Promise<void> {
+        if (args.length !== 3) {
+            console.log("Usage:\n  SystemDataTest <path of desired non-US locale or empty> " +
+                "<locale name (in form of lang_ctry)> <output file name with path>");
+            return;
+        }
+        AliteLog.setInstance(new TestLogger());
+        // L.getInstance().addDefaultResource(path.resolve("res/values"), fs.createReadStream, "");
+        // const locale = L.getLocaleOf(args[1]);
+        // if (locale !== 'en-US') { // Simplified locale check
+        //     L.getInstance().addLocalizedResource(path.resolve(args[0]), fs.createReadStream, "");
+        // }
+        // L.getInstance().setLocale(locale);
 
-	public static void main(String[] args) throws IOException {
-		if (args.length != 3) {
-			System.out.println("Usage:\n  SystemDataTest <path of desired non-US locale or empty> " +
-				"<locale name (in form of lang_ctry)> <output file name with path>");
-			return;
-		}
-		AliteLog.setInstance(new TestLogger());
-		L.getInstance().addDefaultResource(new File("res\\values").getAbsolutePath(), FileInputStream::new, "");
-		Locale locale = L.getLocaleOf(args[1]);
-		if (!locale.equals(Locale.US)) {
-			L.getInstance().addLocalizedResource(new File(args[0]).getAbsolutePath(), FileInputStream::new, "");
-		}
-		L.getInstance().setLocale(locale);
+        Settings.maxGalaxies = GalaxyGenerator.EXTENDED_GALAXY_COUNT;
+        await buildGalaxies(args[2]);
+    }
 
-		Settings.maxGalaxies = GalaxyGenerator.EXTENDED_GALAXY_COUNT;
-		SystemDataTest test = new SystemDataTest();
-		test.buildGalaxies(args[2]);
-	}
+    async function buildGalaxies(outputFile: string): Promise<void> {
+        let out = "Galaxy\tIndex\tName\tx\ty\tTech level\tEconomy\tGovernment\tInhabitants\tGnp\tDiameter" +
+            "\tPopulation\tDescription code\tDescription\tRoutes\n";
 
-	private void buildGalaxies(String outputFile) throws IOException {
-		OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(outputFile));
-		out.write("Galaxy\tIndex\tName\tx\ty\tTech level\tEconomy\tGovernment\tInhabitants\tGnp\tDiameter" +
-			"\tPopulation\tDescription code\tDescription\tRoutes\n");
-		long time = System.currentTimeMillis();
-		for (int g = 1; g <= Settings.maxGalaxies; g++) {
-			generator.buildGalaxy(g);
-			SystemData[] systems = generator.getSystems();
-			for (SystemData system : systems) {
-				system.computeReachableSystems(systems);
-				out.write(g + "\t" + formatSystemInfo(system));
-			}
-		}
-		out.close();
-		System.out.println("Total time of generation: " + (System.currentTimeMillis() - time) + " ms");
-	}
+        const time = Date.now();
+        for (let g = 1; g <= Settings.maxGalaxies; g++) {
+            generator.buildGalaxy(g);
+            const systems = generator.getSystems();
+            for (const system of systems) {
+                system.computeReachableSystems(systems);
+                out += `${g}\t${formatSystemInfo(system)}`;
+            }
+        }
+        fs.writeFileSync(outputFile, out);
+        console.log(`Total time of generation: ${Date.now() - time} ms`);
+    }
 
-	private String formatSystemInfo(SystemData system) {
-		return system.getIndex() + "\t" +
-			system.getName() + "\t" +
-			system.getX() + "\t" +
-			system.getY() + "\t" +
-			system.getTechLevel() + "\t" +
-			system.getEconomy().getDescription() + "\t" +
-			system.getGovernment().getDescription() + "\t" +
-			system.getInhabitants() + "\t" +
-			system.getGnp() + "\t" +
-			system.getDiameter() + "\t" +
-			system.getPopulation() + "\t" +
-			system.descriptionCode + "\t" +
-			system.getDescription() + "\t" +
-			(system.getReachableSystems().length - 1) + "\n";
-	}
+    function formatSystemInfo(system: SystemData): string {
+        return `${system.getIndex()}\t${system.getName()}\t${system.getX()}\t${system.getY()}\t` +
+            `${system.getTechLevel()}\t${system.getEconomy().getDescription()}\t` +
+            `${system.getGovernment().getDescription()}\t${system.getInhabitants()}\t` +
+            `${system.getGnp()}\t${system.getDiameter()}\t${system.getPopulation()}\t` +
+            `${system.descriptionCode}\t${system.getDescription()}\t` +
+            `${system.getReachableSystems().length - 1}\n`;
+    }
 
-	@Test
-	public void findPlanetTest() throws IOException {
-		AliteLog.setInstance(new TestLogger());
-		L.getInstance().addDefaultResource(new File("res\\values").getAbsolutePath(), FileInputStream::new, "");
-		L.getInstance().setLocale(Locale.US);
+    test('findPlanetTest', () => {
+        AliteLog.setInstance(new TestLogger());
+        // L.getInstance().addDefaultResource(path.resolve("res/values"), fs.createReadStream, "");
+        // L.getInstance().setLocale('en-US');
 
-		Settings.maxGalaxies = GalaxyGenerator.EXTENDED_GALAXY_COUNT;
-		generator.buildGalaxy(8);
-		Assert.assertEquals(6, generator.findGalaxyOfPlanet("Gearge"));
-		Assert.assertEquals(244, generator.findGalaxyOfPlanet("estia"));
-		Assert.assertEquals(245, generator.findGalaxyOfPlanet("ususaon"));
-	}
-}
+        Settings.maxGalaxies = GalaxyGenerator.EXTENDED_GALAXY_COUNT;
+        generator.buildGalaxy(8);
+        expect(generator.findGalaxyOfPlanet("Gearge")).toBe(6);
+        expect(generator.findGalaxyOfPlanet("estia")).toBe(244);
+        expect(generator.findGalaxyOfPlanet("ususaon")).toBe(245);
+    });
+});

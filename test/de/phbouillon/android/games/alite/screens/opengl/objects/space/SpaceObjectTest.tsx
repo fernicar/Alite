@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,51 +16,51 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import org.junit.Assert;
-import org.junit.Test;
+// Assuming a testing framework like Jest or Vitest is in use
+describe('SpaceObject', () => {
+    const NUMBER_OF_RUNS = 1000;
 
-public class SpaceObjectTest {
+    const createRandomEnemyAlgorithm = (extraShip: number): number => {
+        const type = Math.floor(Math.random() * 100);
+        if (type === 0) { // 1%
+            return 11; // CobraMkIII
+        }
+        if (type < 3) { // 2%
+            return 12; // CobraMkI
+        }
+        return Math.floor(Math.random() * (9 + (extraShip === 5 || extraShip === 8 ? 0 : 2)));
+    };
 
-	private static final int NUMBER_OF_RUNS = 1000;
+    const checkBetween = (value: number, min: number, max: number): string => {
+        const percentage = 100.0 * value / NUMBER_OF_RUNS;
+        return percentage >= min && percentage <= max ? "" :
+            min === max ? min.toString() : `between ${min}% and ${max}%`;
+    };
 
-	@Test
-	public void createRandomEnemy() {
-		int[] galaxySeed = new int[] { 0x5, 0xB, 0x6, 0xD, 0xA, 0x4, 0x9, 0x2 };
-		int[] statistics = new int[13];
-		for (int galaxy=0; galaxy<8; galaxy++) {
-			for (int i=0; i<13; i++) {
-				statistics[i] = 0;
-			}
-			for (int i = 0; i< NUMBER_OF_RUNS; i++) {
-				statistics[createRandomEnemyAlgorithm(galaxySeed[galaxy])]++;
-			}
-			for (int i=0; i<13; i++) {
-				String msg = i == 11 ?  checkBetween(statistics[i], 0, 3) :
-						i == 12 ?  checkBetween(statistics[i], 0, 4) :
-						galaxy == 0 ? i >= 9 ? checkBetween(statistics[i], 0, 0) :
-						checkBetween(statistics[i], 6, 15) : checkBetween(statistics[i], 4, 13);
-				if (!msg.isEmpty()) {
-					Assert.fail("Galaxy #" + (galaxy + 1) + " type " + i + " should be " + msg +
-						" but was " + 100.0f * statistics[i] / NUMBER_OF_RUNS);
-				}
-			}
-		}
-	}
+    test('createRandomEnemy', () => {
+        const galaxySeed = [0x5, 0xB, 0x6, 0xD, 0xA, 0x4, 0x9, 0x2];
+        const statistics = new Array(13).fill(0);
 
-	private int createRandomEnemyAlgorithm(int extraShip) {
-		int type = (int) (Math.random() * 100);
-		if (type == 0) { // 1%
-			return 11; // CobraMkIII
-		}
-		if (type < 3) { // 2%
-			return 12; // CobraMkI
-		}
-		return (int) (Math.random() * (9 + (extraShip == 5 || extraShip == 8 ? 0 : 2)));
-	}
+        for (let galaxy = 0; galaxy < 8; galaxy++) {
+            for (let i = 0; i < 13; i++) {
+                statistics[i] = 0;
+            }
 
-	private String checkBetween(int value, int min, int max) {
-		value = (int) (100.0f * value / NUMBER_OF_RUNS);
-		return value >= min && value <= max ? "" :
-			min == max ? Integer.toString(min) : "between " + min + "% and " + max + "%";
-	}
-}
+            for (let i = 0; i < NUMBER_OF_RUNS; i++) {
+                statistics[createRandomEnemyAlgorithm(galaxySeed[galaxy])]++;
+            }
+
+            for (let i = 0; i < 13; i++) {
+                const msg = i === 11 ? checkBetween(statistics[i], 0, 3) :
+                    i === 12 ? checkBetween(statistics[i], 0, 4) :
+                        galaxy === 0 ? i >= 9 ? checkBetween(statistics[i], 0, 0) :
+                            checkBetween(statistics[i], 6, 15) : checkBetween(statistics[i], 4, 13);
+
+                if (msg) {
+                    const percentage = 100.0 * statistics[i] / NUMBER_OF_RUNS;
+                    fail(`Galaxy #${galaxy + 1} type ${i} should be ${msg} but was ${percentage}`);
+                }
+            }
+        }
+    });
+});

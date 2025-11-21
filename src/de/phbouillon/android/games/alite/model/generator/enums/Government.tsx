@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.generator.enums;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,31 +16,31 @@ package de.phbouillon.android.games.alite.model.generator.enums;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
+import { L } from "../../../../L";
 
-public enum Government {
-	ANARCHY,
-	FEUDAL,
-	MULTI_GOVERNMENT,
-	DICTATORSHIP,
-	COMMUNIST,
-	CONFEDERACY,
-	DEMOCRACY,
-	CORPORATE_STATE;
+export enum Government {
+    ANARCHY,
+    FEUDAL,
+    MULTI_GOVERNMENT,
+    DICTATORSHIP,
+    COMMUNIST,
+    CONFEDERACY,
+    DEMOCRACY,
+    CORPORATE_STATE
+}
 
-	public String getDescription() {
-		switch (this) {
-			case ANARCHY: return L.string(R.string.government_anarchy);
-			case FEUDAL: return L.string(R.string.government_feudal);
-			case MULTI_GOVERNMENT: return L.string(R.string.government_multi_government);
-			case DICTATORSHIP: return L.string(R.string.government_dictatorship);
-			case COMMUNIST: return L.string(R.string.government_communist);
-			case CONFEDERACY: return L.string(R.string.government_confederacy);
-			case DEMOCRACY: return L.string(R.string.government_democracy);
-			case CORPORATE_STATE: return L.string(R.string.government_corporate_state);
-		}
-		return "";
-	}
-
+export namespace Government {
+    export function getDescription(government: Government): string {
+        switch (government) {
+            case Government.ANARCHY: return L.string("government_anarchy");
+            case Government.FEUDAL: return L.string("government_feudal");
+            case Government.MULTI_GOVERNMENT: return L.string("government_multi_government");
+            case Government.DICTATORSHIP: return L.string("government_dictatorship");
+            case Government.COMMUNIST: return L.string("government_communist");
+            case Government.CONFEDERACY: return L.string("government_confederacy");
+            case Government.DEMOCRACY: return L.string("government_democracy");
+            case Government.CORPORATE_STATE: return L.string("government_corporate_state");
+        }
+        return "";
+    }
 }

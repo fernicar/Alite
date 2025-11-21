@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.ingame;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,94 +16,87 @@ package de.phbouillon.android.games.alite.screens.opengl.ingame;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.framework.Timer;
+import { IMethodHook } from "../../../../../framework/IMethodHook";
+import { Timer } from "../../../../../framework/Timer";
 
-import java.io.Serializable;
+export class TimedEvent {
+    private static readonly serialVersionUID = -7887711369377615831;
 
-public class TimedEvent implements Serializable {
-	private static final long serialVersionUID = -7887711369377615831L;
+    private readonly timer = new Timer().setAutoReset();
+    delay: number;
+    private method: IMethodHook;
+    private pauseTime: number;
+    private remove: boolean;
+    protected locked: boolean;
 
-	private final Timer timer = new Timer().setAutoReset();
-	long delay;
-	private IMethodHook method;
-	private long pauseTime;
-	private boolean remove;
-	protected boolean locked;
+    constructor(delayInNanos: number, lastExecutionTime = -1, pauseTime = -1) {
+        this.delay = delayInNanos;
+        if (lastExecutionTime !== -1) {
+            this.timer.setTimer(lastExecutionTime);
+        }
+        this.pauseTime = pauseTime;
+    }
 
-	public TimedEvent(long delayInNanos) {
-		this(delayInNanos, -1, -1);
-	}
+    public addAlarmEvent(method: IMethodHook): TimedEvent {
+        this.method = method;
+        return this;
+    }
 
-	public TimedEvent(long delayInNanos, long lastExecutionTime, long pauseTime) {
-		delay = delayInNanos;
-		if (lastExecutionTime != -1) {
-			timer.setTimer(lastExecutionTime);
-		}
-		this.pauseTime = pauseTime;
-	}
+    public remove(): void {
+        this.remove = true;
+    }
 
-	public TimedEvent addAlarmEvent(IMethodHook method) {
-		this.method = method;
-		return this;
-	}
+    mustBeRemoved(): boolean {
+        return this.remove;
+    }
 
-	public void remove() {
-		remove = true;
-	}
+    updateDelay(newDelay: number): void {
+        this.delay = newDelay;
+        this.timer.reset();
+        this.pauseTime = -1;
+    }
 
-	boolean mustBeRemoved() {
-		return remove;
-	}
+    timeToNextTrigger(): number {
+        return this.delay - this.timer.getPassedNanos();
+    }
+    getLastExecutionTime(): number {
+        return this.timer.getTimer();
+    }
 
-	void updateDelay(long newDelay) {
-		delay = newDelay;
-		timer.reset();
-		pauseTime = -1;
-	}
+    perform(): void {
+        if (this.pauseTime === -1 && !this.locked) {
+            if (this.timer.hasPassedNanos(this.delay)) {
+                if (this.method != null) this.method.execute(0);
+            }
+        }
+    }
 
-	long timeToNextTrigger() {
-		return delay - timer.getPassedNanos();
-	}
-	long getLastExecutionTime() {
-		return timer.getTimer();
-	}
+    public lock(): void {
+        this.locked = true;
+    }
 
-	void perform() {
-		if (pauseTime == -1 && !locked) {
-			if (timer.hasPassedNanos(delay)) {
-				if (method != null) method.execute(0);
-			}
-		}
-	}
+    unlock(): void {
+        if (this.locked) {
+            this.timer.reset();
+            this.locked = false;
+        }
+    }
 
-	public void lock() {
-		locked = true;
-	}
+    public pause(): number {
+        if (this.pauseTime === -1) {
+            this.pauseTime = this.timer.getPassedNanos();
+        }
+        return this.pauseTime;
+    }
 
-	void unlock() {
-		if (locked) {
-			timer.reset();
-			locked = false;
-		}
-	}
+    public isPaused(): boolean {
+        return this.pauseTime !== -1;
+    }
 
-	public long pause() {
-		if (pauseTime == -1) {
-			pauseTime = timer.getPassedNanos();
-		}
-		return pauseTime;
-	}
-
-	public boolean isPaused() {
-		return pauseTime != -1;
-	}
-
-	public void resume() {
-		if (pauseTime != -1) {
-			timer.setTimer(pauseTime);
-			pauseTime = -1;
-		}
-	}
-
+    public resume(): void {
+        if (this.pauseTime !== -1) {
+            this.timer.setTimer(this.pauseTime);
+            this.pauseTime = -1;
+        }
+    }
 }

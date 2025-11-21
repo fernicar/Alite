@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,286 +16,264 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.model.CommanderData;
+import { AliteConfig } from "../../AliteConfig";
+import { Assets } from "../../Assets";
+import { Button } from "../../Button";
+import { L } from "../../L";
+import { R } from "../../R";
+import { ScreenCodes } from "../../ScreenCodes";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { CommanderData } from "../../model/CommanderData";
+import { AliteScreen } from "../AliteScreen";
+import { DiskScreen } from "./DiskScreen";
+import { StatusScreen } from "./StatusScreen";
+import { Graphics } from "../../../../framework/Graphics";
+import { TouchEvent } from "../../../../framework/Input";
 
 //This screen never needs to be serialized, as it is not part of the InGame state.
-public class CatalogScreen extends AliteScreen {
-	protected String title;
-	private final List<Button> button = new ArrayList<>();
-	List<CommanderData> commanderData = new ArrayList<>();
-	private Button btnListForward;
-	private Button btnListBackward;
-	private Button btnBack;
-	Button deleteButton;
-	int currentPage = 0;
-	boolean confirmDelete = false;
-	List<CommanderData> selectedCommanderData = new ArrayList<>();
-	List<Integer> pendingSelectionIndices = null;
-	private boolean pendingShowMessage = false;
+export class CatalogScreen extends AliteScreen {
+    protected title: string;
+    private readonly button: Button[] = [];
+    private commanderData: CommanderData[] = [];
+    private btnListForward: Button;
+    private btnListBackward: Button;
+    private btnBack: Button;
+    private deleteButton: Button;
+    private currentPage: number = 0;
+    private confirmDelete: boolean = false;
+    private selectedCommanderData: CommanderData[] = [];
+    private pendingSelectionIndices: number[] = null;
+    private pendingShowMessage: boolean = false;
 
-	CatalogScreen(String title) {
-		this.title = title;
-	}
+    constructor(titleOrDis: string | any) {
+        super();
+        if (typeof titleOrDis === 'string') {
+            this.title = titleOrDis;
+        } else {
+            // Deserialization logic
+            this.title = L.string(R.string.title_catalog);
+            this.currentPage = titleOrDis.readInt();
+            this.confirmDelete = titleOrDis.readBoolean();
+            const selectionCount = titleOrDis.readInt();
+            if (selectionCount !== 0) {
+                this.pendingSelectionIndices = [];
+                for (let i = 0; i < selectionCount; i++) {
+                    this.pendingSelectionIndices.push(titleOrDis.readInt());
+                }
+            }
+            this.pendingShowMessage = titleOrDis.readBoolean();
+        }
+    }
 
-	public CatalogScreen(final DataInputStream dis) throws IOException {
-		title = L.string(R.string.title_catalog);
-		currentPage = dis.readInt();
-		confirmDelete = dis.readBoolean();
-		int selectionCount = dis.readInt();
-		if (selectionCount != 0) {
-			pendingSelectionIndices = new ArrayList<>();
-			for (int i = 0; i < selectionCount; i++) {
-				pendingSelectionIndices.add(dis.readInt());
-			}
-		}
-		pendingShowMessage = dis.readBoolean();
-	}
 
-	@Override
-	public void activate() {
-		File[] commanders = game.getCommanderFiles();
-		btnListBackward = Button.createGradientRegularButton(1400, 950, 100, 100, "<");
-		btnListForward = Button.createGradientRegularButton(1550, 950, 100, 100, ">");
-		btnBack = Button.createGradientRegularButton(1100, 950, 250, 100, L.string(R.string.options_back));
+    public async activate(): Promise<void> {
+        const commanders = await this.game.getCommanderFiles();
+        this.btnListBackward = Button.createGradientRegularButton(1400, 950, 100, 100, "<");
+        this.btnListForward = Button.createGradientRegularButton(1550, 950, 100, 100, ">");
+        this.btnBack = Button.createGradientRegularButton(1100, 950, 250, 100, L.string(R.string.options_back));
 
-		button.clear();
-		commanderData.clear();
-		if (commanders != null) {
-			for (int i = 0; i < commanders.length; i++) {
-				CommanderData data = game.getQuickCommanderInfo(commanders[i].getName());
-				if (data != null) {
-					Button b = Button.createPictureButton(20, 210 + (i % 5) * 140, 1680, 120,
-						pics.get("catalog_button"))
-						.setPushedBackground(pics.get("catalog_button_pushed"))
-						.setText("")
-						.setFont(Assets.regularFont);
-					button.add(b);
-					commanderData.add(data);
-				}
-			}
-		}
-		Collections.sort(commanderData, (c1, c2) -> {
-			if (c1 == null) {
-				return c2 == null ? 0 : -1;
-			}
-			if (c2 == null) {
-				return 1;
-			}
-			// Autosave always comes first
-			if (c1.isAutoSaved()) {
-				return c2.isAutoSaved() ? Long.compare(game.getFileIO().fileLastModifiedDate(c2.getFileName()),
-					game.getFileIO().fileLastModifiedDate(c1.getFileName())) : -1;
-			}
-			if (c2.isAutoSaved()) {
-				return 1;
-			}
-			String n1 = c1.getName() == null ? "" : c1.getName();
-			String n2 = c2.getName() == null ? "" : c2.getName();
-			int result = n1.compareTo(n2);
-			// We want to display longer game times first.
-			return result == 0 ? c1.getGameTime() < c2.getGameTime() ? 1 : -1 : result;
-		});
+        this.button.length = 0;
+        this.commanderData.length = 0;
+        if (commanders != null) {
+            for (let i = 0; i < commanders.length; i++) {
+                const data = await this.game.getQuickCommanderInfo(commanders[i].name);
+                if (data != null) {
+                    const b = Button.createPictureButton(20, 210 + (i % 5) * 140, 1680, 120,
+                        this.pics.get("catalog_button"))
+                        .setPushedBackground(this.pics.get("catalog_button_pushed"))
+                        .setText("")
+                        .setFont(Assets.regularFont);
+                    this.button.push(b);
+                    this.commanderData.push(data);
+                }
+            }
+        }
 
-		deleteButton = Button.createGradientRegularButton(50, 950, 600, 100, L.string(R.string.cmdr_btn_delete_one));
-		if (pendingSelectionIndices != null) {
-			int n = commanderData.size();
-			for (int i: pendingSelectionIndices) {
-				if (i >= 0 && i < n) {
-					selectedCommanderData.add(commanderData.get(i));
-					button.get(i).setPixmap(pics.get("catalog_button_selected")).setSelected(true);
-				}
-			}
-			pendingSelectionIndices.clear();
-		}
-		if (pendingShowMessage) {
-			if (selectedCommanderData.size() == 1) {
-				showQuestionDialog(L.string(R.string.cmdr_delete_one_confirm, selectedCommanderData.get(0).getName()));
-			} else {
-				showQuestionDialog(L.string(R.string.cmdr_delete_more_confirm));
-			}
-			pendingShowMessage = false;
-		}
-		confirmDelete = true;
-	}
+        this.commanderData.sort((c1, c2) => {
+            if (c1 == null) {
+                return c2 == null ? 0 : -1;
+            }
+            if (c2 == null) {
+                return 1;
+            }
+            // Autosave always comes first
+            if (c1.isAutoSaved()) {
+                return c2.isAutoSaved() ? this.game.getFileIO().fileLastModifiedDate(c2.getFileName()) -
+                    this.game.getFileIO().fileLastModifiedDate(c1.getFileName()) : -1;
+            }
+            if (c2.isAutoSaved()) {
+                return 1;
+            }
+            const n1: string = c1.getName() == null ? "" : c1.getName();
+            const n2: string = c2.getName() == null ? "" : c2.getName();
+            const result: number = n1.localeCompare(n2);
+            // We want to display longer game times first.
+            return result === 0 ? c1.getGameTime() < c2.getGameTime() ? 1 : -1 : result;
+        });
 
-	protected static CatalogScreen initializeScreen(final DataInputStream dis, CatalogScreen screen) throws IOException {
-		screen.currentPage = dis.readInt();
-		screen.confirmDelete = dis.readBoolean();
-		int selectionCount = dis.readInt();
-		if (selectionCount != 0) {
-			screen.pendingSelectionIndices = new ArrayList<>();
-			for (int i = 0; i < selectionCount; i++) {
-				screen.pendingSelectionIndices.add(dis.readInt());
-			}
-		}
-		screen.pendingShowMessage = dis.readBoolean();
-		return screen;
-	}
+        this.deleteButton = Button.createGradientRegularButton(50, 950, 600, 100, L.string(R.string.cmdr_btn_delete_one));
+        if (this.pendingSelectionIndices != null) {
+            const n: number = this.commanderData.length;
+            for (const i of this.pendingSelectionIndices) {
+                if (i >= 0 && i < n) {
+                    this.selectedCommanderData.push(this.commanderData[i]);
+                    this.button[i].setPixmap(this.pics.get("catalog_button_selected")).setSelected(true);
+                }
+            }
+            this.pendingSelectionIndices.length = 0;
+        }
+        if (this.pendingShowMessage) {
+            if (this.selectedCommanderData.length === 1) {
+                this.showQuestionDialog(L.string(R.string.cmdr_delete_one_confirm, this.selectedCommanderData[0].getName()));
+            } else {
+                this.showQuestionDialog(L.string(R.string.cmdr_delete_more_confirm));
+            }
+            this.pendingShowMessage = false;
+        }
+        this.confirmDelete = true;
+    }
 
-	@Override
-	public void saveScreenState(DataOutputStream dos) throws IOException {
-		dos.writeInt(currentPage);
-		dos.writeBoolean(confirmDelete);
-		dos.writeInt(selectedCommanderData.size());
-		for (CommanderData c: selectedCommanderData) {
-			// This is o(n^2), but does it really matter?
-			// The commander data could be transformed to a map, and doing it
-			// here would simplify to o(n) (2 * n, to be precise), but even if
-			// someone has stored 10000 commanders and wants to delete all of them,
-			// this lookup isn't the problem.
-			dos.writeInt(commanderData.indexOf(c));
-		}
-		dos.writeBoolean(isMessageDialogActive());
-	}
+    public saveScreenState(dos: any): void {
+        dos.writeInt(this.currentPage);
+        dos.writeBoolean(this.confirmDelete);
+        dos.writeInt(this.selectedCommanderData.length);
+        for (const c of this.selectedCommanderData) {
+            dos.writeInt(this.commanderData.indexOf(c));
+        }
+        dos.writeBoolean(this.isMessageDialogActive());
+    }
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		if (btnBack.isPressed(touch)) {
-			newScreen = new DiskScreen();
-			return;
-		}
-		if (btnListForward.isPressed(touch)) {
-			currentPage++;
-		}
-		if (btnListBackward.isPressed(touch)) {
-			currentPage--;
-		}
-		for (int i = currentPage * 5; i < Math.min(currentPage * 5 + 5, button.size()); i++) {
-			if (button.get(i).isPressed(touch)) {
-				boolean select = !selectedCommanderData.contains(commanderData.get(i));
-				if (select) {
-					selectedCommanderData.add(commanderData.get(i));
-					button.get(i).setPixmap(pics.get("catalog_button_selected"));
-				} else {
-					selectedCommanderData.remove(commanderData.get(i));
-					button.get(i).setPixmap(pics.get("catalog_button"));
-				}
-				button.get(i).setSelected(select);
-				if (deleteButton != null) {
-					deleteButton.setText(selectedCommanderData.size() > 1 ?
-						L.string(R.string.cmdr_btn_delete_more) : L.string(R.string.cmdr_btn_delete_one));
-				}
-			}
-		}
-		if (deleteButton != null && deleteButton.isPressed(touch) && messageResult == RESULT_NONE) {
-			if (selectedCommanderData.size() == 1) {
-				showQuestionDialog(L.string(R.string.cmdr_delete_one_confirm, selectedCommanderData.get(0).getName()));
-			} else {
-				showQuestionDialog(L.string(R.string.cmdr_delete_more_confirm));
-			}
-			confirmDelete = true;
-		}
+    protected processTouch(touch: TouchEvent): void {
+        if (this.btnBack.isPressed(touch)) {
+            this.newScreen = new DiskScreen();
+            return;
+        }
+        if (this.btnListForward.isPressed(touch)) {
+            this.currentPage++;
+        }
+        if (this.btnListBackward.isPressed(touch)) {
+            this.currentPage--;
+        }
+        for (let i = this.currentPage * 5; i < Math.min(this.currentPage * 5 + 5, this.button.length); i++) {
+            if (this.button[i].isPressed(touch)) {
+                const select: boolean = !this.selectedCommanderData.includes(this.commanderData[i]);
+                if (select) {
+                    this.selectedCommanderData.push(this.commanderData[i]);
+                    this.button[i].setPixmap(this.pics.get("catalog_button_selected"));
+                } else {
+                    this.selectedCommanderData = this.selectedCommanderData.filter(item => item !== this.commanderData[i]);
+                    this.button[i].setPixmap(this.pics.get("catalog_button"));
+                }
+                this.button[i].setSelected(select);
+                if (this.deleteButton != null) {
+                    this.deleteButton.setText(this.selectedCommanderData.length > 1 ?
+                        L.string(R.string.cmdr_btn_delete_more) : L.string(R.string.cmdr_btn_delete_one));
+                }
+            }
+        }
+        if (this.deleteButton != null && this.deleteButton.isPressed(touch) && this.messageResult === AliteScreen.RESULT_NONE) {
+            if (this.selectedCommanderData.length === 1) {
+                this.showQuestionDialog(L.string(R.string.cmdr_delete_one_confirm, this.selectedCommanderData[0].getName()));
+            } else {
+                this.showQuestionDialog(L.string(R.string.cmdr_delete_more_confirm));
+            }
+            this.confirmDelete = true;
+        }
 
-		if (touch.type != TouchEvent.TOUCH_UP) {
-			return;
-		}
-		if (confirmDelete && messageResult != RESULT_NONE) {
-			confirmDelete = false;
-			if (messageResult == RESULT_YES) {
-				for (CommanderData cd: selectedCommanderData) {
-					game.getFileIO().deleteFile(cd.getFileName());
-				}
-				newScreen = new CatalogScreen(L.string(R.string.title_catalog));
-			}
-			clearSelection();
-			messageResult = RESULT_NONE;
-		}
-	}
+        if (touch.type !== TouchEvent.TOUCH_UP) {
+            return;
+        }
+        if (this.confirmDelete && this.messageResult !== AliteScreen.RESULT_NONE) {
+            this.confirmDelete = false;
+            if (this.messageResult === AliteScreen.RESULT_YES) {
+                for (const cd of this.selectedCommanderData) {
+                    this.game.getFileIO().deleteFile(cd.getFileName());
+                }
+                this.newScreen = new CatalogScreen(L.string(R.string.title_catalog));
+            }
+            this.clearSelection();
+            this.messageResult = AliteScreen.RESULT_NONE;
+        }
+    }
 
-	void clearSelection() {
-		for (Button aButton : button) {
-			if (aButton.isSelected()) {
-				aButton.setPixmap(pics.get("catalog_button")).setSelected(false);
-			}
-		}
-		selectedCommanderData.clear();
-	}
+    private clearSelection(): void {
+        for (const aButton of this.button) {
+            if (aButton.isSelected()) {
+                aButton.setPixmap(this.pics.get("catalog_button")).setSelected(false);
+            }
+        }
+        this.selectedCommanderData.length = 0;
+    }
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayTitle(title);
+    public present(deltaTime: number): void {
+        const g: Graphics = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayTitle(this.title);
 
-		g.diagonalGradientRect(20, 100, 1680, 80, ColorScheme.get(ColorScheme.COLOR_BACKGROUND_DARK), ColorScheme.get(ColorScheme.COLOR_BACKGROUND_LIGHT));
-		g.rec3d(20, 100, 1680, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
-		g.drawText(L.string(R.string.cmdr_table_name), 50, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
-		g.drawText(L.string(R.string.cmdr_table_system), 600, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
-		g.drawText(L.string(R.string.cmdr_table_time), 850, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
-		g.drawText(L.string(R.string.cmdr_table_score), 1100, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
-		g.drawText(L.string(R.string.cmdr_table_rating), 1300, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
-		g.rec3d(20, 100, 1680, 80, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
-		g.rec3d(590, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
-		g.rec3d(840, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
-		g.rec3d(1090, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
-		g.rec3d(1290, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
+        g.diagonalGradientRect(20, 100, 1680, 80, ColorScheme.get(ColorScheme.COLOR_BACKGROUND_DARK), ColorScheme.get(ColorScheme.COLOR_BACKGROUND_LIGHT));
+        g.rec3d(20, 100, 1680, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
+        g.drawText(L.string(R.string.cmdr_table_name), 50, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
+        g.drawText(L.string(R.string.cmdr_table_system), 600, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
+        g.drawText(L.string(R.string.cmdr_table_time), 850, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
+        g.drawText(L.string(R.string.cmdr_table_score), 1100, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
+        g.drawText(L.string(R.string.cmdr_table_rating), 1300, 160, ColorScheme.get(ColorScheme.COLOR_MAIN_TEXT), Assets.titleFont);
+        g.rec3d(20, 100, 1680, 80, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
+        g.rec3d(590, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
+        g.rec3d(840, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
+        g.rec3d(1090, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
+        g.rec3d(1290, 100, 3, 800, 3, ColorScheme.get(ColorScheme.COLOR_FRAME_LIGHT), ColorScheme.get(ColorScheme.COLOR_FRAME_DARK));
 
-		for (int i = currentPage * 5; i < Math.min(currentPage * 5 + 5, button.size()); i++) {
-			button.get(i).render(g);
-			CommanderData data = commanderData.get(i);
-			int color = ColorScheme.get(i % 2 == 0 ? ColorScheme.COLOR_MESSAGE : ColorScheme.COLOR_MAIN_TEXT);
-			String textToDisplay = data.getName();
-			String suffix = "";
-			if (data.isAutoSaved()) {
-				int no = 0;
-				if (data.getFileName().contains("1")) {
-					no = 1;
-				} else if (data.getFileName().contains("2")) {
-					no = 2;
-				}
-				textToDisplay = "[" +  L.string(R.string.cmdr_file_autosave) + " " + (no + 1) + "] " + data.getName();
-			}
-			while (g.getTextWidth(textToDisplay + suffix, Assets.regularFont) > 500) {
-				textToDisplay = textToDisplay.substring(0, textToDisplay.length() - 1);
-				suffix = "...";
-			}
-			g.drawText(textToDisplay + suffix, 50, 285 + (i % 5) * 140, color, Assets.regularFont);
-			g.drawText(data.getDockedSystem(), 600, 285 + (i % 5) * 140, color, Assets.regularFont);
-			String timeString = StatusScreen.getGameTime(data.getGameTime());
-			g.drawText(timeString, AliteConfig.SCREEN_HEIGHT - g.getTextWidth(timeString, Assets.regularFont),
-				285 + (i % 5) * 140, color, Assets.regularFont);
-			g.drawText("" + data.getPoints(), 1280 - g.getTextWidth("" + data.getPoints(), Assets.regularFont),
-				285 + (i % 5) * 140, color, Assets.regularFont);
-			g.drawText(data.getRating().getName(), 1300, 285 + (i % 5) * 140, color, Assets.regularFont);
-		}
-		btnListBackward.render(g);
-		btnListForward.render(g);
-		btnBack.render(g);
-		if (deleteButton != null) {
-			deleteButton.render(g);
-		}
-	}
+        for (let i = this.currentPage * 5; i < Math.min(this.currentPage * 5 + 5, this.button.length); i++) {
+            this.button[i].render(g);
+            const data: CommanderData = this.commanderData[i];
+            const color: number = ColorScheme.get(i % 2 === 0 ? ColorScheme.COLOR_MESSAGE : ColorScheme.COLOR_MAIN_TEXT);
+            let textToDisplay: string = data.getName();
+            let suffix: string = "";
+            if (data.isAutoSaved()) {
+                let no: number = 0;
+                if (data.getFileName().includes("1")) {
+                    no = 1;
+                } else if (data.getFileName().includes("2")) {
+                    no = 2;
+                }
+                textToDisplay = "[" + L.string(R.string.cmdr_file_autosave) + " " + (no + 1) + "] " + data.getName();
+            }
+            while (g.getTextWidth(textToDisplay + suffix, Assets.regularFont) > 500) {
+                textToDisplay = textToDisplay.substring(0, textToDisplay.length - 1);
+                suffix = "...";
+            }
+            g.drawText(textToDisplay + suffix, 50, 285 + (i % 5) * 140, color, Assets.regularFont);
+            g.drawText(data.getDockedSystem(), 600, 285 + (i % 5) * 140, color, Assets.regularFont);
+            const timeString: string = StatusScreen.getGameTime(data.getGameTime());
+            g.drawText(timeString, AliteConfig.SCREEN_HEIGHT - g.getTextWidth(timeString, Assets.regularFont),
+                285 + (i % 5) * 140, color, Assets.regularFont);
+            g.drawText("" + data.getPoints(), 1280 - g.getTextWidth("" + data.getPoints(), Assets.regularFont),
+                285 + (i % 5) * 140, color, Assets.regularFont);
+            g.drawText(data.getRating().getName(), 1300, 285 + (i % 5) * 140, color, Assets.regularFont);
+        }
+        this.btnListBackward.render(g);
+        this.btnListForward.render(g);
+        this.btnBack.render(g);
+        if (this.deleteButton != null) {
+            this.deleteButton.render(g);
+        }
+    }
 
-	@Override
-	public void update(float deltaTime) {
-		super.update(deltaTime);
-		btnListBackward.setVisible(currentPage > 0);
-		btnListForward.setVisible(currentPage < (button.size() - 1) / 5);
-		if (deleteButton != null) {
-			deleteButton.setVisible(!selectedCommanderData.isEmpty());
-		}
-	}
+    public update(deltaTime: number): void {
+        super.update(deltaTime);
+        this.btnListBackward.setVisible(this.currentPage > 0);
+        this.btnListForward.setVisible(this.currentPage < (this.button.length - 1) / 5);
+        if (this.deleteButton != null) {
+            this.deleteButton.setVisible(this.selectedCommanderData.length > 0);
+        }
+    }
 
-	@Override
-	public void loadAssets() {
-		addPictures("catalog_button", "catalog_button_selected", "catalog_button_pushed");
-		super.loadAssets();
-	}
+    public loadAssets(): void {
+        this.addPictures("catalog_button", "catalog_button_selected", "catalog_button_pushed");
+        super.loadAssets();
+    }
 
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.CATALOG_SCREEN;
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.CATALOG_SCREEN;
+    }
 }

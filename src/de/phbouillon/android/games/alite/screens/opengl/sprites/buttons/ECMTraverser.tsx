@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,43 +16,42 @@ package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.Alite;
-import de.phbouillon.android.games.alite.Assets;
-import de.phbouillon.android.games.alite.SoundManager;
-import de.phbouillon.android.games.alite.model.EquipmentStore;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectType;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.SpaceObjectTraverser;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.InGameManager;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
+import { Alite } from "../../../../Alite";
+import { Assets } from "../../../../Assets";
+import { SoundManager } from "../../../../SoundManager";
+import { EquipmentStore } from "../../../../model/EquipmentStore";
+import { ObjectType } from "../../ingame/ObjectType";
+import { SpaceObjectTraverser } from "../../ingame/SpaceObjectTraverser";
+import { InGameManager } from "../../ingame/InGameManager";
+import { SpaceObject } from "../../objects/space/SpaceObject";
 
-public class ECMTraverser implements SpaceObjectTraverser {
-	private static final long serialVersionUID = 2946553436076856776L;
-	private final InGameManager inGame;
-	private boolean missileDestroyed = false;
+export class ECMTraverser implements SpaceObjectTraverser {
+    private static readonly serialVersionUID = 2946553436076856776;
+    private readonly inGame: InGameManager;
+    private missileDestroyed = false;
 
-	ECMTraverser(final InGameManager inGame) {
-		this.inGame = inGame;
-	}
+    constructor(inGame: InGameManager) {
+        this.inGame = inGame;
+    }
 
-	public void reset() {
-		missileDestroyed = false;
-	}
+    public reset(): void {
+        this.missileDestroyed = false;
+    }
 
-	@Override
-	public boolean handle(SpaceObject so) {
-		if (so.getType() == ObjectType.Missile && !so.mustBeRemoved() && so.getTarget() == inGame.getShip()) {
-			if (!missileDestroyed) {
-				SoundManager.play(Assets.ecm);
-				if (inGame.getHud() != null) {
-					inGame.getHud().showECM();
-				}
-				missileDestroyed = true;
-			}
-			so.setHullStrength(0);
-			inGame.getLaserManager().explode(so);
-			Alite.get().getPlayer().increaseKillCount(so, EquipmentStore.ECM_SYSTEM, false);
-			inGame.reduceShipEnergy(3);
-		}
-		return false;
-	}
+    public handle(so: SpaceObject): boolean {
+        if (so.getType() === ObjectType.Missile && !so.mustBeRemoved() && so.getTarget() === this.inGame.getShip()) {
+            if (!this.missileDestroyed) {
+                SoundManager.play(Assets.ecm);
+                if (this.inGame.getHud() != null) {
+                    this.inGame.getHud().showECM();
+                }
+                this.missileDestroyed = true;
+            }
+            so.setHullStrength(0);
+            this.inGame.getLaserManager().explode(so);
+            Alite.getInstance().getPlayer().increaseKillCount(so, EquipmentStore.ECM_SYSTEM, false);
+            this.inGame.reduceShipEnergy(3);
+        }
+        return false;
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,336 +16,210 @@ package de.phbouillon.android.games.alite;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.*;
-import java.util.Locale;
+import { AliteGame } from "./AliteGame";
+import { L } from "./L";
+import { R } from "./R";
+import { AliteLog } from "./AliteLog";
+import { AliteStartManager } from "./AliteStartManager";
+import { Medal } from "./model/Medal";
+import { Settings } from "./Settings";
 
-import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.Intent;
-import android.media.MediaFormat;
-import android.media.MediaPlayer;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.view.Gravity;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.FrameLayout;
-import android.widget.TextView;
-import android.widget.VideoView;
-import de.phbouillon.android.framework.FileIO;
-import de.phbouillon.android.framework.impl.AndroidFileIO;
-import de.phbouillon.android.games.alite.io.ObbExpansionsManager;
-import de.phbouillon.android.games.alite.model.Medal;
+// This class is a temporary placeholder to manage the intro video playback.
+// In a web environment, this would be handled by the main application logic,
+// likely showing a video element and then hiding it to reveal the main game canvas.
+export class AliteIntro {
+    private static readonly DIRECTORY_INTRO = "intro/";
+    private static readonly INTRO_FILE_NAME = "alite_intro";
+    private static readonly INTRO_SUBTITLE_FILE_NAME = AliteIntro.INTRO_FILE_NAME + ".vtt";
 
-public class AliteIntro extends Activity implements OnClickListener {
-	private static final String DIRECTORY_INTRO = "intro" + File.separatorChar;
-	private static final String INTRO_FILE_NAME = "alite_intro";
-	private static final String INTRO_SUBTITLE_FILE_NAME = INTRO_FILE_NAME + ".vtt";
+    private stopPosition: number = 0;
+    private aliteStarted: boolean = false;
+    private videoView: HTMLVideoElement;
+    private subtitleOn: boolean = false;
+    private subtitleStateChangedAfter3s: boolean = false;
+    private container: HTMLElement;
 
-	private MediaPlayer mediaPlayer;
-	private boolean isInPlayableState;
-	private boolean needsToPlay;
-	private boolean isResumed;
-	private int stopPosition;
-	private boolean aliteStarted;
-	private FileIO fileIO;
-	private VideoView videoView;
-	// Subtitle must re-add after resume thus indices have to be determined again
-	private int subtitleIndex;
-	private boolean subtitleOn;
-	private boolean subtitleStateChangedAfter3s;
+    constructor(container: HTMLElement) {
+        this.container = container;
+    }
 
-	private String getAbsolutePath(String file) {
-		try {
-			for (int i = 0; i < 10; i++) {
-				if (ObbExpansionsManager.getInstance() == null) {
-					break;
-				}
-				String path = ObbExpansionsManager.getInstance().getMainRoot();
-				if (path == null) {
-					AliteLog.d("AliteIntro playback", "OBB not yet mounted. Trying again in 200ms");
-					Thread.sleep(200);
-					continue;
-				}
-				AliteLog.d("AliteIntro playback", "Getting path for file: " + path + file);
-				return path + file;
-			}
-		} catch (InterruptedException ignored) { }
-		throw new RuntimeException("Mount OBB Error");
-	}
+    public async start(): Promise<void> {
+        // Initialize basic services like in the original onCreate
+        // AliteLog.initialize(...); // Assuming initialized elsewhere
+        // Settings.load(...); // Assuming loaded elsewhere
+        L.getInstance().setLocale(Settings.locale);
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		Intent intent = getIntent();
-		fileIO = new AndroidFileIO(this);
-		if (intent == null || !intent.getBooleanExtra(Alite.LOG_IS_INITIALIZED, false)) {
-			AliteLog.initialize(fileIO);
-		}
-		AliteLog.d("AliteIntro.onCreate", "onCreate begin");
-		final Thread.UncaughtExceptionHandler oldHandler = Thread.getDefaultUncaughtExceptionHandler();
-		Thread.setDefaultUncaughtExceptionHandler((paramThread, paramThrowable) -> {
-			AliteLog.e("Uncaught Exception (AliteIntro)",
-				"Message: " + (paramThrowable == null ? "<null>" : paramThrowable.getMessage()), paramThrowable);
-			if (oldHandler != null) {
-				oldHandler.uncaughtException(paramThread, paramThrowable);
-			} else {
-				System.exit(2);
-			}
-		});
-		Settings.load(fileIO);
-		L.getInstance(this).setLocale(Settings.locale);
-		Settings.setOrientation(this);
+        // Set up the uncaught exception handler for the browser
+        const oldHandler = window.onerror;
+        window.onerror = (message, source, lineno, colno, error) => {
+            AliteLog.e("Uncaught Exception (AliteIntro)", `Message: ${error?.message}`, error);
+            if (oldHandler) {
+                return oldHandler(message, source, lineno, colno, error);
+            }
+            return false;
+        };
 
-		if (savedInstanceState != null) {
-			stopPosition = savedInstanceState.getInt("position");
-		}
-		setContentView(R.layout.activity_play_intro);
+        this.initializeVideoView();
 
-		if (videoView == null) {
-			initializeVideoView();
-		}
+        this.videoView.src = this.getIntroName();
+        this.addSubtitle();
 
-		videoView.setVideoPath(getIntroName());
-		addSubtitle();
+        this.videoView.load();
+        this.videoView.play().catch(e => AliteLog.w("AliteIntro", "Video playback failed to start automatically.", e));
 
-		videoView.setMediaController(null);
-		videoView.requestFocus();
-		AliteLog.d("AliteIntro.onCreate", "onCreate end");
-	}
+        AliteLog.d("AliteIntro.start", "Intro setup complete");
+    }
 
-	private String getIntroName() {
-		AliteLog.d("AliteIntro.Video Playback", "Using video resolution 1920x1080");
-		try {
-			return AliteConfig.HAS_EXTENSION_APK ? saveFile() :
-				"android.resource://de.phbouillon.android.games.alite/" + AliteConfig.ALITE_INTRO_B1920;
-		} catch (IOException ignored) {
-			return null;
-		}
-	}
+    private getIntroName(): string {
+        AliteLog.d("AliteIntro.Video Playback", "Using video resolution 1920x1080");
+        // Path to the video file in the web assets
+        return `${AliteIntro.DIRECTORY_INTRO}${AliteIntro.INTRO_FILE_NAME}_b1920.mp4`;
+    }
 
-	private String saveFile() throws IOException {
-		File f = L.saveFile(new FileInputStream(getAbsolutePath(DIRECTORY_INTRO + INTRO_FILE_NAME + "_b1920.mp4")));
-		f.deleteOnExit();
-		return f.getPath();
-	}
+    private addSubtitle(): void {
+        const currentLocale = L.getInstance().getCurrentLocale();
+        const subtitleSrc = `${AliteIntro.DIRECTORY_INTRO}${AliteIntro.INTRO_SUBTITLE_FILE_NAME}`; // Assuming one subtitle file for now
 
-	private void addSubtitle() {
-		if (Locale.US.getLanguage().equals(L.getInstance().getCurrentLocale().getLanguage())) {
-			addNativeSubtitle();
-			return;
-		}
-		try {
-			videoView.addSubtitleSource(L.raw(DIRECTORY_INTRO, INTRO_SUBTITLE_FILE_NAME),
-				MediaFormat.createSubtitleFormat("text/vtt", L.getInstance().getCurrentLocale().getLanguage()));
-		} catch (IOException ignored) {
-			AliteLog.d("AliteIntro.Subtitle","Localized subtitle file not found");
-		}
-	}
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = currentLocale;
+        track.srclang = currentLocale;
+        track.src = subtitleSrc;
+        track.default = true;
 
-	private void addNativeSubtitle() {
-		File file = new File(getAbsolutePath(DIRECTORY_INTRO + INTRO_SUBTITLE_FILE_NAME));
-		if (!file.exists()) {
-			AliteLog.d("AliteIntro.Subtitle","No native subtitle file found");
-			return;
-		}
-		try {
-			videoView.addSubtitleSource(new FileInputStream(file),
-				MediaFormat.createSubtitleFormat("text/vtt", Locale.US.getLanguage()));
-		} catch (FileNotFoundException e) {
-			AliteLog.e("AliteIntro.Subtitle","Native subtitle opening error", e);
-		}
-	}
+        this.videoView.appendChild(track);
+        this.videoView.textTracks[0].mode = 'hidden'; // Initially off
+        this.subtitleOn = false;
+    }
 
-	@SuppressLint("ClickableViewAccessibility")
-	private void initializeVideoView() {
-		videoView = new VideoView(this);
-		FrameLayout layout = findViewById(R.id.introContainer);
-		layout.addView(videoView);
-		videoView.getRootView().setBackgroundColor(getResources().getColor(android.R.color.black));
-		videoView.setVisibility(View.VISIBLE);
-		videoView.setOnTouchListener((v, event) -> {
-			if (v instanceof VideoView) {
-				startAlite((VideoView) v);
-				return true;
-			}
-			return v.performClick();
-		});
-		videoView.setOnCompletionListener(mp -> {
-			if (!subtitleStateChangedAfter3s) {
-				Medal.setGameLevelBitValue(Medal.MEDAL_ID_INTRO, subtitleOn ? 2 : 1);
-			}
-			startAlite(videoView);
-		});
 
-		AliteLog.d("AliteIntro.Creating Error Listener", "EL created");
-		videoView.setOnErrorListener((mp, what, extra) -> {
-			String cause = "Undocumented cause: " + what;
-			switch (what) {
-				case MediaPlayer.MEDIA_ERROR_UNKNOWN: cause = "Unknown cause."; break;
-				case MediaPlayer.MEDIA_ERROR_SERVER_DIED: cause = "Server died."; break;
-				case MediaPlayer.MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK: cause = "Not valid for progressive playback."; break;
-			}
+    private initializeVideoView(): void {
+        this.videoView = document.createElement('video');
+        this.videoView.style.width = '100%';
+        this.videoView.style.height = '100%';
+        this.videoView.style.objectFit = 'cover';
+        this.videoView.style.position = 'absolute';
+        this.videoView.style.top = '0';
+        this.videoView.style.left = '0';
+        this.videoView.style.backgroundColor = 'black';
+        this.videoView.setAttribute('playsinline', 'true'); // For iOS
 
-			String details = "Undocumented error details: " + extra;
-			switch (extra) {
-				case MediaPlayer.MEDIA_ERROR_IO: details = "Media Error IO."; break;
-				case MediaPlayer.MEDIA_ERROR_MALFORMED: details = "Media Error Malformed."; break;
-				case MediaPlayer.MEDIA_ERROR_UNSUPPORTED: details = "Media Error Unsupported."; break;
-				case MediaPlayer.MEDIA_ERROR_TIMED_OUT: details = "Media Error Timed Out."; break;
-				case MediaPlayer.MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK: details = "Not valid for progressive playback."; break;
-			}
-			AliteLog.d("AliteIntro.Intro Playback Error", "Couldn't playback intro. " + cause + " " + details);
-			TextView errorText = new TextView(this);
-			errorText.setGravity(Gravity.CENTER);
-			errorText.setText(L.string(R.string.intro_error, cause, details));
-			errorText.setOnClickListener(this);
-			layout.addView(errorText);
-			return true;
-		});
+        this.container.appendChild(this.videoView);
 
-		videoView.setOnPreparedListener(mp -> {
-			AliteLog.d("AliteIntro.VideoView", "VideoView is prepared. Playing video.");
-			mediaPlayer = mp;
-			subtitleIndex = -1;
-			MediaPlayer.TrackInfo[] tracks = mediaPlayer.getTrackInfo();
-			for (int i=0; i < tracks.length; i++) {
-				if (tracks[i].getTrackType() == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_SUBTITLE) {
-					subtitleIndex = i;
-				}
-			}
-			if (subtitleIndex >= 0) {
-				findViewById(R.id.subtitle).bringToFront();
-				mediaPlayer.deselectTrack(subtitleIndex);
-				selectOrDeselectTrack(true);
-			}
-			new AsyncTask<Void, Void, Void>() {
-				@Override
-				protected Void doInBackground(Void... params) {
-					isInPlayableState = true;
-					if (needsToPlay && isResumed) {
-						continuePlaying();
-						needsToPlay = false;
-					}
-					return null;
-				}
-			}.execute(null, null, null);
-		});
-	}
+        this.videoView.addEventListener('click', () => {
+            this.startAlite();
+        });
 
-	private void selectOrDeselectTrack(boolean select) {
-		if (subtitleOn) {
-			if (select) {
-				mediaPlayer.selectTrack(subtitleIndex);
-			} else {
-				mediaPlayer.deselectTrack(subtitleIndex);
-			}
-		}
-	}
+        this.videoView.addEventListener('ended', () => {
+            if (!this.subtitleStateChangedAfter3s) {
+                Medal.setGameLevelBitValue(Medal.MEDAL_ID_INTRO, this.subtitleOn ? 2 : 1);
+            }
+            this.startAlite();
+        });
 
-	@Override
-	protected void onPause() {
-		AliteLog.d("AliteIntro.onPause", "onPause begin");
-		if (videoView == null) {
-			AliteLog.e("AliteIntro", "Video view is not found. [onPause]");
-			super.onPause();
-			isResumed = false;
-			return;
-		}
-		stopPosition = videoView.getCurrentPosition();
-		videoView.pause();
-		super.onPause();
-		isResumed = false;
-		AliteLog.d("AliteIntro.onPause", "onPause end");
-	}
+        this.videoView.addEventListener('error', (e) => {
+            const error = this.videoView.error;
+            const cause = `Code ${error?.code}: ${error?.message}`;
+            AliteLog.d("AliteIntro.Intro Playback Error", `Couldn't playback intro. ${cause}`);
 
-	@Override
-	public void onSaveInstanceState(Bundle savedInstanceState) {
-		super.onSaveInstanceState(savedInstanceState);
-		savedInstanceState.putInt("position", stopPosition);
-	}
+            const errorText = document.createElement('div');
+            errorText.style.position = 'absolute';
+            errorText.style.color = 'white';
+            errorText.style.textAlign = 'center';
+            errorText.style.top = '50%';
+            errorText.style.width = '100%';
+            errorText.style.transform = 'translateY(-50%)';
+            errorText.innerText = L.string(R.string.intro_error, cause, '');
+            errorText.addEventListener('click', () => this.startAlite());
+            this.container.appendChild(errorText);
+        });
 
-	@Override
-	public void onWindowFocusChanged(boolean hasFocus) {
-		super.onWindowFocusChanged(hasFocus);
-		Settings.setImmersion(videoView);
-	}
+        this.videoView.addEventListener('canplay', () => {
+            AliteLog.d("AliteIntro.VideoView", "VideoView is prepared. Playing video.");
+            if (this.stopPosition > 0) {
+                this.videoView.currentTime = this.stopPosition;
+            }
+            this.videoView.play();
+        });
 
-	@Override
-	public void onClick(View v) {
-		if (v.getId() == R.id.subtitle) {
-			if (mediaPlayer != null && subtitleIndex >= 0) {
-				selectOrDeselectTrack(false);
-				if (videoView.getCurrentPosition() > 3000) {
-					subtitleStateChangedAfter3s = true;
-				}
-				subtitleOn = !subtitleOn;
-				selectOrDeselectTrack(true);
-				findViewById(R.id.subtitle).setBackgroundResource(subtitleOn ? R.drawable.subtitle_nat : R.drawable.subtitle);
-			}
-			return;
-		}
-		// Error message
-		startAlite(null);
-	}
+        this.createSubtitleButton();
+        this.addVisibilityHandlers();
+    }
 
-	private synchronized void startAlite(VideoView videoView) {
-		AliteLog.d("AliteIntro.startAlite call", "startAlite begin");
-		if (aliteStarted) {
-			return;
-		}
-		aliteStarted = true;
-		boolean result = fileIO.deleteFile(AliteStartManager.ALITE_STATE_FILE);
-		AliteLog.d("AliteIntro.Deleting state file", "Delete result: " + result);
-		if (videoView != null) {
-			videoView.stopPlayback();
-			videoView.pause();
-			videoView.clearAnimation();
-			videoView.clearFocus();
-		}
-		if (mediaPlayer != null) {
-			mediaPlayer.release();
-			mediaPlayer = null;
-		}
-		Settings.save(fileIO);
-		AliteLog.d("AliteIntro.startAlite", "Calling Alite start intent");
-		Intent intent = new Intent(this, Alite.class);
-		intent.putExtra(Alite.LOG_IS_INITIALIZED, true);
-		AliteLog.d("AliteIntro.startAlite", "Calling startActivity");
-		startActivityForResult(intent, 0);
-		finish();
-		AliteLog.d("AliteIntro.startAlite", "Done");
-	}
+    private createSubtitleButton(): void {
+        const subtitleButton = document.createElement('button');
+        subtitleButton.id = 'subtitle';
+        subtitleButton.style.position = 'absolute';
+        subtitleButton.style.bottom = '20px';
+        subtitleButton.style.right = '20px';
+        subtitleButton.style.zIndex = '10';
+        subtitleButton.style.padding = '10px';
+        subtitleButton.style.border = 'none';
+        subtitleButton.style.cursor = 'pointer';
+        // The background images would need to be handled via CSS classes
+        subtitleButton.classList.add(this.subtitleOn ? 'subtitle_nat' : 'subtitle');
 
-	@Override
-	protected void onResume() {
-		AliteLog.d("AliteIntro.onResume", "onResume begin, isInPlayableState = " + isInPlayableState);
-		super.onResume();
-		isResumed = true;
-		if (videoView == null) {
-			AliteLog.e("AliteIntro", "Video view is not found. [onResume]");
-			isInPlayableState = false;
-		}
-		if (isInPlayableState) {
-			continuePlaying();
-		} else {
-			needsToPlay = true;
-		}
-		AliteLog.d("AliteIntro.onResume", "onResume end");
-	}
+        subtitleButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent video click
+            if (this.videoView.textTracks.length > 0) {
+                if (this.videoView.currentTime > 3) {
+                    this.subtitleStateChangedAfter3s = true;
+                }
+                this.subtitleOn = !this.subtitleOn;
+                this.videoView.textTracks[0].mode = this.subtitleOn ? 'showing' : 'hidden';
+                subtitleButton.classList.toggle('subtitle_nat', this.subtitleOn);
+                subtitleButton.classList.toggle('subtitle', !this.subtitleOn);
+            }
+        });
 
-	private void continuePlaying() {
-		addSubtitle();
-		videoView.seekTo(stopPosition);
-		videoView.start();
-	}
+        this.container.appendChild(subtitleButton);
+    }
 
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		if (resultCode == AliteStartManager.ALITE_RESULT_CLOSE_ALL) {
-			setResult(AliteStartManager.ALITE_RESULT_CLOSE_ALL);
-			finish();
-		}
-		super.onActivityResult(requestCode, resultCode, data);
-	}
+
+    private addVisibilityHandlers(): void {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.onPause();
+            } else {
+                this.onResume();
+            }
+        });
+    }
+
+    private onPause(): void {
+        if (!this.videoView || this.aliteStarted) return;
+        AliteLog.d("AliteIntro.onPause", "onPause begin");
+        this.stopPosition = this.videoView.currentTime;
+        this.videoView.pause();
+        AliteLog.d("AliteIntro.onPause", "onPause end");
+    }
+
+    private onResume(): void {
+        if (!this.videoView || this.aliteStarted) return;
+        AliteLog.d("AliteIntro.onResume", "onResume begin");
+        this.videoView.play();
+        AliteLog.d("AliteIntro.onResume", "onResume end");
+    }
+
+
+    private startAlite(): void {
+        AliteLog.d("AliteIntro.startAlite call", "startAlite begin");
+        if (this.aliteStarted) {
+            return;
+        }
+        this.aliteStarted = true;
+
+        // Clean up video player
+        this.videoView.pause();
+        this.container.innerHTML = ''; // Remove video and buttons
+
+        AliteLog.d("AliteIntro.startAlite", "Starting Alite game instance");
+
+        // Instead of starting an intent, we create the main game object
+        // and tell it to start.
+        const game = new AliteGame(this.container);
+        game.start();
+
+        AliteLog.d("AliteIntro.startAlite", "Done");
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.oxp;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,47 +16,44 @@ package de.phbouillon.android.games.alite.oxp;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.text.ParseException;
+import { PropertyListParser } from "../../../../../../../com/dd/plist/PropertyListParser";
+import { AliteLog } from "../../AliteLog";
+import { ResourceStream } from "../../../../../../framework/ResourceStream";
+import { NSDictionary } from "../../../../../../../com/dd/plist/NSDictionary";
+import { NSObject } from "../../../../../../../com/dd/plist/NSObject";
+import { NSArray } from "../../../../../../../com/dd/plist/NSArray";
 
-import javax.xml.parsers.ParserConfigurationException;
+export class PListParser {
+    private stream: ResourceStream;
 
-import com.dd.plist.*;
-import de.phbouillon.android.framework.ResourceStream;
-import org.xml.sax.SAXException;
+    constructor(stream: ResourceStream) {
+        this.stream = stream;
+    }
 
-import de.phbouillon.android.games.alite.AliteLog;
+    parseFile(fileName: string): NSDictionary {
+        return this.parseFileInternal(fileName) as NSDictionary;
+    }
 
-class PListParser {
-	private ResourceStream stream;
+    getInputStream(fileName: string): any { // InputStream
+        return this.stream.getStream(fileName);
+    }
 
-	PListParser(ResourceStream stream) {
-		this.stream = stream;
-	}
+    private parseFileInternal(fileName: string): NSObject {
+        try {
+            const is = this.stream.getStream(fileName);
+            // Assuming PropertyListParser.parse can handle a stream-like object or byte array
+            const dictionary = PropertyListParser.parse(is);
+            // is.close(); // Not applicable in JS streams in the same way
+            return dictionary;
+        } catch (e) {
+            if (e instanceof Error) {
+                AliteLog.e("Error reading PList", e.message, e);
+            }
+        }
+        return null;
+    }
 
-	NSDictionary parseFile(String fileName) throws IOException {
-		return (NSDictionary) parseFileInternal(fileName);
-	}
-
-	InputStream getInputStream(String fileName) throws IOException {
-		return stream.getStream(fileName);
-	}
-
-	private NSObject parseFileInternal(String fileName) throws IOException {
-		try {
-			InputStream is = stream.getStream(fileName);
-			NSObject dictionary = PropertyListParser.parse(is);
-			is.close();
-			return dictionary;
-		} catch (PropertyListFormatException | ParseException | ParserConfigurationException | SAXException e) {
-			AliteLog.e("Error reading PList", e.getMessage(), e);
-		}
-		return null;
-	}
-
-	NSArray parseArrayFile(String fileName) throws IOException {
-		return (NSArray) parseFileInternal(fileName);
-	}
-
+    parseArrayFile(fileName: string): NSArray {
+        return this.parseFileInternal(fileName) as NSArray;
+    }
 }

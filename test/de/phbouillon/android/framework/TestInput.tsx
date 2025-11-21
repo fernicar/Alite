@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,77 +16,62 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.util.ArrayList;
-import java.util.List;
+import { Input, TouchEvent } from "../../../../../../src/de/phbouillon/android/framework/Input";
 
-public class TestInput implements Input {
-	@Override
-	public boolean isTouchDown(int pointer) {
-		return false;
-	}
+export class TestInput implements Input {
+    public isTouchDown(pointer: number): boolean {
+        return false;
+    }
 
-	@Override
-	public int getTouchCount() {
-		return 0;
-	}
+    public getTouchCount(): number {
+        return 0;
+    }
 
-	@Override
-	public int getTouchX(int pointer) {
-		return 0;
-	}
+    public getTouchX(pointer: number): number {
+        return 0;
+    }
 
-	@Override
-	public int getTouchY(int pointer) {
-		return 0;
-	}
+    public getTouchY(pointer: number): number {
+        return 0;
+    }
 
-	@Override
-	public void setZoomFactor(float zoom) {
+    public setZoomFactor(zoom: number): void {
 
-	}
+    }
 
-	@Override
-	public float getAccelX() {
-		return 0;
-	}
+    public getAccelX(): number {
+        return 0;
+    }
 
-	@Override
-	public float getAccelY() {
-		return 0;
-	}
+    public getAccelY(): number {
+        return 0;
+    }
 
-	@Override
-	public float getAccelZ() {
-		return 0;
-	}
+    public getAccelZ(): number {
+        return 0;
+    }
 
-	@Override
-	public List<TouchEvent> getTouchEvents() {
-		return new ArrayList<>();
-	}
+    public getTouchEvents(): TouchEvent[] {
+        return [];
+    }
 
-	@Override
-	public List<TouchEvent> getAndRetainTouchEvents() {
-		return null;
-	}
+    public getAndRetainTouchEvents(): TouchEvent[] {
+        return null;
+    }
 
-	@Override
-	public void dispose() {
+    public dispose(): void {
 
-	}
+    }
 
-	@Override
-	public boolean isDisposed() {
-		return false;
-	}
+    public isDisposed(): boolean {
+        return false;
+    }
 
-	@Override
-	public void switchAccelerometerHandler() {
+    public switchAccelerometerHandler(): void {
 
-	}
+    }
 
-	@Override
-	public boolean isAlternativeAccelerometer() {
-		return false;
-	}
+    public isAlternativeAccelerometer(): boolean {
+        return false;
+    }
 }

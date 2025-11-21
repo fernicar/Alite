@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,108 +16,102 @@ package de.phbouillon.android.games.alite;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import { TouchEvent } from "../framework/Input";
+import { Screen } from "../framework/Screen";
+import { Alite } from "./Alite";
+import { Button } from "./Button";
 
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.Screen;
+export class ButtonRegistry {
+    private static readonly instance = new ButtonRegistry();
 
-public class ButtonRegistry {
-	private static final ButtonRegistry instance = new ButtonRegistry();
+    private readonly buttons: Map<Screen, Set<Button>> = new Map();
+    private readonly messageButtons: Set<Button> = new Set();
+    private messageButton: boolean;
 
-	private final Map<Screen, Set<Button>> buttons = new HashMap<>();
-	private final Set<Button> messageButtons = new HashSet<>();
-	private boolean messageButton;
+    private constructor() {
+    }
 
-	private ButtonRegistry() {
-	}
+    public static get(): ButtonRegistry {
+        return ButtonRegistry.instance;
+    }
 
-	public static ButtonRegistry get() {
-		return instance;
-	}
+    public setNextAsMessageButton(): void {
+        this.messageButton = true;
+    }
 
-	public void setNextAsMessageButton() {
-		messageButton = true;
-	}
+    public clearMessageButtons(): void {
+        this.messageButtons.clear();
+    }
 
-	public void clearMessageButtons() {
-		messageButtons.clear();
-	}
+    public addButton(button: Button): void {
+        if (this.messageButton) {
+            this.messageButtons.add(button);
+            this.messageButton = false;
+            return;
+        }
+        let definedButtons = this.buttons.get(Alite.getInstance().getCurrentScreen());
+        if (definedButtons == null) {
+            definedButtons = new Set();
+            this.buttons.set(Alite.getInstance().getCurrentScreen(), definedButtons);
+        }
+        definedButtons.add(button);
+    }
 
-	public void addButton(Button button) {
-		if (messageButton) {
-			messageButtons.add(button);
-			messageButton = false;
-			return;
-		}
-		Set <Button> definedButtons = buttons.get(Alite.get().getCurrentScreen());
-		if (definedButtons == null) {
-			definedButtons = new HashSet<>();
-		}
-		definedButtons.add(button);
-		buttons.put(Alite.get().getCurrentScreen(), definedButtons);
-	}
+    public removeButtons(definingScreen: Screen): void {
+        this.buttons.delete(definingScreen);
+    }
 
-	public void removeButtons(Screen definingScreen) {
-		buttons.remove(definingScreen);
-	}
+    public removeButton(definingScreen: Screen, button: Button): void {
+        const definedButtons = this.buttons.get(definingScreen);
+        if (definedButtons != null) {
+            definedButtons.delete(button);
+        }
+    }
 
-	public void removeButton(Screen definingScreen, Button button) {
-		Set <Button> definedButtons = buttons.get(definingScreen);
-		if (definedButtons != null) {
-			definedButtons.remove(button);
-		}
-	}
+    public processTouch(touch: TouchEvent): number {
+        let result = Number.MAX_VALUE;
+        const set = this.messageButtons.size === 0 ? this.buttons.get(Alite.getInstance().getCurrentScreen()) : this.messageButtons;
+        if (set == null) {
+            return result;
+        }
 
-	public int processTouch(TouchEvent touch) {
-		int result = Integer.MAX_VALUE;
-		Set<Button> set = messageButtons.isEmpty() ? buttons.get(Alite.get().getCurrentScreen()) : messageButtons;
-		if (set == null) {
-			return result;
-		}
+        if (this.messageButtons.size > 0) {
+            const screenButtons = this.buttons.get(Alite.getInstance().getCurrentScreen());
+            if (screenButtons != null) {
+                for (const b of screenButtons) {
+                    b.clearFingerDown();
+                }
+            }
+        }
 
-		// To prevent the button from sticking in the pressed position.
-		// This can occur when message dialog is quickly opened immediately after a button is pressed
-		if (!messageButtons.isEmpty()) {
-			Set<Button> screenButtons = buttons.get(Alite.get().getCurrentScreen());
-			if (screenButtons != null) {
-				for (Button b: screenButtons) {
-					b.clearFingerDown();
-				}
-			}
-		}
+        if (touch.type === TouchEvent.TOUCH_DOWN) {
+            for (const b of set) {
+                if (b.isTouched(touch.x, touch.y)) {
+                    b.fingerDown(touch.pointer);
+                }
+            }
+            return result;
+        }
 
-		if (touch.type == TouchEvent.TOUCH_DOWN) {
-			for (Button b: set) {
-				if (b.isTouched(touch.x, touch.y)) {
-					b.fingerDown(touch.pointer);
-				}
-			}
-			return result;
-		}
+        if (touch.type === TouchEvent.TOUCH_DRAGGED) {
+            for (const b of set) {
+                if (b.isTouched(touch.x, touch.y)) {
+                    b.fingerDown(touch.pointer);
+                } else {
+                    b.fingerUp(touch.pointer);
+                }
+            }
+            return result;
+        }
 
-		if (touch.type == TouchEvent.TOUCH_DRAGGED) {
-			for (Button b : set) {
-				if (b.isTouched(touch.x, touch.y)) {
-					b.fingerDown(touch.pointer);
-				} else {
-					b.fingerUp(touch.pointer);
-				}
-			}
-			return result;
-		}
-
-		if (touch.type == TouchEvent.TOUCH_UP) {
-			for (Button b : set) {
-				if (b.isTouched(touch.x, touch.y)) {
-					b.fingerUp(touch.pointer);
-					result = b.getCommand();
-				}
-			}
-		}
-		return result;
-	}
-
+        if (touch.type === TouchEvent.TOUCH_UP) {
+            for (const b of set) {
+                if (b.isTouched(touch.x, touch.y)) {
+                    b.fingerUp(touch.pointer);
+                    result = b.getCommand();
+                }
+            }
+        }
+        return result;
+    }
 }

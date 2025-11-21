@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.sprites;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,88 +16,87 @@ package de.phbouillon.android.games.alite.screens.opengl.sprites;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.Rect;
-import de.phbouillon.android.framework.impl.gl.Sprite;
-import de.phbouillon.android.games.alite.Alite;
+import { TouchEvent } from "../../../../../framework/Input";
+import { Rect } from "../../../../../framework/Rect";
+import { Sprite } from "../../../../../framework/impl/gl/Sprite";
+import { Alite } from "../../../Alite";
+import { AliteHud } from "./AliteHud";
 
-import java.io.Serializable;
+export abstract class ShipController {
+    private static readonly serialVersionUID = 1603088074583149n;
+    private accelY: number = 0;
+    private accelZ: number = 0;
 
-public abstract class ShipController implements Serializable {
-	private static final long serialVersionUID = 1603088074583149L;
-	private float accelY;
-	private float accelZ;
+    protected genSprite(name: string, r: Rect): Sprite {
+        // Careful: Rect is used as (x, y) - (width, height) here... So right and bottom are really width and height!
+        return new Sprite(r.left, r.top, r.right, r.bottom,
+            Alite.getInstance().getTextureManager().getSprite(AliteHud.TEXTURE_FILE, name), AliteHud.TEXTURE_FILE);
+    }
 
-	protected final Sprite genSprite(String name, Rect r) {
-		// Careful: Rect is used as (x, y) - (width, height) here... So right and bottom are really width and height!
-		return new Sprite((int) r.left, (int) r.top, (int) r.right, (int) r.bottom,
-			Alite.get().getTextureManager().getSprite(AliteHud.TEXTURE_FILE, name), AliteHud.TEXTURE_FILE);
-	}
+    public getZ(): number {
+        return this.accelZ;
+    }
 
+    public getY(): number {
+        return this.accelY;
+    }
 
-	final float getZ() {
-		return accelZ;
-	}
+    public update(deltaTime: number): void {
+        if (this.isLeft()) { // left
+            this.accelY += deltaTime * (this.accelY < 0 ? 5 : 1.66);
+            if (this.accelY > 2) {
+                this.accelY = 2;
+            }
+        } else if (this.isRight()) { // right
+            this.accelY -= deltaTime * (this.accelY > 0 ? 5 : 1.66);
+            if (this.accelY < -2) {
+                this.accelY = -2;
+            }
+        } else {
+            if (this.accelY > 0) {
+                this.accelY -= deltaTime * 3.33;
+                if (this.accelY < 0) {
+                    this.accelY = 0.0;
+                }
+            } else if (this.accelY < 0) {
+                this.accelY += deltaTime * 3.33;
+                if (this.accelY > 0) {
+                    this.accelY = 0.0;
+                }
+            }
+        }
 
-	final float getY() {
-		return accelY;
-	}
+        if (this.isUp()) { // up
+            this.accelZ -= deltaTime * (this.accelZ > 0 ? 5 : 1.66);
+            if (this.accelZ < -2) {
+                this.accelZ = -2;
+            }
+        } else if (this.isDown()) { // down
+            this.accelZ += deltaTime * (this.accelZ < 0 ? 5 : 1.66);
+            if (this.accelZ > 2) {
+                this.accelZ = 2;
+            }
+        } else {
+            if (this.accelZ > 0) {
+                this.accelZ -= deltaTime * 3.33;
+                if (this.accelZ < 0) {
+                    this.accelZ = 0.0;
+                }
+            } else if (this.accelZ < 0) {
+                this.accelZ += deltaTime * 3.33;
+                if (this.accelZ > 0) {
+                    this.accelZ = 0.0;
+                }
+            }
+        }
+    }
 
-	final void update(float deltaTime) {
-		if (isLeft()) { // left
-			accelY += deltaTime * (accelY < 0 ? 5 : 1.66f);
-			if (accelY > 2) {
-				accelY = 2;
-			}
-		} else if (isRight()) { // right
-			accelY -= deltaTime * (accelY > 0 ? 5 : 1.66f);
-			if (accelY < -2) {
-				accelY = -2;
-			}
-		} else {
-			if (accelY > 0) {
-				accelY -= deltaTime * 3.33f;
-				if (accelY < 0) {
-					accelY = 0.0f;
-				}
-			} else if (accelY < 0) {
-				accelY += deltaTime * 3.33f;
-				if (accelY > 0) {
-					accelY = 0.0f;
-				}
-			}
-		}
-		if (isUp()) { // up
-			accelZ -= deltaTime * (accelZ > 0 ? 5 : 1.66f);
-			if (accelZ < -2) {
-				accelZ = -2;
-			}
-		} else if (isDown()) { // down
-			accelZ += deltaTime * (accelZ < 0 ? 5 : 1.66f);
-			if (accelZ > 2) {
-				accelZ = 2;
-			}
-		} else {
-			if (accelZ > 0) {
-				accelZ -= deltaTime * 3.33f;
-				if (accelZ < 0) {
-					accelZ = 0.0f;
-				}
-			} else if (accelZ < 0) {
-				accelZ += deltaTime * 3.33f;
-				if (accelZ > 0) {
-					accelZ = 0.0f;
-				}
-			}
-		}
-	}
+    protected abstract isDown(): boolean;
+    protected abstract isUp(): boolean;
+    protected abstract isRight(): boolean;
+    protected abstract isLeft(): boolean;
 
-	protected abstract boolean isDown();
-	protected abstract boolean isUp();
-	protected abstract boolean isRight();
-	protected abstract boolean isLeft();
-
-	abstract boolean handleUI(TouchEvent event);
-	abstract void setDirections(boolean left, boolean right, boolean up, boolean down);
-	abstract void render();
+    abstract handleUI(event: TouchEvent): boolean;
+    abstract setDirections(left: boolean, right: boolean, up: boolean, down: boolean): void;
+    abstract render(): void;
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.generator.enums;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,42 +16,47 @@ package de.phbouillon.android.games.alite.model.generator.enums;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.games.alite.L;
-import de.phbouillon.android.games.alite.R;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
+import { L } from "../../../../L";
+import { ColorScheme } from "../../../../colors/ColorScheme";
 
-public enum Economy {
-	RICH_INDUSTRIAL(ColorScheme.COLOR_RICH_INDUSTRIAL),
-	AVERAGE_INDUSTRIAL(ColorScheme.COLOR_AVERAGE_INDUSTRIAL),
-	POOR_INDUSTRIAL(ColorScheme.COLOR_POOR_INDUSTRIAL),
-	MAINLY_INDUSTRIAL(ColorScheme.COLOR_MAIN_INDUSTRIAL),
-	MAINLY_AGRICULTURAL(ColorScheme.COLOR_MAIN_AGRICULTURAL),
-	RICH_AGRICULTURAL(ColorScheme.COLOR_RICH_AGRICULTURAL),
-	AVERAGE_AGRICULTURAL(ColorScheme.COLOR_AVERAGE_AGRICULTURAL),
-	POOR_AGRICULTURAL(ColorScheme.COLOR_POOR_AGRICULTURAL);
+export enum Economy {
+    RICH_INDUSTRIAL,
+    AVERAGE_INDUSTRIAL,
+    POOR_INDUSTRIAL,
+    MAINLY_INDUSTRIAL,
+    MAINLY_AGRICULTURAL,
+    RICH_AGRICULTURAL,
+    AVERAGE_AGRICULTURAL,
+    POOR_AGRICULTURAL
+}
 
-	private int colorIndex;
+export namespace Economy {
+    const colorIndices = {
+        [Economy.RICH_INDUSTRIAL]: ColorScheme.COLOR_RICH_INDUSTRIAL,
+        [Economy.AVERAGE_INDUSTRIAL]: ColorScheme.COLOR_AVERAGE_INDUSTRIAL,
+        [Economy.POOR_INDUSTRIAL]: ColorScheme.COLOR_POOR_INDUSTRIAL,
+        [Economy.MAINLY_INDUSTRIAL]: ColorScheme.COLOR_MAIN_INDUSTRIAL,
+        [Economy.MAINLY_AGRICULTURAL]: ColorScheme.COLOR_MAIN_AGRICULTURAL,
+        [Economy.RICH_AGRICULTURAL]: ColorScheme.COLOR_RICH_AGRICULTURAL,
+        [Economy.AVERAGE_AGRICULTURAL]: ColorScheme.COLOR_AVERAGE_AGRICULTURAL,
+        [Economy.POOR_AGRICULTURAL]: ColorScheme.COLOR_POOR_AGRICULTURAL
+    };
 
-	Economy(int colorIndex) {
-		this.colorIndex = colorIndex;
-	}
+    export function getDescription(economy: Economy): string {
+        switch (economy) {
+            case Economy.RICH_INDUSTRIAL: return L.string("economy_rich_industrial");
+            case Economy.AVERAGE_INDUSTRIAL: return L.string("economy_average_industrial");
+            case Economy.POOR_INDUSTRIAL: return L.string("economy_poor_industrial");
+            case Economy.MAINLY_INDUSTRIAL: return L.string("economy_mainly_industrial");
+            case Economy.MAINLY_AGRICULTURAL: return L.string("economy_mainly_agricultural");
+            case Economy.RICH_AGRICULTURAL: return L.string("economy_rich_agricultural");
+            case Economy.AVERAGE_AGRICULTURAL: return L.string("economy_average_agricultural");
+            case Economy.POOR_AGRICULTURAL: return L.string("economy_poor_agricultural");
+        }
+        return "";
+    }
 
-	public String getDescription() {
-		switch (this) {
-			case RICH_INDUSTRIAL: return L.string(R.string.economy_rich_industrial);
-			case AVERAGE_INDUSTRIAL: return L.string(R.string.economy_average_industrial);
-			case POOR_INDUSTRIAL: return L.string(R.string.economy_poor_industrial);
-			case MAINLY_INDUSTRIAL: return L.string(R.string.economy_mainly_industrial);
-			case MAINLY_AGRICULTURAL: return L.string(R.string.economy_mainly_agricultural);
-			case RICH_AGRICULTURAL: return L.string(R.string.economy_rich_agricultural);
-			case AVERAGE_AGRICULTURAL: return L.string(R.string.economy_average_agricultural);
-			case POOR_AGRICULTURAL: return L.string(R.string.economy_poor_agricultural);
-		}
-		return "";
-	}
-
-	public int getColor() {
-		return ColorScheme.get(colorIndex);
-	}
-
+    export function getColor(economy: Economy): number {
+        return ColorScheme.get(colorIndices[economy]);
+    }
 }

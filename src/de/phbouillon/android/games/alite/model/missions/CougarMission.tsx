@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.missions;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,84 +16,71 @@ package de.phbouillon.android.games.alite.model.missions;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.model.EquipmentStore;
-import de.phbouillon.android.games.alite.screens.canvas.AliteScreen;
-import de.phbouillon.android.games.alite.screens.canvas.missions.CougarScreen;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectSpawnManager;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectType;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.TimedEvent;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObjectFactory;
+import { IMethodHook } from "../../../framework/IMethodHook";
+import { L } from "../../L";
+import { EquipmentStore } from "../EquipmentStore";
+import { AliteScreen } from "../../screens/canvas/AliteScreen";
+import { CougarScreen } from "../../screens/canvas/missions/CougarScreen";
+import { ObjectSpawnManager } from "../../screens/opengl/ingame/ObjectSpawnManager";
+import { ObjectType } from "../../screens/opengl/ingame/ObjectType";
+import { TimedEvent } from "../../screens/opengl/ingame/TimedEvent";
+import { SpaceObject } from "../../screens/opengl/objects/space/SpaceObject";
+import { SpaceObjectFactory } from "../../screens/opengl/objects/space/SpaceObjectFactory";
+import { Mission } from "./Mission";
 
-public class CougarMission extends Mission {
-	private static final long serialVersionUID = 5999402243478935543L;
+export class CougarMission extends Mission {
+    private static readonly serialVersionUID = 5999402243478935543;
 
-	public static final int ID = 4;
+    public static readonly ID = 4;
 
-	public CougarMission() {
-		super(ID);
-	}
+    constructor() {
+        super(CougarMission.ID);
+    }
 
-	@Override
-	protected void acceptMission(boolean accept) {
-		// The player can't decline this mission...
-		state = 1;
-	}
+    protected acceptMission(accept: boolean): void {
+        // The player can't decline this mission...
+        this.state = 1;
+    }
 
-	@Override
-	public AliteScreen getMissionScreen() {
-		return new CougarScreen(0);
-	}
+    public getMissionScreen(): AliteScreen {
+        return new CougarScreen(0);
+    }
 
-	@Override
-	public TimedEvent getSpawnEvent(final ObjectSpawnManager manager) {
-		if (state != 1 || positionMatchesTarget()) {
-			return null;
-		}
-		TimedEvent event = new TimedEvent(4000000000L);
-		return event.addAlarmEvent(new IMethodHook() {
-			private static final long serialVersionUID = -8640036894816728823L;
+    public getSpawnEvent(manager: ObjectSpawnManager): TimedEvent {
+        if (this.state !== 1 || this.positionMatchesTarget()) {
+            return null;
+        }
+        const event = new TimedEvent(4_000_000_000);
+        return event.addAlarmEvent({
+            execute: (deltaTime: number) => {
+                manager.lockConditionRedEvent();
+                event.remove();
+                manager.conditionRed();
+                const cougar = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.Cougar);
+                const asp1 = SpaceObjectFactory.getInstance().getObjectById("asp_mk_ii");
+                const asp2 = SpaceObjectFactory.getInstance().getObjectById("asp_mk_ii");
+                manager.spawnEnemyAndAttackPlayer(asp1, cougar, asp2);
+                cougar.addDestructionCallback({
+                    execute: (deltaTime: number) => {
+                        const cargo = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.CargoPod);
+                        cargo.setSpecialCargoContent(EquipmentStore.get().getEquipmentById(EquipmentStore.CLOAKING_DEVICE));
+                        cargo.addDestructionCallback({
+                            execute: (deltaTime: number) => {
+                                if (this.alite.getCobra().isEquipmentInstalled(
+                                    EquipmentStore.get().getEquipmentById(EquipmentStore.CLOAKING_DEVICE))) {
+                                    this.missionCompleted();
+                                }
+                            }
+                        });
+                        manager.spawnTumbleObject(cargo, cougar.getPosition());
+                        manager.unlockConditionRedEvent();
+                    }
+                });
+            }
+        });
+    }
 
-			@Override
-			public void execute(float deltaTime) {
-				manager.lockConditionRedEvent();
-				event.remove();
-				manager.conditionRed();
-				final SpaceObject cougar = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.Cougar);
-				SpaceObject asp1 = SpaceObjectFactory.getInstance().getObjectById("asp_mk_ii");
-				SpaceObject asp2 = SpaceObjectFactory.getInstance().getObjectById("asp_mk_ii");
-				manager.spawnEnemyAndAttackPlayer(asp1, cougar, asp2);
-				cougar.addDestructionCallback(new IMethodHook() {
-					private static final long serialVersionUID = -4949764387008051526L;
-
-					@Override
-					public void execute(float deltaTime) {
-						final SpaceObject cargo = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.CargoPod);
-						cargo.setSpecialCargoContent(EquipmentStore.get().getEquipmentById(EquipmentStore.CLOAKING_DEVICE));
-						cargo.addDestructionCallback(new IMethodHook() {
-							public static final long serialVersionUID = -7271468394126708823L;
-
-							@Override
-							public void execute(float deltaTime) {
-								if (alite.getCobra().isEquipmentInstalled(
-									EquipmentStore.get().getEquipmentById(EquipmentStore.CLOAKING_DEVICE))) {
-									missionCompleted();
-								}
-							}
-						});
-						manager.spawnTumbleObject(cargo, cougar.getPosition());
-						manager.unlockConditionRedEvent();
-					}
-
-				});
-			}
-		});
-	}
-
-	@Override
-	public String getObjective() {
-		return L.string(R.string.mission_cougar_obj);
-	}
+    public getObjective(): string {
+        return L.string("mission_cougar_obj");
+    }
 }

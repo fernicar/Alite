@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.objects.space.curves;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,110 +16,106 @@ package de.phbouillon.android.games.alite.screens.opengl.objects.space.curves;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+import { Vector3f } from "../../../../../framework/math/Vector3f";
+import { AliteObject } from "../AliteObject";
+import { CurveParameter } from "./CurveParameter";
 
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.screens.opengl.objects.AliteObject;
+export abstract class Curve extends AliteObject {
+    private static readonly serialVersionUID = 5294825793948465746;
 
-public abstract class Curve extends AliteObject implements Serializable {
-	private static final long serialVersionUID = 5294825793948465746L;
+    private px: CurveParameter;
+    private py: CurveParameter;
+    private pz: CurveParameter;
+    private rx: CurveParameter;
+    private ry: CurveParameter;
+    private rz: CurveParameter;
 
-	private CurveParameter px;
-	private CurveParameter py;
-	private CurveParameter pz;
-	private CurveParameter rx;
-	private CurveParameter ry;
-	private CurveParameter rz;
+    totalLength: number;
 
-	float totalLength;
+    private readonly position = new Vector3f(0, 0, 0);
+    private readonly rotation = new Vector3f(0, 0, 0);
+    private readonly cForward = new Vector3f(0, 0, 0);
+    private readonly cRight = new Vector3f(0, 0, 0);
+    private readonly cUp = new Vector3f(0, 0, 0);
 
-	private final Vector3f position = new Vector3f(0, 0, 0);
-	private final Vector3f rotation = new Vector3f(0, 0, 0);
-	private final Vector3f cForward = new Vector3f(0, 0, 0);
-	private final Vector3f cRight   = new Vector3f(0, 0, 0);
-	private final Vector3f cUp      = new Vector3f(0, 0, 0);
+    protected constructor(id: string) {
+        super(id);
+    }
 
-	protected Curve(String id) {
-		super(id);
-	}
+    public reachedEnd(): boolean {
+        return this.px.reachedEnd() || this.py.reachedEnd() || this.pz.reachedEnd();
+    }
 
-	public boolean reachedEnd() {
-		return px.reachedEnd() || py.reachedEnd() || pz.reachedEnd();
-	}
+    protected initialize(px: CurveParameter, py: CurveParameter, pz: CurveParameter,
+        rx: CurveParameter, ry: CurveParameter, rz: CurveParameter): void {
+        this.px = px;
+        this.py = py;
+        this.pz = pz;
+        this.rx = rx;
+        this.ry = ry;
+        this.rz = rz;
+        this.extractVectors();
+        this.forwardVector.copy(this.cForward);
+        this.rightVector.copy(this.cRight);
+        this.cRight.negate();
+        this.upVector.copy(this.cUp);
+    }
 
-	protected void initialize(CurveParameter px, CurveParameter py, CurveParameter pz,
-		     CurveParameter rx, CurveParameter ry, CurveParameter rz) {
-		this.px = px;
-		this.py = py;
-		this.pz = pz;
-		this.rx = rx;
-		this.ry = ry;
-		this.rz = rz;
-		extractVectors();
-		forwardVector.copy(cForward);
-		rightVector.copy(cRight);
-		cRight.negate();
-		upVector.copy(cUp);
-	}
+    public compute(t: number, checkEnd?: boolean): void {
+        if (checkEnd === undefined) {
+            // R vector um rotation z rotieren und dann up berechnen....
+            this.position.x = this.px.getValue(t);
+            this.position.y = this.py.getValue(t);
+            this.position.z = this.pz.getValue(t);
+            this.rotation.x = this.rx.getValue(t);
+            this.rotation.y = this.ry.getValue(t);
+            this.rotation.z = this.rz.getValue(t);
+            this.position.mulMat(this.getMatrix());
+            const pxE = this.px.end;
+            const pyE = this.py.end;
+            const pzE = this.pz.end;
+            this.cForward.x = this.px.getValue(t + 0.03);
+            this.cForward.y = this.py.getValue(t + 0.03);
+            this.cForward.z = this.pz.getValue(t + 0.03);
+            this.cForward.mulMat(this.getMatrix());
+            this.cForward.sub(this.position);
+            this.cForward.negate();
+            this.cForward.normalize();
+            this.cForward.cross(this.cRight, this.cUp);
+            this.cUp.normalize();
+            this.px.end = pxE;
+            this.py.end = pyE;
+            this.pz.end = pzE;
+        } else {
+            const pxE = this.px.end;
+            const pyE = this.py.end;
+            const pzE = this.pz.end;
+            this.compute(t);
+            if (!checkEnd) {
+                this.px.end = pxE;
+                this.py.end = pyE;
+                this.pz.end = pzE;
+            }
+        }
+    }
 
-	public void compute(float t) {
+    public getCurvePosition(): Vector3f {
+        return this.position;
+    }
 
-		// R vector um rotation z rotieren und dann up berechnen....
+    public getCurveRotation(): Vector3f {
+        return this.rotation;
+    }
 
-		position.x = px.getValue(t);
-		position.y = py.getValue(t);
-		position.z = pz.getValue(t);
-		rotation.x = rx.getValue(t);
-		rotation.y = ry.getValue(t);
-		rotation.z = rz.getValue(t);
-		position.mulMat(getMatrix());
-		boolean pxE = px.end;
-		boolean pyE = py.end;
-		boolean pzE = pz.end;
-		cForward.x = px.getValue(t + 0.03f);
-		cForward.y = py.getValue(t + 0.03f);
-		cForward.z = pz.getValue(t + 0.03f);
-		cForward.mulMat(getMatrix());
-		cForward.sub(position);
-		cForward.negate();
-		cForward.normalize();
-		cForward.cross(cRight, cUp);
-		cUp.normalize();
-		px.end = pxE;
-		py.end = pyE;
-		pz.end = pzE;
-	}
+    public getcForward(): Vector3f {
+        return this.cForward;
+    }
 
-	public void compute(float t, boolean checkEnd) {
-		boolean pxE = px.end;
-		boolean pyE = py.end;
-		boolean pzE = pz.end;
-		compute(t);
-		if (!checkEnd) {
-			px.end = pxE;
-			py.end = pyE;
-			pz.end = pzE;
-		}
-	}
+    public getcUp(): Vector3f {
+        return this.cUp;
+    }
 
-	public Vector3f getCurvePosition() {
-		return position;
-	}
-
-	public Vector3f getCurveRotation() {
-		return rotation;
-	}
-
-	public Vector3f getcForward() {
-		return cForward;
-	}
-
-	public Vector3f getcUp() {
-		return cUp;
-	}
-
-	public Vector3f getcRight() {
-		return cRight;
-	}
-
+    public getcRight(): Vector3f {
+        return this.cRight;
+    }
 }

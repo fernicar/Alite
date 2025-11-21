@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,89 +16,93 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.Serializable;
+export class Timer {
+    private static readonly serialVersionUID = -5442756109577136730;
 
-public class Timer implements Serializable {
-	private static final long serialVersionUID = -5442756109577136730L;
+    // Using performance.now() which is in milliseconds.
+    private static readonly NANOS_IN_MILLI = 1_000_000;
+    private static readonly MICROS_IN_MILLI = 1_000;
+    private static readonly MILLIS = 1;
+    private static readonly SECONDS = 1 / 1000;
 
-	private static final float NANOS = 1;
-	private static final float MICROS = 1000 * NANOS;
-	private static final float MILLIS = 1000 * MICROS;
-	private static final float SECONDS = 1000 * MILLIS;
+    private startTime: number = performance.now();
+    private currentTime: number = this.startTime;
+    private autoReset: boolean;
+    private skipFirstCall: boolean;
 
-	private long startTime = System.nanoTime();
-	private long currentTime = startTime;
-	private boolean autoReset;
-	private boolean skipFirstCall;
+    public setAutoReset(): Timer {
+        this.autoReset = true;
+        return this;
+    }
 
-	public Timer setAutoReset() {
-		autoReset = true;
-		return this;
-	}
-	public Timer setAutoResetWithImmediateAtFirstCall() {
-		startTime = 0;
-		return setAutoReset();
-	}
+    public setAutoResetWithImmediateAtFirstCall(): Timer {
+        this.startTime = 0;
+        return this.setAutoReset();
+    }
 
-	public Timer setAutoResetWithSkipFirstCall() {
-		skipFirstCall = true;
-		return setAutoReset();
-	}
+    public setAutoResetWithSkipFirstCall(): Timer {
+        this.skipFirstCall = true;
+        return this.setAutoReset();
+    }
 
-	public void reset() {
-		getPassedNanos();
-		startTime = currentTime;
-	}
+    public reset(): void {
+        this.getPassedNanos();
+        this.startTime = this.currentTime;
+    }
 
-	public long getTimer() {
-		return startTime;
-	}
+    public getTimer(): number {
+        return this.startTime;
+    }
 
-	public void setTimer(long startTime) {
-		this.startTime = startTime;
-	}
+    public setTimer(startTime: number): void {
+        this.startTime = startTime;
+    }
 
-	public long getPassedNanos() {
-		return (long)getPassedTime(NANOS);
-	}
+    public getPassedNanos(): number {
+        return this.getPassedTime(Timer.NANOS_IN_MILLI);
+    }
 
-	public long getPassedMillis() {
-		return (long)getPassedTime(MILLIS);
-	}
+    public getPassedMillis(): number {
+        return this.getPassedTime(Timer.MILLIS);
+    }
 
-	public float getPassedSeconds() {
-		return getPassedTime(SECONDS);
-	}
+    public getPassedSeconds(): number {
+        return this.getPassedTime(Timer.SECONDS);
+    }
 
-	private float getPassedTime(float unit) {
-		currentTime = System.nanoTime();
-		return skipFirstCall ? 0 : (currentTime - startTime) / unit;
-	}
+    private getPassedTime(unitConversion: number): number {
+        this.currentTime = performance.now();
+        if (this.skipFirstCall) {
+            return 0;
+        }
+        return (this.currentTime - this.startTime) * unitConversion;
+    }
 
-	public boolean hasPassedNanos(float time) {
-		return hasPassed(time, NANOS);
-	}
+    public hasPassedNanos(time: number): boolean {
+        return this.hasPassed(time, Timer.NANOS_IN_MILLI);
+    }
 
-	public boolean hasPassedMicros(float time) {
-		return hasPassed(time, MICROS);
-	}
+    public hasPassedMicros(time: number): boolean {
+        return this.hasPassed(time, Timer.MICROS_IN_MILLI);
+    }
 
-	public boolean hasPassedMillis(float time) {
-		return hasPassed(time, MILLIS);
-	}
+    public hasPassedMillis(time: number): boolean {
+        return this.hasPassed(time, Timer.MILLIS);
+    }
 
-	public boolean hasPassedSeconds(float time) {
-		return hasPassed(time, SECONDS);
-	}
+    public hasPassedSeconds(time: number): boolean {
+        return this.hasPassed(time, Timer.SECONDS);
+    }
 
-	private boolean hasPassed(float time, float unit) {
-		boolean passed = getPassedTime(unit) > time;
-		if (autoReset && (passed || skipFirstCall)) startTime = currentTime;
-		if (skipFirstCall) {
-			skipFirstCall = false;
-			return false;
-		}
-		return passed;
-	}
-
+    private hasPassed(time: number, unitConversion: number): boolean {
+        const passed = this.getPassedTime(unitConversion) > time;
+        if (this.autoReset && (passed || this.skipFirstCall)) {
+            this.startTime = this.currentTime;
+        }
+        if (this.skipFirstCall) {
+            this.skipFirstCall = false;
+            return false;
+        }
+        return passed;
+    }
 }

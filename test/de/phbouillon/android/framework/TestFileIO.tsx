@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,111 +16,82 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.*;
+import { FileIO } from "../../../../../../src/de/phbouillon/android/framework/FileIO";
 
-public class TestFileIO implements FileIO {
-	@Override
-	public String getFileName(String fileName) {
-		return null;
-	}
+export class TestFileIO implements FileIO {
+    public getFileName(fileName: string): string {
+        return null;
+    }
 
-	@Override
-	public InputStream readFile(String fileName) throws IOException {
-		return null;
-	}
+    public readFile(fileName: string): Promise<any> {
+        return Promise.resolve(null);
+    }
 
-	@Override
-	public OutputStream writeFile(String fileName) throws IOException {
-		return new FileOutputStream(fileName);
-	}
+    public writeFile(fileName: string): Promise<any> {
+        return Promise.resolve(null); // In a real test, could use a mock stream
+    }
 
-	@Override
-	public OutputStream appendFile(String fileName) throws IOException {
-		return null;
-	}
+    public appendFile(fileName: string): Promise<any> {
+        return Promise.resolve(null);
+    }
 
-	@Override
-	public long fileLastModifiedDate(String fileName) {
-		return 0;
-	}
+    public fileLastModifiedDate(fileName: string): number {
+        return 0;
+    }
 
-	@Override
-	public boolean exists(String fileName) {
-		return false;
-	}
+    public exists(fileName: string): boolean {
+        return false;
+    }
 
-	@Override
-	public boolean mkDir(String fileName) {
-		return false;
-	}
+    public mkDir(fileName: string): boolean {
+        return false;
+    }
 
-	@Override
-	public byte[] readFileContents(String fileName) throws IOException {
-		return new byte[0];
-	}
+    public readFileContents(fileName: string, fromOffset?: number): Promise<Uint8Array> {
+        return Promise.resolve(new Uint8Array(0));
+    }
 
-	@Override
-	public byte[] readPartialFileContents(String fileName, int length) throws IOException {
-		return new byte[0];
-	}
+    public readPartialFileContents(fileName: string, offsetOrLength: number, length?: number): Promise<Uint8Array> {
+        return Promise.resolve(new Uint8Array(0));
+    }
 
-	@Override
-	public byte[] readPartialFileContents(String fileName, int offset, int length) throws IOException {
-		return new byte[0];
-	}
+    public getFiles(directory: string, fileNamePattern: string): any[] {
+        return [];
+    }
 
-	@Override
-	public byte[] readFileContents(String fileName, int fromOffset) throws IOException {
-		return new byte[0];
-	}
+    public deleteFile(fileName: string): boolean {
+        return false;
+    }
 
-	@Override
-	public File[] getFiles(String directory, String fileNamePattern) {
-		return new File[0];
-	}
+    public copyFile(srcFileName: string, dstFileName: string): Promise<void> {
+        return Promise.resolve();
+    }
 
-	@Override
-	public boolean deleteFile(String fileName) {
-		return false;
-	}
+    public zip(zipName: string, ...fileNames: string[]): Promise<void> {
+        return Promise.resolve();
+    }
 
-	@Override
-	public void copyFile(String srcFileName, String dstFileName) throws IOException {
+    public unzip(zipFile: any, targetDirectory: any): Promise<void> {
+        return Promise.resolve();
+    }
 
-	}
+    public getPrivatePath(fileName: string): Promise<any> {
+        return Promise.resolve(null);
+    }
 
-	@Override
-	public void zip(String zipName, String... fileNames) throws IOException {
+    public readPrivateFile(fileName: string): Promise<any> {
+        return Promise.resolve(null);
+    }
 
-	}
+    public existsPrivateFile(fileName: string): boolean {
+        return false;
+    }
 
-	@Override
-	public void unzip(File zipFile, File targetDirectory) throws IOException {
+    public readAssetFile(fileName: string): Promise<any> {
+        return Promise.resolve(null);
+    }
 
-	}
-
-	@Override
-	public Object getPrivatePath(String fileName) throws IOException {
-		return null;
-	}
-
-	@Override
-	public InputStream readPrivateFile(String fileName) throws IOException {
-		return null;
-	}
-
-	@Override
-	public boolean existsPrivateFile(String fileName) {
-		return false;
-	}
-
-	@Override
-	public InputStream readAssetFile(String fileName) throws IOException {
-		return null;
-	}
-
-	@Override
-	public boolean existsAssetFile(String fileName) {
-		return false;
-	}
+    public existsAssetFile(fileName: string): boolean {
+        return false;
+    }
 }

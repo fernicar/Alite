@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -17,353 +15,348 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * along with this program.  If not, see
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
+import { AliteLog } from "../../AliteLog";
+import { Assets } from "../../Assets";
+import { Button } from "../../Button";
+import { Slider } from "../../Slider";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { EngineExhaust } from "../opengl/ingame/EngineExhaust";
+import { SpaceObject } from "../opengl/objects/space/SpaceObject";
+import { SpaceObjectAI } from "../opengl/objects/space/SpaceObjectAI";
+import { SpaceObjectFactory } from "../opengl/objects/space/SpaceObjectFactory";
+import { AliteScreen } from "../AliteScreen";
+import { Graphics } from "../../../../framework/Graphics";
+import { TouchEvent } from "../../../../framework/Input";
+import { Vector3f } from "../../../../framework/math/Vector3f";
 
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.EngineExhaust;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObjectAI;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObjectFactory;
+class ExhaustParameters {
+    xOffset: number;
+    yOffset: number;
+    zOffset: number;
+    radiusX: number;
+    radiusY: number;
+    maxLength: number;
+    r1: number;
+    g1: number;
+    b1: number;
+    a1: number;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.List;
+    public toString(): string {
+        return "xOffset: " + this.xOffset + ", yOffset: " + this.yOffset + ", zOffset: " + this.zOffset + ", radiusX: " + this.radiusX + ", radiusY: " + this.radiusY + ", len: " + this.maxLength + ", (" + this.r1 + ", " + this.g1 + ", " + this.b1 + ", " + this.a1 + ")";
+    }
+}
 
 //This screen never needs to be serialized, as it is not part of the InGame state.
-public class ShipEditorScreen extends AliteScreen {
+export class ShipEditorScreen extends AliteScreen {
 
-	private SpaceObject currentShip;
+    private currentShip: SpaceObject;
 
-	private Button increaseX;
-	private Button decreaseX;
-	private Button increaseY;
-	private Button decreaseY;
-	private Button increaseZ;
-	private Button decreaseZ;
-	private Button increaseRadiusX;
-	private Button decreaseRadiusX;
-	private Button increaseRadiusY;
-	private Button decreaseRadiusY;
-	private Button increaseLength;
-	private Button decreaseLength;
-	private Button decreaseSpeed;
-	private Button increaseSpeed;
-	private Button toggleExhaustCount;
-	private Button nextShip;
+    private increaseX: Button;
+    private decreaseX: Button;
+    private increaseY: Button;
+    private decreaseY: Button;
+    private increaseZ: Button;
+    private decreaseZ: Button;
+    private increaseRadiusX: Button;
+    private decreaseRadiusX: Button;
+    private increaseRadiusY: Button;
+    private decreaseRadiusY: Button;
+    private increaseLength: Button;
+    private decreaseLength: Button;
+    private decreaseSpeed: Button;
+    private increaseSpeed: Button;
+    private toggleExhaustCount: Button;
+    private nextShip: Button;
 
-	private Slider r1;
-	private Slider g1;
-	private Slider b1;
-	private Slider a1;
+    private r1: Slider;
+    private g1: Slider;
+    private b1: Slider;
+    private a1: Slider;
 
-	private float lastZoom = -1.0f;
-	private int numberOfExhausts = 2;
-	private final Vector3f temp = new Vector3f(0, 0, 0);
-	private int lastX = -1;
-	private int lastY = -1;
+    private lastZoom: number = -1.0;
+    private numberOfExhausts: number = 2;
+    private readonly temp: Vector3f = new Vector3f(0, 0, 0);
+    private lastX: number = -1;
+    private lastY: number = -1;
+    private exp: ExhaustParameters = new ExhaustParameters();
 
+    public constructor() {
+        super();
+        this.currentShip = SpaceObjectFactory.getInstance().getObjectById("cobra_mk_iii");
+        let exhausts: EngineExhaust[] = this.currentShip.getExhausts();
+        exhausts.length = 0; // .clear()
+        this.exp.xOffset = 50;
+        this.exp.yOffset = 0;
+        this.exp.zOffset = 0;
+        this.exp.radiusX = 13;
+        this.exp.radiusY = 13;
+        this.exp.maxLength = 300;
+        this.exp.r1 = 0.7;
+        this.exp.g1 = 0.8;
+        this.exp.b1 = 0.8;
+        this.exp.a1 = 0.7;
 
-	class ExhaustParameters {
-		int xOffset;
-		int yOffset;
-		int zOffset;
-		int radiusX;
-		int radiusY;
-		int maxLength;
-		float r1, g1, b1, a1;
+        exhausts.push(new EngineExhaust(13.0, 13.0, 300.0, -50.0, 0, 0));
+        exhausts.push(new EngineExhaust(13.0, 13.0, 300.0, 50.0, 0, 0));
+        this.currentShip.setPosition(0, 0, -700.0);
+        this.currentShip.setAIState(SpaceObjectAI.AI_STATE_GLOBAL);
+        this.currentShip.setSpeed(-this.currentShip.getMaxSpeed());
+    }
 
-		public String toString() {
-			return "xOffset: " + xOffset + ", yOffset: " + yOffset + ", zOffset: " + zOffset + ", radiusX: " + radiusX + ", radiusY: " + radiusY + ", len: " + maxLength + ", (" + r1 + ", " + g1 + ", " + b1 + ", " + a1 + ")";
-		}
-	}
+    public update(deltaTime: number): void {
+        this.updateWithoutNavigation(deltaTime);
+        if (this.currentShip != null) {
+            this.currentShip.update(deltaTime);
+        }
+    }
 
-	private ExhaustParameters exp = new ExhaustParameters();
+    private modifyExhaust(): void {
+        for (let ex of this.currentShip.getExhausts()) {
+            ex.getPosition().copy(this.temp);
+            if (this.temp.x < 0) {
+                ex.setPosition(-this.exp.xOffset, this.exp.yOffset, this.currentShip.getBoundingBox()[5] + this.exp.zOffset);
+            } else {
+                ex.setPosition(this.exp.xOffset, this.exp.yOffset, this.currentShip.getBoundingBox()[5] + this.exp.zOffset);
+            }
+            ex.setRadiusX(this.exp.radiusX);
+            ex.setRadiusY(this.exp.radiusY);
+            ex.setMaxLength(this.exp.maxLength);
+            ex.setColor(this.exp.r1, this.exp.g1, this.exp.b1, this.exp.a1);
+        }
+    }
 
-	public ShipEditorScreen() {
-		currentShip = SpaceObjectFactory.getInstance().getObjectById("cobra_mk_iii");
-		List<EngineExhaust> exhausts = currentShip.getExhausts();
-		exhausts.clear();
-		exp.xOffset = 50;
-		exp.yOffset = 0;
-		exp.zOffset = 0;
-		exp.radiusX = 13;
-		exp.radiusY = 13;
-		exp.maxLength = 300;
-		exp.r1 = 0.7f;
-		exp.g1 = 0.8f;
-		exp.b1 = 0.8f;
-		exp.a1 = 0.7f;
+    protected processTouch(touch: TouchEvent): void {
+        if (this.r1.checkEvent(touch)) {
+            this.exp.r1 = this.r1.getCurrentValue();
+            this.modifyExhaust();
+            return;
+        }
+        if (this.g1.checkEvent(touch)) {
+            this.exp.g1 = this.g1.getCurrentValue();
+            this.modifyExhaust();
+            return;
+        }
+        if (this.b1.checkEvent(touch)) {
+            this.exp.b1 = this.b1.getCurrentValue();
+            this.modifyExhaust();
+            return;
+        }
+        if (this.a1.checkEvent(touch)) {
+            this.exp.a1 = this.a1.getCurrentValue();
+            this.modifyExhaust();
+            return;
+        }
 
-		exhausts.add(new EngineExhaust(13.0f, 13.0f, 300.0f, -50.0f, 0, 0));
-		exhausts.add(new EngineExhaust(13.0f, 13.0f, 300.0f,  50.0f, 0, 0));
-		currentShip.setPosition(0, 0, -700.0f);
-		currentShip.setAIState(SpaceObjectAI.AI_STATE_GLOBAL);
-		currentShip.setSpeed(-currentShip.getMaxSpeed());
-	}
+        if (touch.type === TouchEvent.TOUCH_SCALE && this.game.getInput().getTouchCount() > 1) {
+            if (this.lastZoom < 0) {
+                this.lastZoom = touch.zoomFactor;
+            } else {
+                if (touch.zoomFactor > this.lastZoom) {
+                    this.currentShip.setPosition(0, 0, this.currentShip.getPosition().z + 5);
+                } else {
+                    this.currentShip.setPosition(0, 0, this.currentShip.getPosition().z - 5);
+                }
+            }
+            return;
+        }
+        if (this.game.getInput().getTouchCount() > 1) {
+            return;
+        }
+        if (touch.type === TouchEvent.TOUCH_UP) {
+            if (this.increaseX.isTouched(touch.x, touch.y)) {
+                this.exp.xOffset += 5;
+                this.modifyExhaust();
+            }
+            if (this.decreaseX.isTouched(touch.x, touch.y)) {
+                this.exp.xOffset -= 5;
+                this.modifyExhaust();
+            }
+            if (this.increaseY.isTouched(touch.x, touch.y)) {
+                this.exp.yOffset += 5;
+                this.modifyExhaust();
+            }
+            if (this.decreaseY.isTouched(touch.x, touch.y)) {
+                this.exp.yOffset -= 5;
+                this.modifyExhaust();
+            }
+            if (this.increaseZ.isTouched(touch.x, touch.y)) {
+                this.exp.zOffset += 5;
+                this.modifyExhaust();
+            }
+            if (this.decreaseZ.isTouched(touch.x, touch.y)) {
+                this.exp.zOffset -= 5;
+                this.modifyExhaust();
+            }
+            if (this.increaseRadiusX.isTouched(touch.x, touch.y)) {
+                this.exp.radiusX += 1;
+                this.modifyExhaust();
+            }
+            if (this.decreaseRadiusX.isTouched(touch.x, touch.y)) {
+                this.exp.radiusX -= 1;
+                this.modifyExhaust();
+            }
+            if (this.increaseRadiusY.isTouched(touch.x, touch.y)) {
+                this.exp.radiusY += 1;
+                this.modifyExhaust();
+            }
+            if (this.decreaseRadiusY.isTouched(touch.x, touch.y)) {
+                this.exp.radiusY -= 1;
+                this.modifyExhaust();
+            }
+            if (this.increaseLength.isTouched(touch.x, touch.y)) {
+                this.exp.maxLength += 20;
+                this.modifyExhaust();
+            }
+            if (this.decreaseLength.isTouched(touch.x, touch.y)) {
+                this.exp.maxLength -= 20;
+                this.modifyExhaust();
+            }
 
-	@Override
-	public void update(float deltaTime) {
-		updateWithoutNavigation(deltaTime);
-		if (currentShip != null) {
-			currentShip.update(deltaTime);
-		}
-	}
+            if (this.increaseSpeed.isTouched(touch.x, touch.y)) {
+                let newSpeed: number = this.currentShip.getSpeed() - 10.0;
+                if (-newSpeed > this.currentShip.getMaxSpeed()) {
+                    newSpeed = -this.currentShip.getMaxSpeed();
+                }
+                this.currentShip.setSpeed(newSpeed);
+            }
+            if (this.decreaseSpeed.isTouched(touch.x, touch.y)) {
+                let newSpeed: number = this.currentShip.getSpeed() + 10.0;
+                if (newSpeed > 0) {
+                    newSpeed = 0;
+                }
+                this.currentShip.setSpeed(newSpeed);
+            }
+            if (this.toggleExhaustCount.isTouched(touch.x, touch.y)) {
+                this.numberOfExhausts = -this.numberOfExhausts + 3;
+                this.currentShip.getExhausts().length = 0; // .clear()
+                for (let i = 0; i < this.numberOfExhausts; i++) {
+                    this.currentShip.getExhausts().push(new EngineExhaust(this.exp.radiusX, this.exp.radiusY, this.exp.maxLength, i === 0 ? -this.exp.xOffset : this.exp.xOffset, this.exp.yOffset, this.exp.zOffset));
+                    this.currentShip.getExhausts()[i].setColor(this.exp.r1, this.exp.g1, this.exp.b1, this.exp.a1);
+                }
+            }
+            if (this.nextShip.isTouched(touch.x, touch.y)) {
+                AliteLog.d("Exhaust Configuration", this.currentShip.getId() + ": Number of exhausts: " + this.numberOfExhausts + " Params: " + this.exp);
+                this.exp.xOffset = 50;
+                this.exp.yOffset = 0;
+                this.exp.zOffset = 0;
+                this.exp.radiusX = 13;
+                this.exp.radiusY = 13;
+                this.exp.maxLength = 300;
+                this.exp.r1 = 0.7;
+                this.exp.g1 = 0.8;
+                this.exp.b1 = 0.8;
+                this.exp.a1 = 0.7;
+                this.numberOfExhausts = 2;
+                this.currentShip = SpaceObjectFactory.getInstance().getNextObject(this.currentShip, 1, true);
+                this.currentShip.getExhausts().length = 0; // .clear()
+                this.currentShip.setSpeed(-this.currentShip.getMaxSpeed());
+                this.currentShip.setPosition(0, 0, -700.0);
+                for (let i = 0; i < this.numberOfExhausts; i++) {
+                    this.currentShip.getExhausts().push(new EngineExhaust(this.exp.radiusX, this.exp.radiusY, this.exp.maxLength, i === 0 ? -this.exp.xOffset : this.exp.xOffset, this.exp.yOffset, this.exp.zOffset));
+                    this.currentShip.getExhausts()[i].setColor(this.exp.r1, this.exp.g1, this.exp.b1, this.exp.a1);
+                }
+            }
+        }
 
-	private void modifyExhaust() {
-		for (EngineExhaust ex: currentShip.getExhausts()) {
-			ex.getPosition().copy(temp);
-			if (temp.x < 0) {
-				ex.setPosition(-exp.xOffset, exp.yOffset, currentShip.getBoundingBox()[5] + exp.zOffset);
-			} else {
-				ex.setPosition(exp.xOffset, exp.yOffset, currentShip.getBoundingBox()[5] + exp.zOffset);
-			}
-			ex.setRadiusX(exp.radiusX);
-			ex.setRadiusY(exp.radiusY);
-			ex.setMaxLength(exp.maxLength);
-			ex.setColor(exp.r1, exp.g1, exp.b1, exp.a1);
-		}
-	}
+        if (touch.y > 800 || touch.x > 800) {
+            return;
+        }
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		if (r1.checkEvent(touch)) {
-			exp.r1 = r1.getCurrentValue();
-			modifyExhaust();
-			return;
-		}
-		if (g1.checkEvent(touch)) {
-			exp.g1 = g1.getCurrentValue();
-			modifyExhaust();
-			return;
-		}
-		if (b1.checkEvent(touch)) {
-			exp.b1 = b1.getCurrentValue();
-			modifyExhaust();
-			return;
-		}
-		if (a1.checkEvent(touch)) {
-			exp.a1 = a1.getCurrentValue();
-			modifyExhaust();
-			return;
-		}
+        if (touch.type === TouchEvent.TOUCH_DRAGGED) {
+            if (this.lastX !== -1 && this.lastY !== -1) {
+                let diffX: number = touch.x - this.lastX;
+                let diffY: number = touch.y - this.lastY;
+                let ady: number = Math.abs(diffY);
+                let adx: number = Math.abs(diffX);
+                if (adx > ady) {
+                    this.currentShip.applyDeltaRotation(0, diffX, 0);
+                } else {
+                    this.currentShip.applyDeltaRotation(diffY, 0, 0);
+                }
+            }
+            this.lastX = touch.x;
+            this.lastY = touch.y;
+        }
+        if (touch.type === TouchEvent.TOUCH_DOWN) {
+            this.lastX = touch.x;
+            this.lastY = touch.y;
+        }
+    }
 
-		if (touch.type == TouchEvent.TOUCH_SCALE && game.getInput().getTouchCount() > 1) {
-			if (lastZoom  < 0) {
-				lastZoom = touch.zoomFactor;
-			} else {
-				if (touch.zoomFactor > lastZoom) {
-					currentShip.setPosition(0, 0, currentShip.getPosition().z + 5);
-				} else {
-					currentShip.setPosition(0, 0, currentShip.getPosition().z - 5);
-				}
-			}
-			return;
-		}
-		if (game.getInput().getTouchCount() > 1) {
-			return;
-		}
-		if (touch.type == TouchEvent.TOUCH_UP) {
-			if (increaseX.isTouched(touch.x, touch.y)) {
-				exp.xOffset += 5;
-				modifyExhaust();
-			}
-			if (decreaseX.isTouched(touch.x, touch.y)) {
-				exp.xOffset -= 5;
-				modifyExhaust();
-			}
-			if (increaseY.isTouched(touch.x, touch.y)) {
-				exp.yOffset += 5;
-				modifyExhaust();
-			}
-			if (decreaseY.isTouched(touch.x, touch.y)) {
-				exp.yOffset -= 5;
-				modifyExhaust();
-			}
-			if (increaseZ.isTouched(touch.x, touch.y)) {
-				exp.zOffset += 5;
-				modifyExhaust();
-			}
-			if (decreaseZ.isTouched(touch.x, touch.y)) {
-				exp.zOffset -= 5;
-				modifyExhaust();
-			}
-			if (increaseRadiusX.isTouched(touch.x, touch.y)) {
-				exp.radiusX += 1;
-				modifyExhaust();
-			}
-			if (decreaseRadiusX.isTouched(touch.x, touch.y)) {
-				exp.radiusX -= 1;
-				modifyExhaust();
-			}
-			if (increaseRadiusY.isTouched(touch.x, touch.y)) {
-				exp.radiusY += 1;
-				modifyExhaust();
-			}
-			if (decreaseRadiusY.isTouched(touch.x, touch.y)) {
-				exp.radiusY -= 1;
-				modifyExhaust();
-			}
-			if (increaseLength.isTouched(touch.x, touch.y)) {
-				exp.maxLength += 20;
-				modifyExhaust();
-			}
-			if (decreaseLength.isTouched(touch.x, touch.y)) {
-				exp.maxLength -= 20;
-				modifyExhaust();
-			}
+    public present(deltaTime: number): void {
+        const g: Graphics = this.game.getGraphics();
+        g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayWideTitle("Ship Configuration Screen");
 
-			if (increaseSpeed.isTouched(touch.x, touch.y)) {
-				float newSpeed = currentShip.getSpeed() - 10.0f;
-				if (-newSpeed > currentShip.getMaxSpeed()) {
-					newSpeed = -currentShip.getMaxSpeed();
-				}
-				currentShip.setSpeed(newSpeed);
-			}
-			if (decreaseSpeed.isTouched(touch.x, touch.y)) {
-				float newSpeed = currentShip.getSpeed() + 10.0f;
-				if (newSpeed > 0) {
-					newSpeed = 0;
-				}
-				currentShip.setSpeed(newSpeed);
-			}
-			if (toggleExhaustCount.isTouched(touch.x, touch.y)) {
-				numberOfExhausts = -numberOfExhausts + 3;
-				currentShip.getExhausts().clear();
-				for (int i = 0; i < numberOfExhausts; i++) {
-					currentShip.getExhausts().add(new EngineExhaust(exp.radiusX, exp.radiusY, exp.maxLength, i == 0 ? -exp.xOffset : exp.xOffset, exp.yOffset, exp.zOffset));
-					currentShip.getExhausts().get(i).setColor(exp.r1, exp.g1, exp.b1, exp.a1);
-				}
-			}
-			if (nextShip.isTouched(touch.x, touch.y)) {
-				AliteLog.d("Exhaust Configuration", currentShip.getId() + ": Number of exhausts: " + numberOfExhausts + " Params: " + exp);
-				exp.xOffset = 50;
-				exp.yOffset = 0;
-				exp.zOffset = 0;
-				exp.radiusX = 13;
-				exp.radiusY = 13;
-				exp.maxLength = 300;
-				exp.r1 = 0.7f;
-				exp.g1 = 0.8f;
-				exp.b1 = 0.8f;
-				exp.a1 = 0.7f;
-				numberOfExhausts = 2;
-				currentShip = SpaceObjectFactory.getInstance().getNextObject(currentShip, 1, true);
-				currentShip.getExhausts().clear();
-				currentShip.setSpeed(-currentShip.getMaxSpeed());
-				currentShip.setPosition(0, 0, -700.0f);
-				for (int i = 0; i < numberOfExhausts; i++) {
-					currentShip.getExhausts().add(new EngineExhaust(exp.radiusX, exp.radiusY, exp.maxLength, i == 0 ? -exp.xOffset : exp.xOffset, exp.yOffset, exp.zOffset));
-					currentShip.getExhausts().get(i).setColor(exp.r1, exp.g1, exp.b1, exp.a1);
-				}
-			}
-		}
+        this.increaseX.render(g);
+        this.decreaseX.render(g);
+        this.increaseY.render(g);
+        this.decreaseY.render(g);
+        this.increaseZ.render(g);
+        this.decreaseZ.render(g);
+        this.increaseRadiusX.render(g);
+        this.decreaseRadiusX.render(g);
+        this.increaseRadiusY.render(g);
+        this.decreaseRadiusY.render(g);
+        this.increaseLength.render(g);
+        this.decreaseLength.render(g);
+        this.increaseSpeed.render(g);
+        this.decreaseSpeed.render(g);
+        this.toggleExhaustCount.render(g);
+        this.nextShip.render(g);
 
-		if (touch.y > 800 || touch.x > 800) {
-			return;
-		}
+        if (this.currentShip != null) {
+            g.drawText(this.currentShip.getName(), 20, 150, ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT), Assets.regularFont);
+        }
 
-		if (touch.type == TouchEvent.TOUCH_DRAGGED) {
-			if (lastX != -1 && lastY != -1) {
-				int diffX = touch.x - lastX;
-				int diffY = touch.y - lastY;
-				int ady = Math.abs(diffY);
-				int adx = Math.abs(diffX);
-				if (adx > ady) {
-					currentShip.applyDeltaRotation(0, diffX, 0);
-				} else {
-					currentShip.applyDeltaRotation(diffY, 0, 0);
-				}
-			}
-			lastX = touch.x;
-			lastY = touch.y;
-		}
-		if (touch.type == TouchEvent.TOUCH_DOWN) {
-			lastX = touch.x;
-			lastY = touch.y;
-		}
-	}
+        this.r1.render(g);
+        this.g1.render(g);
+        this.b1.render(g);
+        this.a1.render(g);
 
-	@Override
-	public void present(float deltaTime) {
-		Graphics g = game.getGraphics();
-		g.clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayWideTitle("Ship Configuration Screen");
+        if (this.currentShip != null) {
+            this.displayObject(this.currentShip, 1.0, 900000.0);
+        }
+    }
 
-		increaseX.render(g);
-		decreaseX.render(g);
-		increaseY.render(g);
-		decreaseY.render(g);
-		increaseZ.render(g);
-		decreaseZ.render(g);
-		increaseRadiusX.render(g);
-		decreaseRadiusX.render(g);
-		increaseRadiusY.render(g);
-		decreaseRadiusY.render(g);
-		increaseLength.render(g);
-		decreaseLength.render(g);
-		increaseSpeed.render(g);
-		decreaseSpeed.render(g);
-		toggleExhaustCount.render(g);
-		nextShip.render(g);
+    public activate(): void {
+        this.initGl();
+        this.decreaseX = Button.createGradientSmallButton(0, 900, 150, 80, "X-");
+        this.increaseX = Button.createGradientSmallButton(0, 1000, 150, 80, "X+");
+        this.decreaseY = Button.createGradientSmallButton(200, 900, 150, 80, "Y-");
+        this.increaseY = Button.createGradientSmallButton(200, 1000, 150, 80, "Y+");
+        this.decreaseZ = Button.createGradientSmallButton(400, 900, 150, 80, "Z-");
+        this.increaseZ = Button.createGradientSmallButton(400, 1000, 150, 80, "Z+");
+        this.decreaseRadiusX = Button.createGradientSmallButton(600, 900, 150, 80, "Rx-");
+        this.increaseRadiusX = Button.createGradientSmallButton(600, 1000, 150, 80, "Rx+");
+        this.decreaseRadiusY = Button.createGradientSmallButton(800, 900, 150, 80, "Ry-");
+        this.increaseRadiusY = Button.createGradientSmallButton(800, 1000, 150, 80, "Ry+");
+        this.decreaseLength = Button.createGradientSmallButton(1000, 900, 150, 80, "L-");
+        this.increaseLength = Button.createGradientSmallButton(1000, 1000, 150, 80, "L+");
+        this.decreaseSpeed = Button.createGradientSmallButton(1200, 900, 150, 80, "S-");
+        this.increaseSpeed = Button.createGradientSmallButton(1200, 1000, 150, 80, "S+");
+        this.toggleExhaustCount = Button.createGradientSmallButton(1400, 900, 150, 80, "TC");
+        this.nextShip = Button.createGradientSmallButton(1400, 1000, 150, 80, "Next");
 
-		if (currentShip != null) {
-			g.drawText(currentShip.getName(), 20, 150, ColorScheme.get(ColorScheme.COLOR_INFORMATION_TEXT), Assets.regularFont);
-		}
+        this.r1 = new Slider(1100, 150, 720, 100, 0.2, 1.0, 0.7, "r1", Assets.smallFont);
+        this.g1 = new Slider(1100, 350, 720, 100, 0, 1, 0.8, "g1", Assets.smallFont);
+        this.b1 = new Slider(1100, 550, 720, 100, 0, 0.8, 0.8, "b1", Assets.smallFont);
+        this.a1 = new Slider(1100, 750, 720, 100, 0, 0.7, 0.7, "a1", Assets.smallFont);
+    }
 
-		r1.render(g);
-		g1.render(g);
-		b1.render(g);
-		a1.render(g);
+    public saveScreenState(dos: any): void {
+        // empty
+    }
 
-		if (currentShip != null) {
-			displayObject(currentShip, 1.0f, 900000.0f);
-		}
-	}
+    public loadAssets(): void {
+        // empty
+    }
 
-	@Override
-	public void activate() {
-		initGl();
-		decreaseX = Button.createGradientSmallButton(0, 900, 150, 80, "X-");
-		increaseX = Button.createGradientSmallButton(0, 1000, 150, 80, "X+");
-		decreaseY = Button.createGradientSmallButton(200, 900, 150, 80, "Y-");
-		increaseY = Button.createGradientSmallButton(200, 1000, 150, 80, "Y+");
-		decreaseZ = Button.createGradientSmallButton(400, 900, 150, 80, "Z-");
-		increaseZ = Button.createGradientSmallButton(400, 1000, 150, 80, "Z+");
-		decreaseRadiusX = Button.createGradientSmallButton(600, 900, 150, 80, "Rx-");
-		increaseRadiusX = Button.createGradientSmallButton(600, 1000, 150, 80, "Rx+");
-		decreaseRadiusY = Button.createGradientSmallButton(800, 900, 150, 80, "Ry-");
-		increaseRadiusY = Button.createGradientSmallButton(800, 1000, 150, 80, "Ry+");
-		decreaseLength = Button.createGradientSmallButton(1000, 900, 150, 80, "L-");
-		increaseLength = Button.createGradientSmallButton(1000, 1000, 150, 80, "L+");
-		decreaseSpeed = Button.createGradientSmallButton(1200, 900, 150, 80, "S-");
-		increaseSpeed = Button.createGradientSmallButton(1200, 1000, 150, 80, "S+");
-		toggleExhaustCount = Button.createGradientSmallButton(1400, 900, 150, 80, "TC");
-		nextShip = Button.createGradientSmallButton(1400, 1000, 150, 80, "Next");
+    public getScreenCode(): number {
+        return 0;
+    }
 
-		r1 = new Slider(1100, 150, 720, 100, 0.2f, 1.0f, 0.7f, "r1", Assets.smallFont);
-		g1 = new Slider(1100, 350, 720, 100, 0, 1, 0.8f, "g1", Assets.smallFont);
-		b1 = new Slider(1100, 550, 720, 100, 0, 0.8f, 0.8f, "b1", Assets.smallFont);
-		a1 = new Slider(1100, 750, 720, 100, 0, 0.7f, 0.7f, "a1", Assets.smallFont);
-	}
-
-
-	@Override
-	public void saveScreenState(DataOutputStream dos) throws IOException {
-	}
-
-	@Override
-	public void loadAssets() {
-	}
-
-	@Override
-	public int getScreenCode() {
-		return 0;
-	}
-
-	@Override
-	public void renderNavigationBar() {
-	}
+    public renderNavigationBar(): void {
+        // empty
+    }
 }

@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,338 +16,334 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import de.phbouillon.android.framework.Pixmap;
-import de.phbouillon.android.framework.Screen;
-import de.phbouillon.android.games.alite.*;
-import de.phbouillon.android.games.alite.colors.ColorScheme;
-import de.phbouillon.android.games.alite.model.Equipment;
-import de.phbouillon.android.games.alite.model.EquipmentStore;
-import de.phbouillon.android.games.alite.model.Player;
-import de.phbouillon.android.games.alite.model.PlayerCobra;
-import de.phbouillon.android.games.alite.model.generator.GalaxyGenerator;
-import de.phbouillon.android.games.alite.model.generator.SystemData;
-import de.phbouillon.android.games.alite.model.missions.Mission;
-import de.phbouillon.android.games.alite.model.missions.MissionManager;
+import { AliteLog } from "../../AliteLog";
+import { Assets } from "../../Assets";
+import { Button } from "../../Button";
+import { L } from "../../L";
+import { R } from "../../R";
+import { ScreenCodes } from "../../ScreenCodes";
+import { Settings } from "../../Settings";
+import { SoundManager } from "../../SoundManager";
+import { ColorScheme } from "../../colors/ColorScheme";
+import { Equipment } from "../../model/Equipment";
+import { EquipmentStore } from "../../model/EquipmentStore";
+import { Player } from "../../model/Player";
+import { PlayerCobra } from "../../model/PlayerCobra";
+import { GalaxyGenerator } from "../../model/generator/GalaxyGenerator";
+import { SystemData } from "../../model/generator/SystemData";
+import { Mission } from "../../model/missions/Mission";
+import { MissionManager } from "../../model/missions/MissionManager";
+import { LaserPositionSelectionScreen } from "./LaserPositionSelectionScreen";
+import { TradeScreen } from "./TradeScreen";
+import { Pixmap } from "../../../../framework/Pixmap";
+import { Screen } from "../../../../framework/Screen";
 
 //This screen never needs to be serialized, as it is not part of the InGame state.
-public class EquipmentScreen extends TradeScreen {
-	private int mountLaserPosition = -1;
-	private static Map<Integer,List<Pixmap>> equipment;
-	private Equipment equippedEquipment = null;
+export class EquipmentScreen extends TradeScreen {
+    private mountLaserPosition: number = -1;
+    private static equipment: Map<number, Pixmap[]>;
+    private equippedEquipment: Equipment = null;
 
-	// default public constructor is required for navigation bar
-	public EquipmentScreen() {
-		super(true, null);
-	}
+    // default public constructor is required for navigation bar
+    public constructor(pendingSelection: string = null) {
+        super(true, pendingSelection);
+    }
 
-	public EquipmentScreen(String pendingSelection) {
-		super(true, pendingSelection);
-	}
+    protected createButtons(): void {
+        this.tradeButton.length = 0; // .clear()
+        const currentSystem: SystemData = this.game.getPlayer().getCurrentSystem();
+        let techLevel: number = 1;
+        let orphan: boolean = false;
+        const galDrive: Equipment = EquipmentStore.get().getEquipmentById(EquipmentStore.GALACTIC_HYPERDRIVE);
+        if (currentSystem != null) {
+            techLevel = currentSystem.getTechLevel();
+            orphan = this.game.getGenerator().isOrphan(currentSystem.getId());
+        }
+        const i = EquipmentStore.get().getIterator();
+        let pos = 0;
+        for (const e of i) {
+            if (techLevel <= e.getMinTechLevel() &&
+                (Settings.maxGalaxies === GalaxyGenerator.GALAXY_COUNT || !orphan || e !== galDrive)) {
+                // Only show equipment items that are available on worlds with the given tech level or
+                // we're in extended galaxy mode on an orphan planet and it's a galactic hyperdrive.
+                continue;
+            }
+            const b = Button.createPictureButton(pos % TradeScreen.COLUMNS * TradeScreen.GAP_X + TradeScreen.X_OFFSET,
+                Math.floor(pos / TradeScreen.COLUMNS) * TradeScreen.GAP_Y + TradeScreen.Y_OFFSET, TradeScreen.SIZE, TradeScreen.SIZE, EquipmentScreen.equipment.get(e.getId())[0])
+                .setName(String(e.getId()));
+            this.tradeButton.push(b);
+            if (EquipmentScreen.equipment.get(e.getId()).length > 1) {
+                b.setAnimation(EquipmentScreen.equipment.get(e.getId()));
+            }
+            pos++;
+        }
+    }
 
-	@Override
-	protected void createButtons() {
-		tradeButton.clear();
-		SystemData currentSystem = game.getPlayer().getCurrentSystem();
-		int techLevel = 1;
-		boolean orphan = false;
-		Equipment galDrive = EquipmentStore.get().getEquipmentById(EquipmentStore.GALACTIC_HYPERDRIVE);
-		if (currentSystem != null) {
-			techLevel = currentSystem.getTechLevel();
-			orphan = game.getGenerator().isOrphan(currentSystem.getId());
-		}
-		Iterator<Equipment> i = EquipmentStore.get().getIterator();
-		int pos = 0;
-		while (i.hasNext()) {
-			Equipment e = i.next();
-			if (techLevel <= e.getMinTechLevel() &&
-					(Settings.maxGalaxies == GalaxyGenerator.GALAXY_COUNT || !orphan || e != galDrive)) {
-				// Only show equipment items that are available on worlds with the given tech level or
-				// we're in extended galaxy mode on an orphan planet and it's a galactic hyperdrive.
-				continue;
-			}
-			Button b = Button.createPictureButton(pos % COLUMNS * GAP_X + X_OFFSET,
-				pos / COLUMNS* GAP_Y + Y_OFFSET, SIZE, SIZE, equipment.get(e.getId()).get(0))
-				.setName(String.valueOf(e.getId()));
-			tradeButton.add(b);
-			if (equipment.get(e.getId()).size() > 1) {
-				b.setAnimation(equipment.get(e.getId()).toArray(new Pixmap[0]));
-			}
-			pos++;
-		}
-	}
+    protected getCost(index: number): string {
+        const price: number = this.getEquipment(index).getCost();
+        if (price === -1) { // variable price for fuel
+            const currentSystem: SystemData = this.game.getPlayer().getCurrentSystem();
+            return L.getOneDecimalFormatString(R.string.cash_amount_value_ccy, currentSystem == null ? 10 : currentSystem.getFuelPrice());
+        }
+        return L.string(R.string.cash_int_amount_value_ccy, price / 10);
+    }
 
-	@Override
-	protected String getCost(int index) {
-		int price = getEquipment(index).getCost();
-		if (price == -1) { // variable price for fuel
-			SystemData currentSystem = game.getPlayer().getCurrentSystem();
-			return L.getOneDecimalFormatString(R.string.cash_amount_value_ccy, currentSystem == null ? 10 : currentSystem.getFuelPrice());
-		}
-		return L.string(R.string.cash_int_amount_value_ccy, price / 10);
-	}
+    private getEquipment(index: number): Equipment {
+        return index < 0 ? null : EquipmentStore.get().getEquipmentByHash(this.getEquipmentId(index));
+    }
 
-	private Equipment getEquipment(int index) {
-		return index < 0 ? null : EquipmentStore.get().getEquipmentByHash(getEquipmentId(index));
-	}
+    private getEquipmentId(index: number): number {
+        return parseInt(this.tradeButton[index].getName());
+    }
 
-	private int getEquipmentId(int index) {
-		return Integer.parseInt(tradeButton.get(index).getName());
-	}
+    public present(deltaTime: number): void {
+        this.game.getGraphics().clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
+        this.displayTitle(L.string(R.string.title_equip_ship));
 
-	@Override
-	public void present(float deltaTime) {
-		game.getGraphics().clear(ColorScheme.get(ColorScheme.COLOR_BACKGROUND));
-		displayTitle(L.string(R.string.title_equip_ship));
+        this.presentTradeGoods(deltaTime);
+    }
 
-		presentTradeGoods(deltaTime);
-	}
+    public clearSelection(): void {
+        this.selectionIndex = -1;
+        this.equippedEquipment = null;
+    }
 
-	public void clearSelection() {
-		selectionIndex = -1;
-		equippedEquipment = null;
-	}
+    protected presentSelection(index: number): void {
+        const equipment: Equipment = this.getEquipment(index);
+        this.game.getGraphics().drawText(L.string(R.string.equip_info, equipment.getName()),
+            TradeScreen.X_OFFSET, 1050, ColorScheme.get(ColorScheme.COLOR_MESSAGE), Assets.regularFont);
+    }
 
-	@Override
-	protected void presentSelection(int index) {
-		Equipment equipment = getEquipment(index);
-		game.getGraphics().drawText(L.string(R.string.equip_info, equipment.getName()),
-			X_OFFSET, 1050, ColorScheme.get(ColorScheme.COLOR_MESSAGE), Assets.regularFont);
-	}
+    public setLaserPosition(laserPosition: number): void {
+        this.mountLaserPosition = laserPosition;
+    }
 
-	void setLaserPosition(int laserPosition) {
-		mountLaserPosition = laserPosition;
-	}
+    public getSelectedEquipment(): Equipment {
+        return this.getEquipment(this.selectionIndex);
+    }
 
-	public Equipment getSelectedEquipment() {
-		return getEquipment(selectionIndex);
-	}
+    private maintainLaser(pos: number, laser: Equipment): number {
+        const laserInPos: Equipment = this.game.getCobra().getLaser(pos);
+        return laserInPos == null ? 0 : laserInPos === laser ? -1 : 1;
+    }
 
-	private int maintainLaser(int pos, Equipment laser) {
-		Equipment laserInPos = game.getCobra().getLaser(pos);
-		return laserInPos == null ? 0 : laserInPos == laser ? -1 : 1;
-	}
+    protected performTrade(index: number): void {
+        const equipment: Equipment = this.getEquipment(index);
+        const player: Player = this.game.getPlayer();
+        for (const mission of MissionManager.getInstance().getActiveMissions()) {
+            if (mission.performTrade(this, equipment)) {
+                return;
+            }
+        }
+        const cobra: PlayerCobra = player.getCobra();
+        let price: number = equipment.getCost();
+        let where: number = -1;
+        let laserState: number = 0;
+        if (equipment.isLaser()) {
+            if (this.mountLaserPosition === -1) {
+                this.newScreen = new LaserPositionSelectionScreen(this,
+                    this.maintainLaser(PlayerCobra.DIR_FRONT, equipment),
+                    this.maintainLaser(PlayerCobra.DIR_RIGHT, equipment),
+                    this.maintainLaser(PlayerCobra.DIR_REAR, equipment),
+                    this.maintainLaser(PlayerCobra.DIR_LEFT, equipment), index);
+                return;
+            }
+            if (this.mountLaserPosition === -2) {
+                // Do nothing: User canceled.
+                this.mountLaserPosition = -1;
+                return;
+            }
+            where = this.mountLaserPosition;
+            this.mountLaserPosition = -1;
+            laserState = this.maintainLaser(where, equipment);
+            if (laserState !== 0) {
+                price = laserState < 0 ? -equipment.getCost() : equipment.getCost() - cobra.getLaser(where).getCost();
+            }
+        }
+        if (player.getCash() < price) {
+            this.showMessageDialog(L.string(R.string.trade_not_enough_money));
+            SoundManager.play(Assets.error);
+            return;
+        }
+        if (equipment.getCost() === -1) {
+            // Fuel
+            if (cobra.getFuel() === cobra.getMaxFuel()) {
+                this.showMessageDialog(L.getOneDecimalFormatString(R.string.equip_fuel_full, cobra.getMaxFuel()));
+                SoundManager.play(Assets.error);
+                return;
+            }
+        }
+        if (!equipment.isLaser() && cobra.isEquipmentInstalled(equipment)) {
+            this.showMessageDialog(L.string(R.string.equip_only_one_allowed, equipment.getShortName()));
+            SoundManager.play(Assets.error);
+            return;
+        }
+        if (cobra.isEquipmentInstalled(EquipmentStore.get().getEquipmentById(EquipmentStore.NAVAL_ENERGY_UNIT)) &&
+            equipment.equals(EquipmentStore.get().getEquipmentById(EquipmentStore.EXTRA_ENERGY_UNIT))) {
+            this.showMessageDialog(L.string(R.string.equip_only_one_allowed, equipment.getShortName()));
+            SoundManager.play(Assets.error);
+            return;
+        }
 
-	@Override
-	protected void performTrade(int index) {
-		Equipment equipment = getEquipment(index);
-		Player player = game.getPlayer();
-		for (Mission mission: MissionManager.getInstance().getActiveMissions()) {
-			if (mission.performTrade(this, equipment)) {
-				return;
-			}
-		}
-		PlayerCobra cobra = player.getCobra();
-		int price = equipment.getCost();
-		int where = -1;
-		int laserState = 0;
-		if (equipment.isLaser()) {
-			if (mountLaserPosition == -1) {
-				newScreen = new LaserPositionSelectionScreen(this,
-					maintainLaser(PlayerCobra.DIR_FRONT, equipment),
-					maintainLaser(PlayerCobra.DIR_RIGHT, equipment),
-					maintainLaser(PlayerCobra.DIR_REAR, equipment),
-					maintainLaser(PlayerCobra.DIR_LEFT, equipment), index);
-				return;
-			}
-			if (mountLaserPosition == -2) {
-				// Do nothing: User canceled.
-				mountLaserPosition = -1;
-				return;
-			}
-			where = mountLaserPosition;
-			mountLaserPosition = -1;
-			laserState = maintainLaser(where, equipment);
-			if (laserState != 0) {
-				price = laserState < 0 ? -equipment.getCost() : equipment.getCost() - cobra.getLaser(where).getCost();
-			}
-		}
-		if (player.getCash() < price) {
-			showMessageDialog(L.string(R.string.trade_not_enough_money));
-			SoundManager.play(Assets.error);
-			return;
-		}
-		if (equipment.getCost() == -1) {
-			// Fuel
-			if (cobra.getFuel() == cobra.getMaxFuel()) {
-				showMessageDialog(L.getOneDecimalFormatString(R.string.equip_fuel_full, cobra.getMaxFuel()));
-				SoundManager.play(Assets.error);
-				return;
-			}
-		}
-		if (!equipment.isLaser() && cobra.isEquipmentInstalled(equipment)) {
-			showMessageDialog(L.string(R.string.equip_only_one_allowed, equipment.getShortName()));
-			SoundManager.play(Assets.error);
-			return;
-		}
-		if (cobra.isEquipmentInstalled(EquipmentStore.get().getEquipmentById(EquipmentStore.NAVAL_ENERGY_UNIT)) &&
-				equipment.equals(EquipmentStore.get().getEquipmentById(EquipmentStore.EXTRA_ENERGY_UNIT))) {
-			showMessageDialog(L.string(R.string.equip_only_one_allowed, equipment.getShortName()));
-			SoundManager.play(Assets.error);
-			return;
-		}
+        if (equipment.isLaser()) {
+            player.setCash(player.getCash() - price);
+            cobra.setLaser(where, laserState < 0 ? null : equipment);
+            this.disposeSelectedAnimation(this.selectionIndex);
+            this.selectionIndex = -1;
+            this.cashLeft = this.getCashLeftString();
 
-		if (equipment.isLaser()) {
-			player.setCash(player.getCash() - price);
-			cobra.setLaser(where, laserState < 0 ? null : equipment);
-			disposeSelectedAnimation(selectionIndex);
-			selectionIndex = -1;
-			cashLeft = getCashLeftString();
+            SoundManager.play(Assets.kaChing);
+            this.performAutoSave();
+            return;
+        }
 
-			SoundManager.play(Assets.kaChing);
-			performAutoSave();
-			return;
-		}
+        if (equipment.getCost() === -1) {
+            // Fuel
+            price = player.getCurrentSystem() == null ? 10 : player.getCurrentSystem().getFuelPrice();
+            const fuelToBuy: number = cobra.getMaxFuel() - cobra.getFuel();
+            const priceToPay: number = fuelToBuy * price / 10;
+            if (priceToPay > player.getCash()) {
+                this.showMessageDialog(L.string(R.string.trade_not_enough_money));
+                SoundManager.play(Assets.error);
+                return;
+            }
+            player.setCash(player.getCash() - priceToPay);
+            player.getCobra().setFuel(cobra.getMaxFuel());
+            this.disposeSelectedAnimation(this.selectionIndex);
+            this.selectionIndex = -1;
+            this.cashLeft = this.getCashLeftString();
+            SoundManager.play(Assets.kaChing);
+            this.equippedEquipment = EquipmentStore.get().getEquipmentById(EquipmentStore.FUEL);
+            this.performAutoSave();
+            return;
+        }
 
-		if (equipment.getCost() == -1) {
-			// Fuel
-			price = player.getCurrentSystem() == null ? 10 : player.getCurrentSystem().getFuelPrice();
-			int fuelToBuy = cobra.getMaxFuel() - cobra.getFuel();
-			int priceToPay = fuelToBuy * price / 10;
-			if (priceToPay > player.getCash()) {
-				showMessageDialog(L.string(R.string.trade_not_enough_money));
-				SoundManager.play(Assets.error);
-				return;
-			}
-			player.setCash(player.getCash() - priceToPay);
-			player.getCobra().setFuel(cobra.getMaxFuel());
-			disposeSelectedAnimation(selectionIndex);
-			selectionIndex = -1;
-			cashLeft = getCashLeftString();
-			SoundManager.play(Assets.kaChing);
-			equippedEquipment = EquipmentStore.get().getEquipmentById(EquipmentStore.FUEL);
-			performAutoSave();
-			return;
-		}
+        if (equipment === EquipmentStore.get().getEquipmentById(EquipmentStore.MISSILES)) {
+            if (cobra.getMissiles() === PlayerCobra.MAXIMUM_MISSILES) {
+                this.showMessageDialog(L.string(R.string.equip_max_missiles_reached, PlayerCobra.MAXIMUM_MISSILES));
+                SoundManager.play(Assets.error);
+                return;
+            }
+            player.setCash(player.getCash() - price);
+            cobra.setMissiles(cobra.getMissiles() + 1);
+            this.disposeSelectedAnimation(this.selectionIndex);
+            this.selectionIndex = -1;
+            this.cashLeft = this.getCashLeftString();
+            SoundManager.play(Assets.kaChing);
+            this.equippedEquipment = EquipmentStore.get().getEquipmentById(EquipmentStore.MISSILES);
+            this.performAutoSave();
+            return;
+        }
 
-		if (equipment == EquipmentStore.get().getEquipmentById(EquipmentStore.MISSILES)) {
-			if (cobra.getMissiles() == PlayerCobra.MAXIMUM_MISSILES) {
-				showMessageDialog(L.string(R.string.equip_max_missiles_reached, PlayerCobra.MAXIMUM_MISSILES));
-				SoundManager.play(Assets.error);
-				return;
-			}
-			player.setCash(player.getCash() - price);
-			cobra.setMissiles(cobra.getMissiles() + 1);
-			disposeSelectedAnimation(selectionIndex);
-			selectionIndex = -1;
-			cashLeft = getCashLeftString();
-			SoundManager.play(Assets.kaChing);
-			equippedEquipment = EquipmentStore.get().getEquipmentById(EquipmentStore.MISSILES);
-			performAutoSave();
-			return;
-		}
+        player.setCash(player.getCash() - price);
+        cobra.addEquipment(equipment);
+        if (equipment === EquipmentStore.get().getEquipmentById(EquipmentStore.RETRO_ROCKETS)) {
+            cobra.setRetroRocketsUseCount(4 + Math.floor(Math.random() * 3));
+        }
+        SoundManager.play(Assets.kaChing);
+        this.disposeSelectedAnimation(this.selectionIndex);
+        this.selectionIndex = -1;
+        this.cashLeft = this.getCashLeftString();
+        this.equippedEquipment = equipment;
+        this.performAutoSave();
+    }
 
-		player.setCash(player.getCash() - price);
-		cobra.addEquipment(equipment);
-		if (equipment == EquipmentStore.get().getEquipmentById(EquipmentStore.RETRO_ROCKETS)) {
-			cobra.setRetroRocketsUseCount(4 + (int) (Math.random() * 3));
-		}
-		SoundManager.play(Assets.kaChing);
-		disposeSelectedAnimation(selectionIndex);
-		selectionIndex = -1;
-		cashLeft = getCashLeftString();
-		equippedEquipment = equipment;
-		performAutoSave();
-	}
+    private async performAutoSave(): Promise<void> {
+        try {
+            await this.game.autoSave();
+        } catch (e) {
+            AliteLog.e("Auto saving failed", e.message, e);
+        }
+    }
 
-	private void performAutoSave() {
-		try {
-			game.autoSave();
-		} catch (IOException e) {
-			AliteLog.e("Auto saving failed", e.getMessage(), e);
-		}
-	}
+    protected disposeSelectedAnimation(index: number): void {
+        this.equippedEquipment = null;
+        const pixmaps = EquipmentScreen.equipment.get(this.getEquipmentId(index));
+        if (pixmaps && pixmaps.length > 1) {
+            const originalFirst = pixmaps.shift(); // keep first item
+            for (const p of pixmaps) {
+                p.dispose();
+            }
+            // Clear the array and put the first one back
+            pixmaps.length = 0;
+            pixmaps.push(originalFirst);
+        }
+    }
 
-	@Override
-	protected void disposeSelectedAnimation(int index) {
-		equippedEquipment = null;
-		Iterator<Pixmap> i = equipment.get(getEquipmentId(index)).iterator();
-		if (i.hasNext()) {
-			i.next(); // skip first item
-			while (i.hasNext()) {
-				i.next().dispose();
-				i.remove();
-			}
-		}
-	}
 
-	public Equipment getEquippedEquipment() {
-		return equippedEquipment;
-	}
+    public getEquippedEquipment(): Equipment {
+        return this.equippedEquipment;
+    }
 
-	@Override
-	protected void loadSelectedAnimation() {
-		loadEquipmentAnimation(selectionIndex);
-		tradeButton.get(selectionIndex).setAnimation(equipment.get(getEquipmentId(selectionIndex)).toArray(new Pixmap[0]));
-	}
+    protected async loadSelectedAnimation(): Promise<void> {
+        await this.loadEquipmentAnimation(this.selectionIndex);
+        this.tradeButton[this.selectionIndex].setAnimation(EquipmentScreen.equipment.get(this.getEquipmentId(this.selectionIndex)));
+    }
 
-	protected void performScreenChange() {
-		if (inFlightScreenChange()) {
-			return;
-		}
-		Screen oldScreen = game.getCurrentScreen();
-		if (!(newScreen instanceof LaserPositionSelectionScreen)) {
-			oldScreen.dispose();
-		}
-		game.setScreen(newScreen);
-		game.getNavigationBar().performScreenChange();
-		postScreenChange();
-	}
+    protected performScreenChange(): void {
+        if (this.inFlightScreenChange()) {
+            return;
+        }
+        const oldScreen: Screen = this.game.getCurrentScreen();
+        if (!(this.newScreen instanceof LaserPositionSelectionScreen)) {
+            oldScreen.dispose();
+        }
+        this.game.setScreen(this.newScreen);
+        this.game.getNavigationBar().performScreenChange();
+        this.postScreenChange();
+    }
 
-	private void loadEquipmentAnimation(int index) {
-		int eqId = getEquipmentId(index);
-		String path = EquipmentStore.get().getEquipmentByHash(eqId).getIcon();
-		int i = 1;
-		while(true) {
-			Pixmap icon = newAssetPixmap(path + File.separator + i);
-			if (icon == null) {
-				break;
-			}
-			equipment.get(eqId).add(icon);
-			i++;
-		}
-	}
+    private async loadEquipmentAnimation(index: number): Promise<void> {
+        const eqId: number = this.getEquipmentId(index);
+        const path: string = EquipmentStore.get().getEquipmentByHash(eqId).getIcon();
+        let i = 1;
+        while (true) {
+            const icon: Pixmap = await this.newAssetPixmap(path + "/" + i);
+            if (icon == null) {
+                break;
+            }
+            EquipmentScreen.equipment.get(eqId).push(icon);
+            i++;
+        }
+    }
 
-	private Pixmap newAssetPixmap(String fileName) {
-		try {
-			fileName += ".png";
-			return game.getGraphics().newPixmap(fileName, game.getFileIO().readAssetFile(fileName), 225, 225);
-		} catch (IOException ignored) {
-			return null;
-		}
-	}
+    private async newAssetPixmap(fileName: string): Promise<Pixmap> {
+        try {
+            fileName += ".png";
+            const data = await this.game.getFileIO().readAssetFile(fileName);
+            return this.game.getGraphics().newPixmap(fileName, data, 225, 225);
+        } catch (ignored) {
+            return null;
+        }
+    }
 
-	@Override
-	public void loadAssets() {
-		equipment = new HashMap<>();
-		Iterator<Equipment> i = EquipmentStore.get().getIterator();
-		while (i.hasNext()) {
-			List<Pixmap> p = new ArrayList<>();
-			Equipment e = i.next();
-			if (!game.getFileIO().existsAssetFile(e.getIcon() + ".png")) {
-				e.setDefaultIcon();
-			}
-			p.add(newAssetPixmap(e.getIcon()));
-			equipment.put(e.getId(),p);
-		}
-		super.loadAssets();
-	}
+    public async loadAssets(): Promise<void> {
+        EquipmentScreen.equipment = new Map<number, Pixmap[]>();
+        const i = EquipmentStore.get().getIterator();
+        for await (const e of i) {
+            const p: Pixmap[] = [];
+            if (!await this.game.getFileIO().existsAssetFile(e.getIcon() + ".png")) {
+                e.setDefaultIcon();
+            }
+            p.push(await this.newAssetPixmap(e.getIcon()));
+            EquipmentScreen.equipment.set(e.getId(), p);
+        }
+        super.loadAssets();
+    }
 
-	@Override
-	public void dispose() {
-		super.dispose();
-		if (equipment != null) {
-			for (List<Pixmap> ps: equipment.values()) {
-				ps.get(0).dispose();
-			}
-		}
-	}
 
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.EQUIP_SCREEN;
-	}
+    public dispose(): void {
+        super.dispose();
+        if (EquipmentScreen.equipment != null) {
+            for (const ps of EquipmentScreen.equipment.values()) {
+                if (ps && ps.length > 0) {
+                    ps[0].dispose();
+                }
+            }
+        }
+    }
+
+    public getScreenCode(): number {
+        return ScreenCodes.EQUIP_SCREEN;
+    }
 }

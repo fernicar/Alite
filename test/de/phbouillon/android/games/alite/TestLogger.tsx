@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -11,46 +9,41 @@ package de.phbouillon.android.games.alite;
  * This program is distributed in the hope that it will be useful and
  * fun, but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU General Public License for more details
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-public class TestLogger implements Loggable {
-	@Override
-	public void debug(String title, String message) {
-		System.out.println("[DEBUG " + title + "] " + message);
-	}
+import { Loggable } from "../../../../../../../src/de/phbouillon/android/games/alite/Loggable";
 
-	@Override
-	public void warning(String title, String message) {
-		System.out.println("[WARNING " + title + "] " + message);
-	}
+export class TestLogger implements Loggable {
+    public debug(title: string, message: string): void {
+        console.log(`[DEBUG ${title}] ${message}`);
+    }
 
-	@Override
-	public void error(String title, String message) {
-		System.out.println("[ERROR " + title + "] " + message);
-	}
+    public warning(title: string, message: string): void {
+        console.warn(`[WARNING ${title}] ${message}`);
+    }
 
-	@Override
-	public void error(String title, String message, Throwable cause) {
-		System.out.println("[ERROR " + title + "] " + message + "\n" + cause.getMessage());
-	}
+    public error(title: string, message: string, cause?: Error): void {
+        if (cause) {
+            console.error(`[ERROR ${title}] ${message}\n${cause.message}`);
+        } else {
+            console.error(`[ERROR ${title}] ${message}`);
+        }
+    }
 
-	@Override
-	public String getGlVendorData(int name) {
-		return null;
-	}
+    public getGlVendorData(name: number): string {
+        return null;
+    }
 
-	@Override
-	public String getMemoryData() {
-		return null;
-	}
+    public getMemoryData(): string {
+        return null;
+    }
 
-	@Override
-	public String getDeviceInfo() {
-		return null;
-	}
+    public getDeviceInfo(): string {
+        return null;
+    }
 }

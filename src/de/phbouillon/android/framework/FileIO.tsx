@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,32 +16,25 @@ package de.phbouillon.android.framework;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+export interface FileIO {
+    getFileName(fileName: string): string;
+    readFile(fileName: string): Promise<any>; // InputStream equivalent
+    writeFile(fileName: string): Promise<any>; // OutputStream equivalent
+    appendFile(fileName: string): Promise<any>; // OutputStream equivalent
+    fileLastModifiedDate(fileName: string): number;
+    exists(fileName: string): boolean;
+    mkDir(fileName: string): boolean;
+    readFileContents(fileName: string, fromOffset?: number): Promise<Uint8Array>;
+    readPartialFileContents(fileName: string, offsetOrLength: number, length?: number): Promise<Uint8Array>;
+    getFiles(directory: string, fileNamePattern: string): any[]; // File[] equivalent
+    deleteFile(fileName: string): boolean;
+    copyFile(srcFileName: string, dstFileName: string): Promise<void>;
+    zip(zipName: string, ...fileNames: string[]): Promise<void>;
+    unzip(zipFile: any, targetDirectory: any): Promise<void>; // File equivalents
 
-public interface FileIO {
-	String getFileName(String fileName);
-	InputStream readFile(String fileName) throws IOException;
-	OutputStream writeFile(String fileName) throws IOException;
-	OutputStream appendFile(String fileName) throws IOException;
-	long fileLastModifiedDate(String fileName);
-	boolean exists(String fileName);
-	boolean mkDir(String fileName);
-	byte[] readFileContents(String fileName) throws IOException;
-	byte[] readPartialFileContents(String fileName, int length) throws IOException;
-	byte[] readPartialFileContents(String fileName, int offset, int length) throws IOException;
-	byte[] readFileContents(String fileName, int fromOffset) throws IOException;
-	File[] getFiles(String directory, String fileNamePattern);
-	boolean deleteFile(String fileName);
-	void copyFile(String srcFileName, String dstFileName) throws IOException;
-	void zip(String zipName, String ...fileNames) throws IOException;
-	void unzip(File zipFile, File targetDirectory) throws IOException;
-
-	Object getPrivatePath(String fileName) throws IOException;
-	InputStream readPrivateFile(String fileName) throws IOException;
-	boolean existsPrivateFile(String fileName);
-	InputStream readAssetFile(String fileName) throws IOException;
-	boolean existsAssetFile(String fileName);
+    getPrivatePath(fileName: string): Promise<any>;
+    readPrivateFile(fileName: string): Promise<any>; // InputStream equivalent
+    existsPrivateFile(fileName: string): boolean;
+    readAssetFile(fileName: string): Promise<any>; // InputStream equivalent
+    existsAssetFile(fileName: string): boolean;
 }

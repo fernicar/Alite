@@ -1,5 +1,3 @@
-package de.phbouillon.android.framework.impl.gl;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,60 +16,53 @@ package de.phbouillon.android.framework.impl.gl;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
+import { Game } from "../Game";
+import { Rect } from "../Rect";
+import { AliteLog } from "../../games/alite/AliteLog";
 
-import android.graphics.Rect;
-import android.opengl.GLES11;
-import de.phbouillon.android.framework.Game;
+export class GlUtils {
+    public static setViewport(game: Game): void {
+        const r = game.getGraphics().getVisibleArea();
+        // GLES11.glViewport(r.left, r.top, r.width(), r.height());
+        AliteLog.d("GlUtils", "setViewport needs WebGL implementation.");
+    }
 
-public class GlUtils {
-	public static void setViewport(Game game) {
-		Rect r = game.getGraphics().getVisibleArea();
-		GLES11.glViewport(r.left, r.top, r.width(), r.height());
-	}
+    public static gluPerspective(game: Game, fovy: number, znear: number, zfar: number): void;
+    public static gluPerspective(fovy: number, aspect: number, znear: number, zfar: number): void;
+    public static gluPerspective(arg1: any, arg2: any, arg3: any, arg4?: any): void {
+        if (arg1 instanceof Game) {
+            const game = arg1 as Game;
+            const r = game.getGraphics().getVisibleArea();
+            this.gluPerspective(arg2, r.width() / r.height(), arg3, arg4);
+        } else {
+            const fovy = arg1 as number;
+            const aspect = arg2 as number;
+            const znear = arg3 as number;
+            const zfar = arg4 as number;
+            const ymax = znear * Math.tan(fovy * Math.PI / 360.0);
+            const ymin = -ymax;
+            const xmin = ymin * aspect;
+            const xmax = ymax * aspect;
+            // GLES11.glFrustumf(xmin, xmax, ymin, ymax, znear, zfar);
+            AliteLog.d("GlUtils", "gluPerspective needs WebGL implementation.");
+        }
+    }
 
-	public static void gluPerspective(Game game, float fovy, float znear, float zfar) {
-		Rect r = game.getGraphics().getVisibleArea();
-		gluPerspective(fovy, r.width() / (float) r.height(), znear, zfar);
-	}
+    public static ortho(game: Game): void {
+        const r = game.getGraphics().getVisibleArea();
+        // GLES11.glOrthof(r.left, r.right, r.bottom, r.top, 0.0, 1.0);
+        AliteLog.d("GlUtils", "ortho needs WebGL implementation.");
+    }
 
-	public static void gluPerspective(float fovy, float aspect, float znear, float zfar) {
-		float ymax = (float) (znear * Math.tan(fovy * Math.PI / 360.0));
-		float ymin = -ymax;
-		float xmin = ymin * aspect;
-		float xmax = ymax * aspect;
-		GLES11.glFrustumf(xmin, xmax, ymin, ymax, znear, zfar);
-	}
+    public static allocateFloatBuffer(capacity: number): Float32Array {
+        return new Float32Array(capacity);
+    }
 
-	public static void ortho(Game game) {
-		Rect r = game.getGraphics().getVisibleArea();
-		GLES11.glOrthof(r.left, r.right, r.bottom, r.top, 0.0f, 1.0f);
-	}
+    public static toFloatBufferPositionZero(values: number[]): Float32Array {
+        return new Float32Array(values);
+    }
 
-	public static FloatBuffer allocateFloatBuffer(int capacity) {
-		ByteBuffer vbb = ByteBuffer.allocateDirect(capacity);
-		vbb.order(ByteOrder.nativeOrder());
-		return vbb.asFloatBuffer();
-	}
-
-	public static FloatBuffer toFloatBufferPositionZero(float[] values) {
-		ByteBuffer vbb = ByteBuffer.allocateDirect(values.length * 4);
-		vbb.order(ByteOrder.nativeOrder());
-		FloatBuffer buffer = vbb.asFloatBuffer();
-		buffer.put(values);
-		buffer.position(0);
-		return buffer;
-	}
-
-	public static ShortBuffer toShortBufferPositionZero(short [] values) {
-		ByteBuffer vbb = ByteBuffer.allocateDirect(values.length * 2);
-		vbb.order(ByteOrder.nativeOrder());
-		ShortBuffer buffer = vbb.asShortBuffer();
-		buffer.put(values);
-		buffer.position(0);
-		return buffer;
-	}
+    public static toShortBufferPositionZero(values: number[]): Int16Array {
+        return new Int16Array(values);
+    }
 }

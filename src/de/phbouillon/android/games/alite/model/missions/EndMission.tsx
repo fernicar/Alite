@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.model.missions;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,44 +16,39 @@ package de.phbouillon.android.games.alite.model.missions;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataInputStream;
+import { Player } from "../Player";
+import { Rating } from "../Rating";
+import { SystemData } from "../generator/SystemData";
+import { AliteScreen } from "../../screens/canvas/AliteScreen";
+import { EndMissionScreen } from "../../screens/canvas/missions/EndMissionScreen";
+import { Mission } from "./Mission";
 
-import de.phbouillon.android.games.alite.model.Player;
-import de.phbouillon.android.games.alite.model.Rating;
-import de.phbouillon.android.games.alite.model.generator.SystemData;
-import de.phbouillon.android.games.alite.screens.canvas.AliteScreen;
-import de.phbouillon.android.games.alite.screens.canvas.missions.EndMissionScreen;
+export class EndMission extends Mission {
+    private static readonly serialVersionUID = -8487990448967204124;
 
-public class EndMission extends Mission {
-	private static final long serialVersionUID = -8487990448967204124L;
+    public static readonly ID = 6;
 
-	public static final int ID = 6;
+    constructor() {
+        super(EndMission.ID);
+    }
 
-	public EndMission() {
-		super(ID);
-	}
+    protected checkStart(player: Player): boolean {
+        // TODO: Rating enum will need to be handled differently in TS
+        return player.getRating() === Rating.ELITE &&
+            player.getCurrentSystem() === SystemData.RAXXLA_SYSTEM;
+    }
 
-	@Override
-	protected boolean checkStart(Player player) {
-		return player.getRating() == Rating.ELITE &&
-			player.getCurrentSystem() == SystemData.RAXXLA_SYSTEM;
-	}
+    protected acceptMission(accept: boolean): void {
+    }
 
-	@Override
-	protected void acceptMission(boolean accept) {
-	}
+    public load(dis: any): void { // DataInputStream
+    }
 
-	@Override
-	public void load(DataInputStream dis) {
-	}
+    public getMissionScreen(): AliteScreen {
+        return new EndMissionScreen(0);
+    }
 
-	@Override
-	public AliteScreen getMissionScreen() {
-		return new EndMissionScreen(0);
-	}
-
-	@Override
-	public String getObjective() {
-		return "";
-	}
+    public getObjective(): string {
+        return "";
+    }
 }

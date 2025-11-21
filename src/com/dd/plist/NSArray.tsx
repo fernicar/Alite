@@ -21,37 +21,44 @@
  * SOFTWARE.
  */
 
-package com.dd.plist;
+import { ASCIIPropertyListParser } from "./ASCIIPropertyListParser";
+import { BinaryPropertyListWriter } from "./BinaryPropertyListWriter";
+import { NSData } from "./NSData";
+import { NSDictionary } from "./NSDictionary";
+import { NSObject } from "./NSObject";
+import { StringBuilder } from "./StringBuilder";
 
-import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * Represents an Array.
  *
  * @author Daniel Dreibrodt
  */
-public class NSArray extends NSObject {
+export class NSArray extends NSObject {
 
-    private NSObject[] array;
+    private array: NSObject[];
 
     /**
      * Creates an empty array of the given length.
      *
      * @param length The number of elements this array will be able to hold.
      */
-    public NSArray(int length) {
-        array = new NSObject[length];
-    }
-
+    constructor(length: number);
     /**
      * Creates a array from an existing one
      *
      * @param a The array which should be wrapped by the NSArray
      */
-    public NSArray(NSObject... a) {
-        array = a;
+    constructor(...a: NSObject[]);
+    constructor(...args: any[]) {
+        super();
+        if (args.length === 1 && typeof args[0] === "number") {
+            this.array = new Array<NSObject>(args[0]);
+        } else {
+            this.array = args as NSObject[];
+        }
     }
+
 
     /**
      * Returns the object stored at the given index.
@@ -60,8 +67,8 @@ public class NSArray extends NSObject {
      * @param i The index of the object.
      * @return The object at the given index.
      */
-    public NSObject objectAtIndex(int i) {
-        return array[i];
+    public objectAtIndex(i: number): NSObject {
+        return this.array[i];
     }
 
     /**
@@ -70,13 +77,10 @@ public class NSArray extends NSObject {
      *
      * @param i The index of the object
      */
-    public void remove(int i) {
-        if ((i >= array.length) || (i < 0))
-            throw new ArrayIndexOutOfBoundsException("invalid index:" + i + ";the array length is " + array.length);
-        NSObject[] newArray = new NSObject[array.length - 1];
-        System.arraycopy(array, 0, newArray, 0, i);
-        System.arraycopy(array, i + 1, newArray, i, array.length - i - 1);
-        array = newArray;
+    public remove(i: number): void {
+        if ((i >= this.array.length) || (i < 0))
+            throw new Error(`invalid index:${i};the array length is ${this.array.length}`);
+        this.array.splice(i, 1);
     }
 
     /**
@@ -87,8 +91,8 @@ public class NSArray extends NSObject {
      * @param key   The index where to store the object.
      * @param value The object.
      */
-    public void setValue(int key, Object value) {
-        array[key] = NSObject.wrap(value);
+    public setValue(key: number, value: any): void {
+        this.array[key] = NSObject.wrap(value);
     }
 
     /**
@@ -97,8 +101,8 @@ public class NSArray extends NSObject {
      *
      * @return The actual array represented by this NSArray.
      */
-    public NSObject[] getArray() {
-        return array;
+    public getArray(): NSObject[] {
+        return this.array;
     }
 
     /**
@@ -106,8 +110,8 @@ public class NSArray extends NSObject {
      *
      * @return The number of elements that this array can store.
      */
-    public int count() {
-        return array.length;
+    public count(): number {
+        return this.array.length;
     }
 
     /**
@@ -118,11 +122,11 @@ public class NSArray extends NSObject {
      * @return <code>true</code>, when the object could be found. <code>false</code> otherwise.
      * @see Object#equals(java.lang.Object)
      */
-    public boolean containsObject(Object obj) {
-        NSObject nso = NSObject.wrap(obj);
-        for (NSObject elem : array) {
-            if(elem == null) {
-                if(obj == null)
+    public containsObject(obj: any): boolean {
+        const nso: NSObject = NSObject.wrap(obj);
+        for (const elem of this.array) {
+            if (elem == null) {
+                if (obj == null)
                     return true;
                 continue;
             }
@@ -143,10 +147,10 @@ public class NSArray extends NSObject {
      * @see Object#equals(java.lang.Object)
      * @see #indexOfIdenticalObject(Object)
      */
-    public int indexOfObject(Object obj) {
-        NSObject nso = NSObject.wrap(obj);
-        for (int i = 0; i < array.length; i++) {
-            if (array[i].equals(nso)) {
+    public indexOfObject(obj: any): number {
+        const nso: NSObject = NSObject.wrap(obj);
+        for (let i = 0; i < this.array.length; i++) {
+            if (this.array[i].equals(nso)) {
                 return i;
             }
         }
@@ -163,10 +167,10 @@ public class NSArray extends NSObject {
      * @return The index of the object, if it was found. -1 otherwise.
      * @see #indexOfObject(Object)
      */
-    public int indexOfIdenticalObject(Object obj) {
-        NSObject nso = NSObject.wrap(obj);
-        for (int i = 0; i < array.length; i++) {
-            if (array[i] == nso) {
+    public indexOfIdenticalObject(obj: any): number {
+        const nso: NSObject = NSObject.wrap(obj);
+        for (let i = 0; i < this.array.length; i++) {
+            if (this.array[i] === nso) {
                 return i;
             }
         }
@@ -179,8 +183,8 @@ public class NSArray extends NSObject {
      *
      * @return The value of the highest index in the array.
      */
-    public NSObject lastObject() {
-        return array[array.length - 1];
+    public lastObject(): NSObject {
+        return this.array[this.array.length - 1];
     }
 
     /**
@@ -190,61 +194,56 @@ public class NSArray extends NSObject {
      * @param indexes The indices of the objects.
      * @return The new array containing the objects stored at the given indices.
      */
-    public NSObject[] objectsAtIndexes(int... indexes) {
-        NSObject[] result = new NSObject[indexes.length];
-        Arrays.sort(indexes);
-        for (int i = 0; i < indexes.length; i++)
-            result[i] = array[indexes[i]];
+    public objectsAtIndexes(...indexes: number[]): NSObject[] {
+        const result: NSObject[] = new Array<NSObject>(indexes.length);
+        indexes.sort((a, b) => a - b);
+        for (let i = 0; i < indexes.length; i++)
+            result[i] = this.array[indexes[i]];
         return result;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if(obj == null)
+    public equals(obj: any): boolean {
+        if (obj == null)
             return false;
-        if(obj.getClass().equals(NSArray.class)) {
-            return Arrays.equals(((NSArray) obj).getArray(), this.array);
+        if (obj instanceof NSArray) {
+            return this.array === (obj as NSArray).getArray() || this.array.every((v, i) => v.equals((obj as NSArray).getArray()[i]));
         } else {
-            NSObject nso = NSObject.wrap(obj);
-            if(nso.getClass().equals(NSArray.class)) {
-                return Arrays.equals(((NSArray) nso).getArray(), this.array);
+            const nso: NSObject = NSObject.wrap(obj);
+            if (nso instanceof NSArray) {
+                return this.array === (nso as NSArray).getArray() || this.array.every((v, i) => v.equals((nso as NSArray).getArray()[i]));
             }
         }
         return false;
     }
 
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 89 * hash + Arrays.deepHashCode(this.array);
+    public hashCode(): number {
+        let hash = 7;
+        hash = 89 * hash + this.array.reduce((acc, val) => acc + (val ? val.hashCode() : 0), 0);
         return hash;
     }
 
-    @Override
-    void toXML(StringBuilder xml, int level) {
-        indent(xml, level);
+    public toXML(xml: StringBuilder, level: number): void {
+        this.indent(xml, level);
         xml.append("<array>");
         xml.append(NSObject.NEWLINE);
-        for (NSObject o : array) {
+        for (const o of this.array) {
             o.toXML(xml, level + 1);
             xml.append(NSObject.NEWLINE);
         }
-        indent(xml, level);
+        this.indent(xml, level);
         xml.append("</array>");
     }
 
-    @Override
-    void assignIDs(BinaryPropertyListWriter out) {
+    public assignIDs(out: BinaryPropertyListWriter): void {
         super.assignIDs(out);
-        for (NSObject obj : array) {
+        for (const obj of this.array) {
             obj.assignIDs(out);
         }
     }
 
-    @Override
-    void toBinary(BinaryPropertyListWriter out) throws IOException {
-        out.writeIntHeader(0xA, array.length);
-        for (NSObject obj : array) {
+    public toBinary(out: BinaryPropertyListWriter): void {
+        out.writeIntHeader(0xA, this.array.length);
+        for (const obj of this.array) {
             out.writeID(out.getID(obj));
         }
     }
@@ -257,10 +256,10 @@ public class NSArray extends NSObject {
      *
      * @return ASCII representation of this object.
      */
-    public String toASCIIPropertyList() {
-        StringBuilder ascii = new StringBuilder();
-        toASCII(ascii, 0);
-        ascii.append(NEWLINE);
+    public toASCIIPropertyList(): string {
+        const ascii: StringBuilder = new StringBuilder();
+        this.toASCII(ascii, 0);
+        ascii.append(NSObject.NEWLINE);
         return ascii.toString();
     }
 
@@ -273,65 +272,63 @@ public class NSArray extends NSObject {
      *
      * @return GnuStep ASCII representation of this object.
      */
-    public String toGnuStepASCIIPropertyList() {
-        StringBuilder ascii = new StringBuilder();
-        toASCIIGnuStep(ascii, 0);
-        ascii.append(NEWLINE);
+    public toGnuStepASCIIPropertyList(): string {
+        const ascii: StringBuilder = new StringBuilder();
+        this.toASCIIGnuStep(ascii, 0);
+        ascii.append(NSObject.NEWLINE);
         return ascii.toString();
     }
 
-    @Override
-    protected void toASCII(StringBuilder ascii, int level) {
-        indent(ascii, level);
+    protected toASCII(ascii: StringBuilder, level: number): void {
+        this.indent(ascii, level);
         ascii.append(ASCIIPropertyListParser.ARRAY_BEGIN_TOKEN);
-        int indexOfLastNewLine = ascii.lastIndexOf(NEWLINE);
-        for (int i = 0; i < array.length; i++) {
-            Class<?> objClass = array[i].getClass();
-            if ((objClass.equals(NSDictionary.class) || objClass.equals(NSArray.class) || objClass.equals(NSData.class))
-                    && indexOfLastNewLine != ascii.length()) {
-                ascii.append(NEWLINE);
+        let indexOfLastNewLine: number = ascii.lastIndexOf(NSObject.NEWLINE);
+        for (let i = 0; i < this.array.length; i++) {
+            const objClass = this.array[i];
+            if ((objClass instanceof NSDictionary || objClass instanceof NSArray || objClass instanceof NSData)
+                && indexOfLastNewLine !== ascii.length()) {
+                ascii.append(NSObject.NEWLINE);
                 indexOfLastNewLine = ascii.length();
-                array[i].toASCII(ascii, level + 1);
+                this.array[i].toASCII(ascii, level + 1);
             } else {
-                if (i != 0)
+                if (i !== 0)
                     ascii.append(" ");
-                array[i].toASCII(ascii, 0);
+                this.array[i].toASCII(ascii, 0);
             }
 
-            if (i != array.length - 1)
+            if (i !== this.array.length - 1)
                 ascii.append(ASCIIPropertyListParser.ARRAY_ITEM_DELIMITER_TOKEN);
 
-            if (ascii.length() - indexOfLastNewLine > ASCII_LINE_LENGTH) {
-                ascii.append(NEWLINE);
+            if (ascii.length() - indexOfLastNewLine > NSObject.ASCII_LINE_LENGTH) {
+                ascii.append(NSObject.NEWLINE);
                 indexOfLastNewLine = ascii.length();
             }
         }
         ascii.append(ASCIIPropertyListParser.ARRAY_END_TOKEN);
     }
 
-    @Override
-    protected void toASCIIGnuStep(StringBuilder ascii, int level) {
-        indent(ascii, level);
+    protected toASCIIGnuStep(ascii: StringBuilder, level: number): void {
+        this.indent(ascii, level);
         ascii.append(ASCIIPropertyListParser.ARRAY_BEGIN_TOKEN);
-        int indexOfLastNewLine = ascii.lastIndexOf(NEWLINE);
-        for (int i = 0; i < array.length; i++) {
-            Class<?> objClass = array[i].getClass();
-            if ((objClass.equals(NSDictionary.class) || objClass.equals(NSArray.class) || objClass.equals(NSData.class))
-                    && indexOfLastNewLine != ascii.length()) {
-                ascii.append(NEWLINE);
+        let indexOfLastNewLine: number = ascii.lastIndexOf(NSObject.NEWLINE);
+        for (let i = 0; i < this.array.length; i++) {
+            const objClass = this.array[i];
+            if ((objClass instanceof NSDictionary || objClass instanceof NSArray || objClass instanceof NSData)
+                && indexOfLastNewLine !== ascii.length()) {
+                ascii.append(NSObject.NEWLINE);
                 indexOfLastNewLine = ascii.length();
-                array[i].toASCIIGnuStep(ascii, level + 1);
+                this.array[i].toASCIIGnuStep(ascii, level + 1);
             } else {
-                if (i != 0)
+                if (i !== 0)
                     ascii.append(" ");
-                array[i].toASCIIGnuStep(ascii, 0);
+                this.array[i].toASCIIGnuStep(ascii, 0);
             }
 
-            if (i != array.length - 1)
+            if (i !== this.array.length - 1)
                 ascii.append(ASCIIPropertyListParser.ARRAY_ITEM_DELIMITER_TOKEN);
 
-            if (ascii.length() - indexOfLastNewLine > ASCII_LINE_LENGTH) {
-                ascii.append(NEWLINE);
+            if (ascii.length() - indexOfLastNewLine > NSObject.ASCII_LINE_LENGTH) {
+                ascii.append(NSObject.NEWLINE);
                 indexOfLastNewLine = ascii.length();
             }
         }

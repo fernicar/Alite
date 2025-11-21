@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.canvas;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,98 +16,103 @@ package de.phbouillon.android.games.alite.screens.canvas;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import java.io.DataInputStream;
-import java.io.IOException;
+import { Graphics } from "../../../framework/Graphics";
+import { TouchEvent } from "../../../framework/Input";
+import { AliteLog } from "../../AliteLog";
+import { Assets } from "../../Assets";
+import { Button } from "../../Button";
+import { L } from "../../L";
+import { ScreenCodes } from "../../ScreenCodes";
+import { SoundManager } from "../../SoundManager";
+import { CatalogScreen } from "./CatalogScreen";
+import { StatusScreen } from "./StatusScreen";
+import { RESULT_NONE, RESULT_YES } from "./AliteScreen";
 
-import de.phbouillon.android.framework.Graphics;
-import de.phbouillon.android.framework.Input.TouchEvent;
-import de.phbouillon.android.games.alite.*;
+// This screen never needs to be serialized, as it is not part of the InGame state.
+export class SaveScreen extends CatalogScreen {
+    private saveNewCommanderButton: Button;
+    private confirmedSave = false;
 
-//This screen never needs to be serialized, as it is not part of the InGame state.
-public class SaveScreen extends CatalogScreen {
-	private Button saveNewCommanderButton;
-	private boolean confirmedSave = false;
+    constructor(titleOrStream: string | any) {
+        if (typeof titleOrStream === 'string') {
+            super(titleOrStream);
+        } else {
+            // Deserialization constructor - omitting implementation for now
+            super(L.string("title_cmdr_save"));
+            // this.title = L.string("title_cmdr_save");
+        }
+    }
 
-	SaveScreen(String title) {
-		super(title);
-	}
+    public activate(): void {
+        super.activate();
+        this.saveNewCommanderButton = Button.createGradientRegularButton(50, 950, 500, 100, L.string("cmdr_btn_save"));
+        this.deleteButton = null;
+    }
 
-	public SaveScreen(final DataInputStream dis) throws IOException {
-		super(dis);
-		title = L.string(R.string.title_cmdr_save);
-	}
+    public update(deltaTime: number): void {
+        super.update(deltaTime);
+        if (this.messageResult === RESULT_YES) {
+            try {
+                this.game.saveCommander(this.inputText);
+                this.showMessageDialog(L.string("cmdr_save_succeeded", this.inputText));
+                this.confirmedSave = true;
+            } catch (e) {
+                if (e instanceof Error) {
+                    AliteLog.e("[ALITE] SaveCommander", "Error while saving commander.", e);
+                }
+            }
+        }
+        this.messageResult = RESULT_NONE;
+    }
 
-	@Override
-	public void activate() {
-		super.activate();
-		saveNewCommanderButton = Button.createGradientRegularButton(50, 950, 500, 100, L.string(R.string.cmdr_btn_save));
-		deleteButton = null;
-	}
+    protected processTouch(touch: TouchEvent): void {
+        super.processTouch(touch);
+        if (this.confirmedSave) {
+            this.newScreen = new StatusScreen();
+            this.confirmedSave = false;
+        }
+        if (touch.type === TouchEvent.TOUCH_UP) {
+            if (this.saveNewCommanderButton.isTouched(touch.x, touch.y)) {
+                SoundManager.play(Assets.click);
+                this.popupTextInput(L.string("cmdr_get_name"), this.game.getPlayer().getName(), 16);
+            }
+        }
+        if (this.selectedCommanderData.length !== 1) {
+            return;
+        }
+        if (this.messageResult === RESULT_NONE) {
+            this.showQuestionDialog(L.string("cmdr_save_overwrite", this.selectedCommanderData[0].getName()));
+            this.confirmDelete = false;
+            SoundManager.play(Assets.alert);
+            return;
+        }
+        if (this.messageResult === RESULT_YES) {
+            try {
+                if (this.selectedCommanderData[0].isAutoSaved()) {
+                    this.game.saveCommander(this.selectedCommanderData[0].getName());
+                } else {
+                    this.game.saveCommander(this.selectedCommanderData[0].getName(), this.selectedCommanderData[0].getFileName());
+                }
+                this.showMessageDialog(L.string("cmdr_save_succeeded", this.selectedCommanderData[0].getName()));
+                SoundManager.play(Assets.alert);
+                this.confirmedSave = true;
+            } catch (e) {
+                if (e instanceof Error) {
+                    this.showMessageDialog(L.string("cmdr_save_failed", this.selectedCommanderData[0].getName(), e.message));
+                }
+            }
+        }
+        this.clearSelection();
+        this.messageResult = RESULT_NONE;
+    }
 
-	@Override
-	public void update(float deltaTime) {
-		super.update(deltaTime);
-		if (messageResult == RESULT_YES) {
-			try {
-				game.saveCommander(inputText);
-			} catch (IOException e) {
-				AliteLog.e("[ALITE] SaveCommander", "Error while saving commander.", e);
-			}
-			showMessageDialog(L.string(R.string.cmdr_save_succeeded, inputText));
-			confirmedSave = true;
-		}
-		messageResult = RESULT_NONE;
-	}
+    public present(deltaTime: number): void {
+        super.present(deltaTime);
+        const g = this.game.getGraphics();
+        this.saveNewCommanderButton.render(g);
+    }
 
-	@Override
-	protected void processTouch(TouchEvent touch) {
-		super.processTouch(touch);
-		if (confirmedSave) {
-			newScreen = new StatusScreen();
-			confirmedSave = false;
-		}
-		if (touch.type == TouchEvent.TOUCH_UP) {
-			if (saveNewCommanderButton.isTouched(touch.x, touch.y)) {
-				SoundManager.play(Assets.click);
-				popupTextInput(L.string(R.string.cmdr_get_name), game.getPlayer().getName(), 16);
-			}
-		}
-		if (selectedCommanderData.size() != 1) {
-			return;
-		}
-		if (messageResult == RESULT_NONE) {
-			showQuestionDialog(L.string(R.string.cmdr_save_overwrite, selectedCommanderData.get(0).getName()));
-			confirmDelete = false;
-			SoundManager.play(Assets.alert);
-			return;
-		}
-		if (messageResult == RESULT_YES) {
-			try {
-				if (selectedCommanderData.get(0).isAutoSaved()) {
-					game.saveCommander(selectedCommanderData.get(0).getName());
-				} else {
-					game.saveCommander(selectedCommanderData.get(0).getName(), selectedCommanderData.get(0).getFileName());
-				}
-				showMessageDialog(L.string(R.string.cmdr_save_succeeded, selectedCommanderData.get(0).getName()));
-				SoundManager.play(Assets.alert);
-				confirmedSave = true;
-			} catch (IOException e) {
-				showMessageDialog(L.string(R.string.cmdr_save_failed, selectedCommanderData.get(0).getName(), e.getMessage()));
-			}
-		}
-		clearSelection();
-		messageResult = RESULT_NONE;
-	}
-
-	@Override
-	public void present(float deltaTime) {
-		super.present(deltaTime);
-		Graphics g = game.getGraphics();
-		saveNewCommanderButton.render(g);
-	}
-
-	@Override
-	public int getScreenCode() {
-		return ScreenCodes.SAVE_SCREEN;
-	}
+    public getScreenCode(): number {
+        return ScreenCodes.SAVE_SCREEN;
+    }
 }

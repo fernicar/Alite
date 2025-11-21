@@ -1,5 +1,3 @@
-package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
-
 /* Alite - Discover the Universe on your Favorite Android Device
  * Copyright (C) 2015 Philipp Bouillon
  *
@@ -18,99 +16,102 @@ package de.phbouillon.android.games.alite.screens.opengl.sprites.buttons;
  * http://http://www.gnu.org/licenses/gpl-3.0.txt.
  */
 
-import de.phbouillon.android.framework.Timer;
-import de.phbouillon.android.framework.IMethodHook;
-import de.phbouillon.android.framework.impl.gl.GraphicObject;
-import de.phbouillon.android.framework.math.Vector3f;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.InGameManager;
-import de.phbouillon.android.games.alite.screens.opengl.ingame.ObjectType;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObject;
-import de.phbouillon.android.games.alite.screens.opengl.objects.space.SpaceObjectFactory;
+import { Timer } from "../../../../../framework/Timer";
+import { IMethodHook } from "../../../../../framework/IMethodHook";
+import { GraphicObject } from "../../../../../framework/impl/gl/GraphicObject";
+import { Vector3f } from "../../../../../framework/math/Vector3f";
+import { InGameManager } from "../../ingame/InGameManager";
+import { ObjectType } from "../../ingame/ObjectType";
+import { SpaceObject } from "../../objects/space/SpaceObject";
+import { SpaceObjectFactory } from "../../objects/space/SpaceObjectFactory";
 
-class EscapeCapsuleUpdater implements IMethodHook {
-	private static final long serialVersionUID = -296076467539527770L;
+enum EscapeCapsuleState {
+    SPAWN,
+    MOVE,
+    QUIT
+}
 
-	private enum EscapeCapsuleState {
-		SPAWN,
-		MOVE,
-		QUIT
-	}
+export class EscapeCapsuleUpdater implements IMethodHook {
+    private static readonly serialVersionUID = -296076467539527770;
 
-	private final InGameManager inGame;
-	private final Timer timer = new Timer();
-	private EscapeCapsuleState state = EscapeCapsuleState.SPAWN;
-	private SpaceObject cobra = null;
-	private SpaceObject esc = null;
-	private final Vector3f vec1 = new Vector3f(0, 0, 0);
-	private final Vector3f vec2 = new Vector3f(0, 0, 0);
+    private readonly inGame: InGameManager;
+    private readonly timer = new Timer();
+    private state: EscapeCapsuleState = EscapeCapsuleState.SPAWN;
+    private cobra: SpaceObject = null;
+    private esc: SpaceObject = null;
+    private readonly vec1 = new Vector3f(0, 0, 0);
+    private readonly vec2 = new Vector3f(0, 0, 0);
 
-	EscapeCapsuleUpdater(InGameManager inGame) {
-		this.inGame = inGame;
-	}
+    constructor(inGame: InGameManager) {
+        this.inGame = inGame;
+    }
 
-	@Override
-	public void execute(float deltaTime) {
-		switch (state) {
-			case SPAWN: spawnShip();
-						spawnEscapeCapsule();
-						break;
-			case MOVE: moveShip();
-					   moveEscapeCapsule(deltaTime);
-					   break;
-			case QUIT: endSequence(); break;
-		}
-	}
+    public execute(deltaTime: number): void {
+        switch (this.state) {
+            case EscapeCapsuleState.SPAWN:
+                this.spawnShip();
+                this.spawnEscapeCapsule();
+                break;
+            case EscapeCapsuleState.MOVE:
+                this.moveShip();
+                this.moveEscapeCapsule(deltaTime);
+                break;
+            case EscapeCapsuleState.QUIT:
+                this.endSequence();
+                break;
+        }
+    }
 
-	private void spawnShip() {
-		GraphicObject ship = inGame.getShip();
-		ship.computeMatrix();
-		cobra = SpaceObjectFactory.getInstance().getObjectById("cobra_mk_iii");
-		cobra.setUpVector(ship.getUpVector());
-		cobra.setRightVector(ship.getRightVector());
-		cobra.setForwardVector(ship.getForwardVector());
-		cobra.applyDeltaRotation(15, 15, -25);
-		ship.getPosition().copy(vec1);
-		ship.getForwardVector().copy(vec2);
-		vec2.scale(-800);
-		vec1.add(vec2);
-		ship.getUpVector().copy(vec2);
-		vec2.scale(-50);
-		vec1.add(vec2);
-		cobra.setPosition(vec1);
-		cobra.setSpeed(-cobra.getMaxSpeed());
-		ship.setSpeed(0);
-		state = EscapeCapsuleState.MOVE;
-		inGame.addObject(cobra);
-	}
+    private spawnShip(): void {
+        const ship = this.inGame.getShip();
+        ship.computeMatrix();
+        this.cobra = SpaceObjectFactory.getInstance().getObjectById("cobra_mk_iii");
+        this.cobra.setUpVector(ship.getUpVector());
+        this.cobra.setRightVector(ship.getRightVector());
+        this.cobra.setForwardVector(ship.getForwardVector());
+        this.cobra.applyDeltaRotation(15, 15, -25);
+        ship.getPosition().copy(this.vec1);
+        ship.getForwardVector().copy(this.vec2);
+        this.vec2.scale(-800);
+        this.vec1.add(this.vec2);
+        ship.getUpVector().copy(this.vec2);
+        this.vec2.scale(-50);
+        this.vec1.add(this.vec2);
+        this.cobra.setPosition(this.vec1);
+        this.cobra.setSpeed(-this.cobra.getMaxSpeed());
+        ship.setSpeed(0);
+        this.state = EscapeCapsuleState.MOVE;
+        this.inGame.addObject(this.cobra);
+    }
 
-	private void spawnEscapeCapsule() {
-		esc = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.EscapeCapsule);
-		cobra.getForwardVector().copy(vec1);
-		vec1.negate();
-		esc.setForwardVector(vec1);
+    private spawnEscapeCapsule(): void {
+        this.esc = SpaceObjectFactory.getInstance().getRandomObjectByType(ObjectType.EscapeCapsule);
+        this.cobra.getForwardVector().copy(this.vec1);
+        this.vec1.negate();
+        this.esc.setForwardVector(this.vec1);
 
-		esc.setRightVector(cobra.getRightVector());
-		cobra.getUpVector().copy(vec1);
-		vec1.negate();
-		esc.setUpVector(vec1);
-		cobra.getPosition().copy(vec1);
-		esc.setPosition(vec1);
-		esc.setSpeed(-esc.getMaxSpeed());
-		inGame.addObject(esc);
-	}
+        this.esc.setRightVector(this.cobra.getRightVector());
+        this.cobra.getUpVector().copy(this.vec1);
+        this.vec1.negate();
+        this.esc.setUpVector(this.vec1);
+        this.cobra.getPosition().copy(this.vec1);
+        this.esc.setPosition(this.vec1);
+        this.esc.setSpeed(-this.esc.getMaxSpeed());
+        this.inGame.addObject(this.esc);
+    }
 
-	private void moveShip() {
-		if (timer.hasPassedSeconds(4)) {
-			state = EscapeCapsuleState.QUIT;
-		}
-		// Nothing else to be done here; InGameRender advances the cobra...
-	}
+    private moveShip(): void {
+        if (this.timer.hasPassedSeconds(4)) {
+            this.state = EscapeCapsuleState.QUIT;
+        }
+        // Nothing else to be done here; InGameRender advances the cobra...
+    }
 
-	private void moveEscapeCapsule(float deltaTime) {
-		esc.moveForward(deltaTime);
-	}
+    private moveEscapeCapsule(deltaTime: number): void {
+        this.esc.moveForward(deltaTime);
+    }
 
-	private void endSequence() {
-		inGame.terminateToStatusScreen();
-	}
+    private endSequence(): void {
+        this.inGame.terminateToStatusScreen();
+    }
 }
